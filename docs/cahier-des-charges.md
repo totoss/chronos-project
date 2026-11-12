@@ -154,3 +154,14 @@ Camille est affectée à 50 % au projet A et à 50 % au projet B sur toute la se
 - Taux de charge = 4 ÷ 2,4 ≈ **167 %** → surcharge (RG-24).
 
 Cet exemple montre pourquoi la règle mérite d'être discutée : faut-il que les affectations tiennent compte de la quotité et des absences ? Ce point sera tranché, tests à l'appui, dans le module consacré au calcul de charge.
+
+## 8. Précisions apportées en cours de projet
+
+Un cahier des charges vit : quand le développement révèle une ambiguïté, la décision prise est consignée ici, sans réécrire le texte d'origine. Les sections 5 et 7 restent donc telles qu'elles ont été rédigées — les modules 02 et 09 du cours s'appuient sur leur formulation initiale.
+
+> Mentoré : ne lisez cette section qu'après avoir terminé le [module 09](../cours/09-affectations-et-calcul-de-charge.md).
+
+| Règle | Précision | Décidée au |
+| --- | --- | --- |
+| **RG-23** | Le taux d'allocation est une part de la capacité **du collaborateur** (§ 3). La charge planifiée tient donc compte de la quotité : *charge planifiée = somme, pour chaque affectation, des jours ouvrés couverts × quotité × taux d'allocation*. Elle ne tient pas compte des absences, qui ne réduisent que la capacité (RG-22) : c'est ce qui rend visible la surcharge créée par une absence. | Module 09 |
+| **§ 7** | Avec RG-23 précisée, la charge planifiée de Camille est 4 × 0,8 × 0,5 + 4 × 0,8 × 0,5 = **3,2 jours**, pour une capacité inchangée de 2,4 jours : taux de charge ≈ **133 %**. Camille reste en surcharge, à cause de son congé et non de son temps partiel. | Module 09 |
