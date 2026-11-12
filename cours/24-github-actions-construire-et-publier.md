@@ -2,6 +2,7 @@
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
 > **Les workflows de ce module n'ont pas été exécutés sur GitHub.** Ils ont été relus contre la documentation du jour et le fichier README de chaque action, puis contrôlés par `actionlint` 1.7.12 (syntaxe, expressions, scripts), sans erreur. Ont été exécutés localement, le 12 novembre 2026 : la construction des deux images à partir des Dockerfile du module 23, et la fabrication puis l'exécution du bundle de migrations (EF Core 10.0.15, sur PostgreSQL 18 et SQL Server 2025). Tout le reste — publication, attestation, environnement, Dependabot — est à confirmer à la première exécution : signalez au mentor tout écart constaté.
+> Rejoué le 13 novembre 2026 sur la solution de référence. **Vérifié localement** : `actionlint` sans erreur sur `ci.yml` et `publication.yml` ; `gh actions-lock --verify` ; construction des deux images avec les contextes et les tags du workflow, et l'erreur réelle quand `build-contexts` manque ; bundle de migrations (SDK 10.0.404, EF Core 10.0.15, `linux-x64`) appliqué sur des bases PostgreSQL 18 et SQL Server 2025 neuves, avec et sans `DOTNET_ENVIRONMENT`. **Relu seulement** (documentation GitHub et README des actions du jour) : connexion à `ghcr.io`, tags publiés, cache, SBOM, provenance, attestation, sorties de la matrice, concurrence, environnements, Dependabot.
 
 Au module 23, vous avez construit les images de Chronos sur votre poste. Une image construite sur un poste a un défaut : personne ne peut dire de quel code elle vient, ni si ce code avait passé les tests. Ce module confie la construction à GitHub Actions : chaque version donne deux images, construites à partir d'un commit vérifié, rangées dans un registre, accompagnées d'une preuve de leur origine, et déployées après un accord explicite.
 
@@ -24,7 +25,9 @@ Au module 23, vous avez construit les images de Chronos sur votre poste. Une ima
 - [Module 23](23-conteneuriser-l-application.md) : les deux Dockerfile et le contexte nommé `racine`.
 - L'outil [`gh`](https://cli.github.com/), connecté à votre compte.
 
-> **Dépôt privé et compte gratuit.** Deux fonctions de ce module ne sont proposées, avec un compte gratuit, que sur un dépôt **public** : les environnements (étape 8) et les attestations de GitHub (étape 5). Sur un dépôt privé, il faut une offre payante — GitHub Pro ou Team pour les environnements, Enterprise Cloud pour les attestations. Comme pour les *rulesets* du module 05 : faites ces étapes sur un dépôt public, ou lisez-les et discutez-en en séance. Le reste du module fonctionne partout.
+> **Dépôt privé et compte gratuit.** Deux fonctions de ce module ne sont proposées, avec un compte gratuit, que sur un dépôt **public** : les environnements (étape 8) et les attestations de GitHub (étape 5). Sur un dépôt privé, il faut une offre payante : GitHub Pro ou Team donne les environnements, leurs secrets et la restriction aux tags, mais **pas les relecteurs obligatoires**, réservés aux dépôts publics avec ces offres ; les attestations exigent Enterprise Cloud. Sur un dépôt privé d'un compte gratuit, l'étape d'attestation est sautée par sa condition ; le job de déploiement, lui, **n'est pas bloqué** : un workflow qui cite un environnement inexistant le crée, sans règle de protection ni secret. Il démarrerait donc sans approbation, puis échouerait faute de `CHAINE_MIGRATIONS`. Comme pour les *rulesets* du module 05 : faites ces étapes sur un dépôt public, ou lisez-les et discutez-en en séance. Le reste du module fonctionne partout.
+>
+> Documentation : [Déploiements et environnements](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments), [gérer les environnements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments), [`actions/attest`](https://github.com/actions/attest)
 
 ## Règles de gestion
 
@@ -132,8 +135,8 @@ jobs:
 ```
 
 - **`tags: ['v*']`** : le workflow réagit aussi aux tags dont le nom commence par `v`. Chaque fusion dans `main` publiera une image de travail ; chaque tag, une version.
-- **`cancel-in-progress: false`** : on n'interrompt pas une publication en cours. Une exécution plus récente attend.
-- **Le groupe ne s'appelle pas `${{ github.workflow }}-…`** comme dans `ci.yml`. Dans un workflow appelé, `github.workflow` désigne l'appelant : les deux workflows calculeraient le même groupe et se bloqueraient l'un l'autre. Les noms de groupe ne distinguent pas majuscules et minuscules.
+- **`cancel-in-progress: false`** : on n'interrompt pas une publication en cours. Une exécution plus récente attend ; une seule peut attendre : si une troisième arrive, celle qui attendait est annulée. Sur `main`, seule la dernière fusion est donc publiée ; chaque tag de version a sa propre référence, donc son propre groupe.
+- **Le groupe ne s'appelle pas `${{ github.workflow }}-…`** comme dans `ci.yml`. Dans un workflow appelé, `github.workflow` désigne l'appelant : `ci.yml`, appelé ici, calcule `Publication-refs/…`. Avec le même nom de groupe, les deux workflows se bloqueraient l'un l'autre. Les noms de groupe ne distinguent pas majuscules et minuscules. Le `cancel-in-progress: true` de `ci.yml` ne menace pas une publication : la suivante attend au niveau de `Publication`, avant d'appeler `ci.yml`.
 - **`uses: ./.github/workflows/ci.yml`** au niveau d'un job : ce job *est* le workflow appelé. Ses jobs apparaissent sous le nom « Vérifications / API ».
 - **`permissions`** : un workflow appelé reçoit au plus les droits que l'appelant lui donne.
 
@@ -273,7 +276,7 @@ Et ajoutez une dernière étape, qui transmet aux jobs suivants la référence e
 
 - **`fail-fast: false`** : si une image échoue, l'autre va au bout. Par défaut, GitHub annulerait tout.
 - **La valeur de la matrice passe par `env`** avant d'entrer dans le script. C'est la règle du module 05 : jamais d'expression `${{ … }}` dans un bloc `run`.
-- **`outputs`** : chaque exécution de la matrice renseigne la sortie qui porte son nom, `api` ou `web`.
+- **`outputs`** : chaque exécution de la matrice renseigne la sortie qui porte son nom, `api` ou `web`. La documentation le garantit : les sorties des exécutions d'une matrice sont réunies, une sortie vide n'est pas écrite et n'efface donc pas celle d'une autre exécution ; seules deux exécutions qui écrivent **le même nom** s'écrasent, et l'ordre n'est pas garanti.
 
 Documentation : [Syntaxe des workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) — sections `strategy.matrix` et `jobs.<job_id>.outputs`
 
@@ -301,7 +304,7 @@ et une étape, après la construction :
 
 - **`subject-name`** est le nom complet de l'image, **sans tag** ; **`subject-digest`**, l'empreinte que vient de produire la construction. L'attestation porte sur ce contenu précis.
 - **`id-token: write`** permet au job d'obtenir le jeton d'identité avec lequel l'attestation est signée. C'est le même mécanisme qu'OpenID Connect.
-- **La condition `if`** saute l'étape sur un dépôt privé, où les attestations ne sont pas proposées avec un compte gratuit.
+- **La condition `if`** saute l'étape sur un dépôt privé, où les attestations exigent GitHub Enterprise Cloud.
 
 Vérifiez ensuite, depuis votre poste, une image publiée :
 
@@ -315,7 +318,7 @@ Documentation : [Utiliser les attestations](https://docs.github.com/en/actions/h
 
 ### 6. Verrouiller les nouvelles actions
 
-Le workflow utilise cinq actions de plus. Sans mise à jour du fichier de verrouillage, GitHub refuserait de le démarrer :
+Le workflow utilise six actions de plus que `ci.yml` (`actions/attest`, `actions/download-artifact` et les quatre actions de Docker). Sans mise à jour du fichier de verrouillage, GitHub refuserait de le démarrer. Comme au module 05, la commande resserre aussi `@v7` en version complète (`@v7.0.1`) dans le fichier :
 
 ```powershell
 gh actions-lock
@@ -417,6 +420,10 @@ Une nouvelle version peut exiger un nouveau schéma. Le [module 25](25-exploiter
 
 `dotnet tool restore` installe `dotnet-ef` dans la version fixée par `dotnet-tools.json` (module 07). Le signe `>` replie la commande sur une ligne.
 
+Le bundle contient en réalité **les deux** jeux de migrations, que l'API référence ; `--project` et `-- --Chronos:Fournisseur PostgreSql` ne servent qu'à le fabriquer. Le fournisseur se choisit à l'exécution (étape 9).
+
+> **Si vous fabriquez le bundle sur votre poste** pour l'essayer : la commande réécrit les cinq fichiers `packages.lock.json` de `src/api`, en y ajoutant `linux-x64` (constaté). Ne les versionnez pas : la restauration suivante en mode verrouillé échouerait. Remettez-les en état par `dotnet restore --force-evaluate` depuis `src/api` ; `git status` ne doit plus en lister aucun. Sur la machine d'exécution de GitHub, c'est sans conséquence.
+
 Créez ensuite l'environnement. Dans les réglages du dépôt, rubrique *Environments* :
 
 - créez `production` ;
@@ -433,6 +440,7 @@ Créez ensuite l'environnement. Dans les réglages du dépôt, rubrique *Environ
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions: {}
     environment:
       name: production
       url: ${{ vars.URL_APPLICATION }}
@@ -449,6 +457,7 @@ Créez ensuite l'environnement. Dans les réglages du dépôt, rubrique *Environ
         env:
           CHAINE_MIGRATIONS: ${{ secrets.CHAINE_MIGRATIONS }}
           Chronos__Fournisseur: ${{ vars.FOURNISSEUR }}
+          DOTNET_ENVIRONMENT: Production
         run: |
           chmod +x efbundle
           ./efbundle --connection "$CHAINE_MIGRATIONS"
@@ -465,12 +474,14 @@ Créez ensuite l'environnement. Dans les réglages du dépôt, rubrique *Environ
 
 - **`if`** : seul un tag de version déploie. Les fusions dans `main` s'arrêtent à la publication.
 - **`environment`** : le job attend l'approbation, puis reçoit les secrets et les variables de `production`. L'adresse `url` s'affiche sur la page de l'exécution.
+- **`permissions: {}`** : ce job n'a besoin d'aucun droit du jeton `GITHUB_TOKEN`. `download-artifact` lit un artefact de la même exécution sans lui ; il ne faut `actions: read` que pour un artefact d'une autre exécution.
 - **`concurrency`** : un seul déploiement à la fois vers la production.
+- **`DOTNET_ENVIRONMENT: Production`** : le bundle démarre l'application pour lire sa configuration, et, sans variable, les outils d'EF Core la démarrent en `Development`. Or c'est en `Development` que `Program.cs` branche `UseSeeding` : le bundle insérerait les **données de démonstration** (trois collaborateurs, un client, des projets) dans la base de production (constaté sur une base neuve ; avec la variable, aucune donnée).
 - **Les migrations d'abord, l'application ensuite.** Le module 25 explique pourquoi cet ordre impose des migrations compatibles avec la version précédente.
 - **`Chronos__Fournisseur`** : c'est à l'exécution que le bundle choisit son fournisseur, par la configuration, comme l'API (constaté).
 - **`IMAGE_API`** vaut `ghcr.io/…-api@sha256:…` : l'image exacte que ce workflow vient de construire, et non « la dernière ».
 
-Poussez un tag `v0.1.1` : les images se publient, puis l'exécution s'arrête sur *Waiting for review*. Approuvez-la.
+Poussez un tag `v0.1.1` : les images se publient, puis l'exécution s'arrête sur *Waiting for review*. Approuvez-la. (Sur un dépôt privé sans relecteurs obligatoires, il n'y a pas d'arrêt : voir l'encadré des prérequis.)
 
 **Ce qui dépend de l'hébergeur.** Le cours n'en impose aucun. La dernière étape est à écrire avec lui :
 
@@ -522,13 +533,15 @@ Documentation : [Déployer avec GitHub Actions](https://docs.github.com/en/actio
 | `subject-name` avec un tag | L'attestation porte sur une empreinte, pas sur un tag. | Le nom seul, et `subject-digest`. |
 | `cache-to: type=gha` sans `scope` dans une matrice | Chaque image écrase le cache de l'autre. | Un `scope` par image. |
 | `context: src/api` sans étape `checkout` | Avec un chemin pour contexte, l'action lit les fichiers de la machine : il n'y en a pas. | `actions/checkout` d'abord. |
-| Oublier `build-contexts: racine=.` | La construction de l'API échoue sur `COPY --from=racine`. | Les mêmes arguments que sur votre poste. |
+| Oublier `build-contexts: racine=.` | La construction de l'API échoue sur `COPY --from=racine` : BuildKit prend `racine` pour une image du Docker Hub, `docker.io/library/racine`, et répond `pull access denied, repository does not exist or may require authorization` (constaté). | Les mêmes arguments que sur votre poste. |
 | Le même groupe `concurrency` dans l'appelant et dans le workflow appelé | Les deux exécutions se bloquent ou s'annulent. | Des groupes distincts. |
 | `environment:` sur le job qui appelle un workflow réutilisable | Mot-clé refusé à cet endroit. | Le déclarer dans un job du workflow appelé. |
 | `needs.images.outputs.digest` avec une matrice | Les exécutions écrivent la même sortie : une seule valeur survit. | Une sortie par entrée de la matrice. |
 | Déployer depuis le job qui construit | Le droit de publier et les secrets de production se retrouvent ensemble. | Un job par responsabilité. |
 | Secrets de production au niveau du dépôt | Tout workflow, depuis toute branche, peut les lire. | Secrets d'environnement. |
 | `cancel-in-progress: true` sur un déploiement | Un déploiement interrompu à mi-chemin : migrations appliquées, application non mise à jour. | `false`. |
+| Exécuter le bundle sans `DOTNET_ENVIRONMENT` | Il démarre l'application en `Development` et insère les données de démonstration dans la base visée (constaté). | `DOTNET_ENVIRONMENT: Production`. |
+| Versionner les `packages.lock.json` réécrits par un bundle fabriqué sur le poste | Ils mentionnent `linux-x64` : la restauration verrouillée suivante échoue. | `dotnet restore --force-evaluate`. |
 | Exécuter le bundle sans `Chronos__Fournisseur` sur SQL Server | Le bundle emploie le fournisseur par défaut, PostgreSQL, et échoue sur la chaîne de connexion (constaté). | Toujours fournir la variable. |
 
 La liste complète, avec les sources, est dans le [référentiel GitHub Actions](../docs/references/github-actions.md#3-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
