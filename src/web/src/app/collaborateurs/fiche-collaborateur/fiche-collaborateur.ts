@@ -1,5 +1,5 @@
 import { DatePipe, PercentPipe } from '@angular/common';
-import { Component, computed, inject, input, numberAttribute } from '@angular/core';
+import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,11 +7,14 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { ErreurApi } from '../../commun/erreur-api';
+import { Collaborateur } from '../collaborateur';
 import { CollaborateursApi } from '../collaborateurs-api';
+import { FormulaireCollaborateur } from '../formulaire-collaborateur/formulaire-collaborateur';
 
 @Component({
   imports: [
     DatePipe,
+    FormulaireCollaborateur,
     PercentPipe,
     MatButtonModule,
     MatCardModule,
@@ -40,4 +43,12 @@ export class FicheCollaborateur {
     const erreur = this.collaborateur.error();
     return erreur instanceof ErreurApi && erreur.statut === 404;
   });
+
+  protected readonly enEdition = signal(false);
+
+  protected terminer(enregistre: Collaborateur): void {
+    // L'API a renvoyé la fiche à jour, avec sa nouvelle version : inutile de la redemander.
+    this.collaborateur.set(enregistre);
+    this.enEdition.set(false);
+  }
 }

@@ -1,8 +1,13 @@
-import { HttpClient, httpResource } from '@angular/common/http';
+import { HttpClient, HttpContext, httpResource } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ERREURS_DE_SAISIE_GEREES } from '../commun/erreurs-interceptor';
 import { Page } from '../commun/page';
-import { Collaborateur } from './collaborateur';
+import {
+  Collaborateur,
+  CreerCollaborateurRequete,
+  ModifierCollaborateurRequete,
+} from './collaborateur';
 
 /** Les tris acceptés par l'API ; `-nom` est l'ordre décroissant. */
 export type TriCollaborateurs = 'nom' | '-nom' | 'matricule';
@@ -19,6 +24,11 @@ export interface CriteresCollaborateurs {
 export class CollaborateursApi {
   private readonly http = inject(HttpClient);
   private readonly url = '/api/collaborateurs';
+
+  /** Les formulaires affichent eux-mêmes les erreurs de saisie. */
+  private readonly depuisUnFormulaire = {
+    context: new HttpContext().set(ERREURS_DE_SAISIE_GEREES, true),
+  };
 
   /** À appeler dans un contexte d'injection : l'initialiseur d'un champ de composant. */
   liste(criteres: () => CriteresCollaborateurs) {
@@ -38,6 +48,14 @@ export class CollaborateursApi {
       const valeur = id();
       return valeur === undefined ? undefined : `${this.url}/${valeur}`;
     });
+  }
+
+  creer(requete: CreerCollaborateurRequete): Observable<Collaborateur> {
+    return this.http.post<Collaborateur>(this.url, requete, this.depuisUnFormulaire);
+  }
+
+  modifier(id: number, requete: ModifierCollaborateurRequete): Observable<Collaborateur> {
+    return this.http.put<Collaborateur>(`${this.url}/${id}`, requete, this.depuisUnFormulaire);
   }
 
   supprimer(id: number): Observable<void> {

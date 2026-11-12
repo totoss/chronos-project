@@ -88,6 +88,9 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
         var doublon = await _client.PostAsJsonAsync("/api/projets", NouveauProjet("p-doublon", clientId), ct);
 
         Assert.Equal(HttpStatusCode.Conflict, doublon.StatusCode);
+        var probleme = await doublon.LireAsync();
+        Assert.Equal("RG-10", probleme.GetProperty("regle").GetString());
+        Assert.False(probleme.TryGetProperty("code", out _));
     }
 
     [Fact]
@@ -105,5 +108,21 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
 
         Assert.Equal(HttpStatusCode.OK, premiere.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, seconde.StatusCode);
+        var probleme = await seconde.LireAsync();
+        Assert.Equal("concurrence", probleme.GetProperty("code").GetString());
+        Assert.False(probleme.TryGetProperty("regle", out _));
+    }
+
+    [Fact]
+    public async Task Un_champ_obligatoire_manquant_a_la_creation_donne_un_message_en_francais()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var reponse = await _client.PostAsJsonAsync("/api/projets",
+            new { libelle = "Refonte", nature = "Interne", dateDebut = "2026-05-04", budgetJours = 40, responsableId = 1 }, ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
+        var erreurs = (await reponse.LireAsync()).GetProperty("errors");
+        Assert.Equal("Le code est obligatoire.", erreurs.GetProperty("Code")[0].GetString());
     }
 }

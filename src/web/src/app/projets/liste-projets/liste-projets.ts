@@ -1,8 +1,10 @@
 import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { RouterLink } from '@angular/router';
 import { debounceTime, Subject } from 'rxjs';
 import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
 import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
@@ -16,8 +18,10 @@ import { ProjetsApi } from '../projets-api';
     CarteProjet,
     CompteurDeResultats,
     MatButtonModule,
+    MatIconModule,
     MatPaginatorModule,
     MatProgressBarModule,
+    RouterLink,
   ],
   selector: 'app-liste-projets',
   styleUrl: './liste-projets.scss',

@@ -7,4 +7,10 @@ export const projetsRoutes: Routes = [
     component: ListeProjets,
     title: 'Projets — Chronos',
   },
+  {
+    path: 'nouveau',
+    loadComponent: () =>
+      import('./formulaire-projet/formulaire-projet').then((m) => m.FormulaireProjet),
+    title: 'Nouveau projet — Chronos',
+  },
 ];

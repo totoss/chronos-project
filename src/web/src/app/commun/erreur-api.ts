@@ -10,9 +10,16 @@ export class ErreurApi extends Error {
     readonly regle: string | null = null,
     /** Messages par champ (réponse 400). Les clés sont les noms de champs renvoyés par l'API. */
     readonly champs: Record<string, string[]> = {},
+    /** Code de l'extension `code` de la réponse, par exemple 'concurrence' (409). */
+    readonly code: string | null = null,
   ) {
     super(message);
     this.name = 'ErreurApi';
+  }
+
+  /** L'API a refusé les données envoyées : à l'utilisateur de les corriger. */
+  get estDeSaisie(): boolean {
+    return this.statut === 400 || this.statut === 409 || this.statut === 422;
   }
 }
 
@@ -20,6 +27,7 @@ interface ProblemDetails {
   title?: string;
   detail?: string;
   regle?: string;
+  code?: string;
   errors?: Record<string, string[]>;
 }
 
@@ -42,5 +50,11 @@ export function versErreurApi(erreur: unknown): ErreurApi {
     probleme.detail ??
     LIBELLES[erreur.status] ??
     `L'API a répondu par une erreur ${erreur.status}.`;
-  return new ErreurApi(erreur.status, message, probleme.regle ?? null, probleme.errors ?? {});
+  return new ErreurApi(
+    erreur.status,
+    message,
+    probleme.regle ?? null,
+    probleme.errors ?? {},
+    probleme.code ?? null,
+  );
 }

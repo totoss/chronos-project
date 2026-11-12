@@ -117,7 +117,7 @@ public static class ProjetsEndpoints
         // Le domaine a normalisé le code (majuscules) : c'est cette forme qu'on compare, sur les deux SGBD.
         if (await db.Projets.AnyAsync(p => p.Code == projet.Code, cancellationToken))
         {
-            return Conflit("Un projet porte déjà ce code (RG-10).");
+            return Conflit("Un projet porte déjà ce code (RG-10).", "RG-10");
         }
 
         var inconnu = await ReferenceInconnue(db, projet, cancellationToken);

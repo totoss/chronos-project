@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { Page } from '../../commun/page';
 import { Projet } from '../projet';
 import { ListeProjets } from './liste-projets';
@@ -34,7 +35,7 @@ describe('ListeProjets', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ListeProjets],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);

@@ -4,11 +4,13 @@ using Chronos.Domain;
 namespace Chronos.Api.Projets;
 
 public record ModifierProjetRequete(
-    [Required, StringLength(200)] string Libelle,
-    [Required] NatureProjet? Nature,
+    [Required(ErrorMessage = "Le libellé est obligatoire."),
+     StringLength(200, ErrorMessage = "Le libellé ne dépasse pas {1} caractères.")] string Libelle,
+    [Required(ErrorMessage = "La nature est obligatoire.")] NatureProjet? Nature,
     int? ClientId,
-    [Required] DateOnly? DateDebut,
+    [Required(ErrorMessage = "La date de début est obligatoire.")] DateOnly? DateDebut,
     DateOnly? DateFin,
-    [Required, Range(0, int.MaxValue)] int? BudgetJours,
-    [Required] int? ResponsableId,
-    [Required] Guid? Version);
+    [Required(ErrorMessage = "Le budget en jours est obligatoire."),
+     Range(0, int.MaxValue, ErrorMessage = "Le budget en jours ne peut pas être négatif.")] int? BudgetJours,
+    [Required(ErrorMessage = "Le responsable est obligatoire.")] int? ResponsableId,
+    [Required(ErrorMessage = "La version est obligatoire.")] Guid? Version);

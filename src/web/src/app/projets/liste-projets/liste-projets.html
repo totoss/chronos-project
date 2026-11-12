@@ -15,6 +15,11 @@
     <option value="Termine">Terminé</option>
     <option value="Annule">Annulé</option>
   </select>
+
+  <a matButton="filled" routerLink="nouveau">
+    <mat-icon>add</mat-icon>
+    Nouveau projet
+  </a>
 </div>
 
 @if (projets.isLoading()) {

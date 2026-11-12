@@ -23,3 +23,31 @@ export interface Collaborateur {
   /** Jeton de concurrence, à renvoyer tel quel dans une modification. */
   version: string;
 }
+
+export type TypeContrat = 'Cdi' | 'Cdd' | 'Alternance' | 'Stage';
+
+/** Miroir de CreerCollaborateurRequete. */
+export interface CreerCollaborateurRequete {
+  matricule: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  categorie: CategorieCollaborateur;
+  poste: string;
+  dateEntree: string;
+  typeContrat: TypeContrat;
+  /** Fraction : 0.8 pour 80 %. */
+  quotite: number;
+  managerId: number | null;
+}
+
+/** Miroir de ModifierCollaborateurRequete. */
+export interface ModifierCollaborateurRequete {
+  nom: string;
+  prenom: string;
+  email: string;
+  poste: string;
+  dateSortie: string | null;
+  managerId: number | null;
+  version: string;
+}

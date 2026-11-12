@@ -1,8 +1,14 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, throwError } from 'rxjs';
 import { versErreurApi } from './erreur-api';
+
+/**
+ * À mettre à `true` sur la requête d'un formulaire : il affiche lui-même les erreurs de saisie
+ * (400, 409, 422), l'intercepteur ne les notifie donc pas.
+ */
+export const ERREURS_DE_SAISIE_GEREES = new HttpContextToken<boolean>(() => false);
 
 export const erreursInterceptor: HttpInterceptorFn = (req, next) => {
   const snackBar = inject(MatSnackBar);
@@ -10,7 +16,8 @@ export const erreursInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((reponse: unknown) => {
       const erreur = versErreurApi(reponse);
-      if (req.method !== 'GET') {
+      const geree = req.context.get(ERREURS_DE_SAISIE_GEREES) && erreur.estDeSaisie;
+      if (req.method !== 'GET' && !geree) {
         snackBar.open(erreur.message, 'Fermer', { duration: 8000 });
       }
       return throwError(() => erreur);

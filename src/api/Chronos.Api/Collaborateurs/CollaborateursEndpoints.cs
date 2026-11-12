@@ -164,7 +164,7 @@ public static class CollaborateursEndpoints
             .AnyAsync(c => c.Matricule == collaborateur.Matricule || c.Email == collaborateur.Email, cancellationToken);
         if (dejaPris)
         {
-            return Conflit("Un collaborateur porte déjà ce matricule ou cette adresse électronique (RG-01).");
+            return Conflit("Un collaborateur porte déjà ce matricule ou cette adresse électronique (RG-01).", "RG-01");
         }
 
         db.Collaborateurs.Add(collaborateur);
@@ -205,7 +205,7 @@ public static class CollaborateursEndpoints
             .AnyAsync(c => c.Id != id && c.Email == collaborateur.Email, cancellationToken);
         if (adresseDejaPrise)
         {
-            return Conflit("Un collaborateur porte déjà cette adresse électronique (RG-01).");
+            return Conflit("Un collaborateur porte déjà cette adresse électronique (RG-01).", "RG-01");
         }
 
         await db.SaveChangesAsync(cancellationToken);

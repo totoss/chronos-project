@@ -81,6 +81,60 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
         var doublon = await _client.PostAsJsonAsync("/api/collaborateurs", NouveauCollaborateur("C-0002"), ct);
 
         Assert.Equal(HttpStatusCode.Conflict, doublon.StatusCode);
+        var probleme = await doublon.LireAsync();
+        Assert.Equal("RG-01", probleme.GetProperty("regle").GetString());
+        Assert.False(probleme.TryGetProperty("code", out _));
+    }
+
+    [Fact]
+    public async Task Une_adresse_deja_utilisee_a_la_modification_renvoie_409_avec_la_regle_RG_01()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var premier = await _client.CreerCollaborateurAsync("C-0020");
+        var second = await _client.GetFromJsonAsync<JsonElement>(
+            $"/api/collaborateurs/{(await _client.CreerCollaborateurAsync("C-0021")).Id}", ct);
+
+        var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{second.GetProperty("id").GetInt32()}",
+            new { nom = "Martin", prenom = "Camille", email = premier.Email, poste = "Développeuse",
+                version = second.GetProperty("version").GetGuid() }, ct);
+
+        Assert.Equal(HttpStatusCode.Conflict, modification.StatusCode);
+        var probleme = await modification.LireAsync();
+        Assert.Equal("RG-01", probleme.GetProperty("regle").GetString());
+        Assert.False(probleme.TryGetProperty("code", out _));
+    }
+
+    [Fact]
+    public async Task Une_modification_faite_avec_une_version_perimee_renvoie_409_avec_le_code_concurrence()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var id = (await _client.CreerCollaborateurAsync("C-0022")).Id;
+        var fiche = await _client.GetFromJsonAsync<JsonElement>($"/api/collaborateurs/{id}", ct);
+        var modification = new { nom = "Martin", prenom = "Camille", email = "c-0022@chronos.example", poste = "Lead",
+            version = fiche.GetProperty("version").GetGuid() };
+
+        var premiere = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}", modification, ct);
+        var seconde = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}", modification, ct);
+
+        Assert.Equal(HttpStatusCode.OK, premiere.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, seconde.StatusCode);
+        var probleme = await seconde.LireAsync();
+        Assert.Equal("concurrence", probleme.GetProperty("code").GetString());
+        Assert.False(probleme.TryGetProperty("regle", out _));
+    }
+
+    [Fact]
+    public async Task Un_champ_obligatoire_manquant_a_la_modification_donne_un_message_en_francais()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var id = (await _client.CreerCollaborateurAsync("C-0023")).Id;
+
+        var reponse = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}",
+            new { prenom = "Camille", email = "c-0023@chronos.example", poste = "Lead", version = Guid.NewGuid() }, ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
+        var erreurs = (await reponse.LireAsync()).GetProperty("errors");
+        Assert.Equal("Le nom est obligatoire.", erreurs.GetProperty("Nom")[0].GetString());
     }
 
     [Fact]

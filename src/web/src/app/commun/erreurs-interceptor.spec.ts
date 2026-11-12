@@ -1,9 +1,9 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ErreurApi } from './erreur-api';
-import { erreursInterceptor } from './erreurs-interceptor';
+import { ERREURS_DE_SAISIE_GEREES, erreursInterceptor } from './erreurs-interceptor';
 
 describe('erreursInterceptor', () => {
   let http: HttpClient;
@@ -26,12 +26,14 @@ describe('erreursInterceptor', () => {
 
   /** Envoie la requête, répond par une erreur, et rend ce que l'appelant reçoit. */
   function recevoir(
-    methode: 'GET' | 'DELETE',
+    methode: 'GET' | 'DELETE' | 'POST',
     corps: object,
     status: number,
+    deSaisieGeree = false,
   ): { erreur?: unknown } {
     const resultat: { erreur?: unknown } = {};
-    http.request(methode, '/api/x').subscribe({ error: (e) => (resultat.erreur = e) });
+    const context = new HttpContext().set(ERREURS_DE_SAISIE_GEREES, deSaisieGeree);
+    http.request(methode, '/api/x', { context }).subscribe({ error: (e) => (resultat.erreur = e) });
     controleur.expectOne('/api/x').flush(corps, { status, statusText: 'Erreur' });
     return resultat;
   }
@@ -58,6 +60,28 @@ describe('erreursInterceptor', () => {
 
     expect((erreur as ErreurApi).message).toBe('Les données envoyées sont invalides.');
     expect((erreur as ErreurApi).champs).toEqual({ Matricule: ['Requis.'] });
+  });
+
+  it.each([400, 409, 422])(
+    'ne notifie pas un %i quand la requête dit que le formulaire s’en charge',
+    (status) => {
+      const { erreur } = recevoir('POST', { detail: 'Refusé.' }, status, true);
+
+      expect((erreur as ErreurApi).statut).toBe(status);
+      expect(notifier).not.toHaveBeenCalled();
+    },
+  );
+
+  it('notifie quand même une erreur 500 sur la requête d’un formulaire', () => {
+    recevoir('POST', { title: 'Internal Server Error' }, 500, true);
+
+    expect(notifier).toHaveBeenCalled();
+  });
+
+  it('garde le code d’un 409 de concurrence', () => {
+    const { erreur } = recevoir('POST', { detail: 'Périmée.', code: 'concurrence' }, 409, true);
+
+    expect((erreur as ErreurApi).code).toBe('concurrence');
   });
 
   it('relance l’erreur sans notifier quand c’est une lecture', () => {

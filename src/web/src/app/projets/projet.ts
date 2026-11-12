@@ -21,3 +21,16 @@ export interface Projet {
   /** Jours de travail validés sur le projet, en jours (fractions possibles). */
   joursValides: number;
 }
+
+/** Miroir de CreerProjetRequete (module 08). */
+export interface CreerProjetRequete {
+  code: string;
+  libelle: string;
+  nature: NatureProjet;
+  /** `null` pour un projet interne (RG-11). */
+  clientId: number | null;
+  dateDebut: string;
+  dateFin: string | null;
+  budgetJours: number;
+  responsableId: number;
+}
