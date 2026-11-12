@@ -1,7 +1,7 @@
 # Module 05 — GitHub Actions : l'intégration continue
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
-> Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). Les étapes 8 (verrouillage des actions) et 9 (*ruleset*) ont été vérifiées dans la documentation, mais **pas exécutées** : signalez au mentor tout écart constaté.
+> Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). L'étape 8 (verrouillage des actions) l'a été aussi, avec l'extension `gh-actions-lock` 0.4.1. Restent vérifiés dans la documentation mais **non exécutés** : Dependabot (étape 8) et le *ruleset* (étape 9). Signalez au mentor tout écart constaté.
 
 Au module 04, vous avez écrit vos premiers tests. Ils passent sur votre poste, à condition que vous pensiez à les lancer. L'**intégration continue** supprime cette condition : à chaque envoi de code, une machine neutre récupère le dépôt, le compile et exécute les tests. Si quelque chose casse, on le sait dans les minutes qui suivent, et non le jour de la livraison.
 
@@ -262,9 +262,22 @@ gh extension install github/gh-actions-lock
 gh actions-lock
 ```
 
-La seconde commande crée `.github/workflows/actions.lock`. Versionnez ce fichier, et ne le modifiez jamais à la main. Dès lors, c'est le commit enregistré qui s'exécute, quel que soit l'endroit où pointe le tag.
+La seconde commande fait deux choses :
 
-Relancez `gh actions-lock` chaque fois que vous ajoutez ou retirez une action dans un workflow : une action absente du fichier de verrouillage fait échouer l'exécution.
+- elle crée `.github/workflows/actions.lock`, qui associe chaque action au commit exact à exécuter ;
+- elle **modifie votre workflow** : `actions/checkout@v7` devient `actions/checkout@v7.0.1`. Une version complète ne bouge pratiquement jamais, contrairement à `v7`, qui avance à chaque correctif ; le verrou reste ainsi valable plus longtemps. L'option `--no-narrow` désactive cette réécriture.
+
+Regardez les deux changements avec `git diff`, puis versionnez-les ensemble. Ne modifiez jamais `actions.lock` à la main.
+
+Dès lors, c'est le commit enregistré qui s'exécute, quel que soit l'endroit où pointe le tag. Le journal de l'exécution le montre, à l'étape *Set up job* : chaque action y est téléchargée avec son empreinte.
+
+**Chaque fois que vous ajoutez ou retirez une action, relancez `gh actions-lock`.** Si un workflow utilise une action absente du fichier de verrouillage, GitHub refuse de le démarrer : l'exécution échoue immédiatement, sans lancer aucun job, avec la mention « This run likely failed because of a workflow file issue ». Pour le savoir avant de pousser :
+
+```powershell
+gh actions-lock --verify
+```
+
+Cette commande contrôle sans rien modifier, et signale toute action non verrouillée.
 
 Il reste à tenir les actions à jour. Créez `.github/dependabot.yml` :
 
@@ -302,6 +315,8 @@ Essayez ensuite de fusionner une *pull request* dont un test échoue : le bouton
 Documentation : [À propos des rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets)
 
 ### Le workflow complet
+
+Après l'étape 8, les références `@v7` et `@v6` ci-dessous sont remplacées dans votre fichier par des versions complètes.
 
 ```yaml
 name: CI

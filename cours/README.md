@@ -120,7 +120,7 @@ Ces deux outils ne sont pas relégués à la fin : ils sont introduits dès qu'i
 | Référentiels .NET 10, Angular 22, Docker et GitHub Actions | Rédigés et vérifiés le 12 novembre 2026 |
 | Plan de cours | Rédigé |
 | Module 01 — Docker : les bases | Rédigé et exécuté le 12 novembre 2026 |
-| Module 05 — GitHub Actions : l'intégration continue | Rédigé ; workflow exécuté le 12 novembre 2026 ; étapes 8 et 9 non exécutées |
+| Module 05 — GitHub Actions : l'intégration continue | Rédigé ; workflow et verrouillage des actions exécutés le 12 novembre 2026 ; Dependabot et *ruleset* non exécutés |
 | Autres modules | À rédiger |
 | Solution de référence | À construire, module par module |
 
