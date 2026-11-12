@@ -51,7 +51,7 @@ public static class CollaborateursEndpoints
                 c.Matricule.ToLower().Contains(recherche));
         }
 
-        var aujourdhui = DateOnly.FromDateTime(horloge.GetLocalNow().DateTime);
+        var aujourdhui = horloge.Aujourdhui();
         switch (filtre.Statut)
         {
             case null or "":
@@ -217,7 +217,8 @@ public static class CollaborateursEndpoints
             await db.Collaborateurs
                 .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
                 .AnyAsync(c => c.ManagerId == id, cancellationToken)
-            || await db.Projets.AnyAsync(p => p.ResponsableId == id, cancellationToken);
+            || await db.Projets.AnyAsync(p => p.ResponsableId == id, cancellationToken)
+            || await db.Affectations.AnyAsync(a => a.CollaborateurId == id, cancellationToken);
 
         if (aDesDonneesLiees)
         {

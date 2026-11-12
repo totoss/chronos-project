@@ -9,6 +9,8 @@ public class ChronosDbContext(DbContextOptions<ChronosDbContext> options) : DbCo
     public DbSet<Contrat> Contrats { get; set; }
     public DbSet<Client> Clients { get; set; }
     public DbSet<Projet> Projets { get; set; }
+    public DbSet<Affectation> Affectations { get; set; }
+    public DbSet<JourFerie> JoursFeries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

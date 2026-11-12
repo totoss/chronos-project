@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
+using Chronos.Api.Affectations;
 using Chronos.Api.Clients;
 using Chronos.Api.Collaborateurs;
 using Chronos.Api.Erreurs;
+using Chronos.Api.JoursFeries;
+using Chronos.Api.PlanDeCharge;
 using Chronos.Api.Projets;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -69,5 +72,8 @@ if (app.Environment.IsDevelopment())
 app.MapProjets();
 app.MapClients();
 app.MapCollaborateurs();
+app.MapAffectations();
+app.MapJoursFeries();
+app.MapPlanDeCharge();
 
 app.Run();

@@ -434,11 +434,14 @@ Le statut ne se modifie pas : le projet *démarre*, *se termine*, *est annulé*.
     {
         if (EstClos)
         {
+            var etat = Statut == StatutProjet.Termine ? "terminé" : "annulé";
             throw new RegleMetierException("RG-13",
-                $"Le projet {Code} est {Statut} : il n'accepte plus ni affectation ni saisie de temps.");
+                $"Le projet {Code} est {etat} : il n'accepte plus ni affectation ni saisie de temps.");
         }
     }
 ```
+
+Le message d'une `RegleMetierException` est destiné à l'utilisateur : il sera affiché tel quel par l'interface. On y écrit donc « terminé », pas le nom de l'énumération (`Termine`).
 
 Écrivez sur le modèle de `Demarrer()` les deux méthodes qui manquent : `Terminer()`, possible seulement pour un projet en cours, et `Annuler()`, possible tant que le projet n'est pas clos.
 

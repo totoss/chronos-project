@@ -22,6 +22,39 @@ namespace Chronos.Migrations.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Chronos.Domain.Affectation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CollaborateurId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("DateDebut")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("DateFin")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ProjetId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TauxAllocation")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjetId");
+
+                    b.HasIndex("CollaborateurId", "DateDebut");
+
+                    b.ToTable("Affectations");
+                });
+
             modelBuilder.Entity("Chronos.Domain.Client", b =>
                 {
                     b.Property<int>("Id")
@@ -142,6 +175,21 @@ namespace Chronos.Migrations.SqlServer.Migrations
                     b.ToTable("Contrats");
                 });
 
+            modelBuilder.Entity("Chronos.Domain.JourFerie", b =>
+                {
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Date");
+
+                    b.ToTable("JoursFeries");
+                });
+
             modelBuilder.Entity("Chronos.Domain.Projet", b =>
                 {
                     b.Property<int>("Id")
@@ -199,6 +247,23 @@ namespace Chronos.Migrations.SqlServer.Migrations
                     b.HasIndex("ResponsableId");
 
                     b.ToTable("Projets");
+                });
+
+            modelBuilder.Entity("Chronos.Domain.Affectation", b =>
+                {
+                    b.HasOne("Chronos.Domain.Collaborateur", null)
+                        .WithMany()
+                        .HasForeignKey("CollaborateurId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Chronos.Domain.Projet", "Projet")
+                        .WithMany()
+                        .HasForeignKey("ProjetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Projet");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>

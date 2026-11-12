@@ -17,6 +17,7 @@ public static class DonneesInitiales
 
         context.AddRange(CreerProjets(responsable.Id, client.Id));
         context.Add(CreerCamille(responsable.Id));
+        context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
         context.SaveChanges();
     }
 
@@ -32,6 +33,7 @@ public static class DonneesInitiales
 
         context.AddRange(CreerProjets(responsable.Id, client.Id));
         context.Add(CreerCamille(responsable.Id));
+        context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
         await context.SaveChangesAsync(cancellationToken);
     }
 

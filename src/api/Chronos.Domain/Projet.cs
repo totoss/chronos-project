@@ -114,8 +114,9 @@ public class Projet
     {
         if (EstClos)
         {
+            var etat = Statut == StatutProjet.Termine ? "terminé" : "annulé";
             throw new RegleMetierException("RG-13",
-                $"Le projet {Code} est {Statut} : il n'accepte plus ni affectation ni saisie de temps.");
+                $"Le projet {Code} est {etat} : il n'accepte plus ni affectation ni saisie de temps.");
         }
     }
 
