@@ -1,37 +1,44 @@
-@let c = collaborateur();
+@if (collaborateur(); as c) {
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>{{ c.prenom }} {{ c.nom }}</mat-card-title>
+      <mat-card-subtitle>{{ c.poste }} — {{ c.categorie }}</mat-card-subtitle>
+    </mat-card-header>
 
-<mat-card>
-  <mat-card-header>
-    <mat-card-title>{{ c.prenom }} {{ c.nom }}</mat-card-title>
-    <mat-card-subtitle>{{ c.poste }} — {{ c.categorie }}</mat-card-subtitle>
-  </mat-card-header>
+    <mat-card-content>
+      <mat-list>
+        <mat-list-item>
+          <mat-icon matListItemIcon>badge</mat-icon>
+          <span matListItemTitle>Matricule</span>
+          <span matListItemLine>{{ c.matricule }}</span>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListItemIcon>mail</mat-icon>
+          <span matListItemTitle>Adresse électronique</span>
+          <span matListItemLine>{{ c.email }}</span>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListItemIcon>event</mat-icon>
+          <span matListItemTitle>Date d'entrée</span>
+          <span matListItemLine>{{ c.dateEntree | date: 'dd/MM/yyyy' }}</span>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListItemIcon>schedule</mat-icon>
+          <span matListItemTitle>Quotité</span>
+          <span matListItemLine>{{ c.quotite | percent }}</span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card-content>
 
-  <mat-card-content>
-    <mat-list>
-      <mat-list-item>
-        <mat-icon matListItemIcon>badge</mat-icon>
-        <span matListItemTitle>Matricule</span>
-        <span matListItemLine>{{ c.matricule }}</span>
-      </mat-list-item>
-      <mat-list-item>
-        <mat-icon matListItemIcon>mail</mat-icon>
-        <span matListItemTitle>Adresse électronique</span>
-        <span matListItemLine>{{ c.email }}</span>
-      </mat-list-item>
-      <mat-list-item>
-        <mat-icon matListItemIcon>event</mat-icon>
-        <span matListItemTitle>Date d'entrée</span>
-        <span matListItemLine>{{ c.dateEntree | date: 'dd/MM/yyyy' }}</span>
-      </mat-list-item>
-      <mat-list-item>
-        <mat-icon matListItemIcon>schedule</mat-icon>
-        <span matListItemTitle>Quotité</span>
-        <span matListItemLine>{{ c.quotite | percent }}</span>
-      </mat-list-item>
-    </mat-list>
-  </mat-card-content>
-
-  <mat-card-actions align="end">
-    <ng-content />
-  </mat-card-actions>
-</mat-card>
+    <mat-card-actions align="end">
+      <a matButton routerLink="/collaborateurs">Retour à la liste</a>
+    </mat-card-actions>
+  </mat-card>
+} @else {
+  @if (identifiantValide()) {
+    <p>Aucun collaborateur ne porte l'identifiant « {{ id() }} ».</p>
+  } @else {
+    <p>Cette adresse ne désigne aucun collaborateur : l'identifiant doit être un nombre.</p>
+  }
+  <a matButton routerLink="/collaborateurs">Retour à la liste</a>
+}

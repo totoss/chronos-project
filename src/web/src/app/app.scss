@@ -1,0 +1,22 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+h1 {
+  font: inherit;
+  margin: 0 0 0 8px;
+}
+
+mat-sidenav-container {
+  flex: 1;
+}
+
+mat-sidenav {
+  width: 240px;
+}
+
+mat-sidenav-content {
+  padding: 24px;
+}

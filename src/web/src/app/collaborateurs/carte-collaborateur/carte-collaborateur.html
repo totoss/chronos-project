@@ -1,4 +1,4 @@
-<mat-card appearance="outlined" [class.active]="active()">
+<mat-card appearance="outlined">
   <mat-card-header>
     <mat-card-title>{{ nomComplet() }}</mat-card-title>
     <mat-card-subtitle>{{ collaborateur().poste }}</mat-card-subtitle>
@@ -15,9 +15,9 @@
   </mat-card-content>
 
   <mat-card-actions align="end">
-    <button matButton type="button" (click)="selection.emit(collaborateur())">
+    <a matButton [routerLink]="['/collaborateurs', collaborateur().id]">
       <mat-icon>visibility</mat-icon>
       Voir la fiche
-    </button>
+    </a>
   </mat-card-actions>
 </mat-card>

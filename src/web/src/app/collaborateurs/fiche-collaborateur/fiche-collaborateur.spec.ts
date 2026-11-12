@@ -1,19 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Collaborateur } from '../collaborateur';
+import { provideRouter } from '@angular/router';
 import { FicheCollaborateur } from './fiche-collaborateur';
-
-const camille: Collaborateur = {
-  id: 1,
-  matricule: 'C0001',
-  nom: 'Martin',
-  prenom: 'Camille',
-  email: 'camille.martin@chronos.example',
-  categorie: 'Consultant',
-  poste: 'Consultante confirmée',
-  dateEntree: '2021-09-01',
-  dateSortie: null,
-  quotite: 0.8,
-};
 
 describe('FicheCollaborateur', () => {
   let component: FicheCollaborateur;
@@ -22,13 +9,20 @@ describe('FicheCollaborateur', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FicheCollaborateur],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FicheCollaborateur);
     component = fixture.componentInstance;
-    fixture.componentRef.setInput('collaborateur', camille);
+    fixture.componentRef.setInput('id', '1');
     await fixture.whenStable();
   });
+
+  async function afficher(id: string): Promise<string> {
+    fixture.componentRef.setInput('id', id);
+    await fixture.whenStable();
+    return (fixture.nativeElement as HTMLElement).textContent ?? '';
+  }
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -39,5 +33,16 @@ describe('FicheCollaborateur', () => {
 
     expect(texte).toContain('01/09/2021');
     expect(texte).toContain('80%');
+  });
+
+  it('annonce un identifiant inconnu', async () => {
+    expect(await afficher('999')).toContain('Aucun collaborateur ne porte l\'identifiant « 999 »');
+  });
+
+  it('annonce un identifiant qui n’est pas un nombre', async () => {
+    const texte = await afficher('abc');
+
+    expect(texte).toContain('l\'identifiant doit être un nombre');
+    expect(texte).not.toContain('NaN');
   });
 });

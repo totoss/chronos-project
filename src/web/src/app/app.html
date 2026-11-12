@@ -1,8 +1,35 @@
-<header>
+<mat-toolbar>
+  <button
+    matIconButton
+    type="button"
+    aria-label="Afficher ou masquer le menu"
+    (click)="menu.toggle()"
+  >
+    <mat-icon>menu</mat-icon>
+  </button>
   <h1>{{ titre() }}</h1>
-</header>
+</mat-toolbar>
 
-<main>
-  <app-liste-collaborateurs />
-  <app-liste-projets />
-</main>
+<mat-sidenav-container>
+  <mat-sidenav #menu mode="side" opened>
+    <mat-nav-list aria-label="Menu principal">
+      @for (lien of liens; track lien.chemin) {
+        <a
+          mat-list-item
+          [routerLink]="lien.chemin"
+          routerLinkActive
+          #etat="routerLinkActive"
+          [activated]="etat.isActive"
+          ariaCurrentWhenActive="page"
+        >
+          <mat-icon matListItemIcon>{{ lien.icone }}</mat-icon>
+          <span matListItemTitle>{{ lien.libelle }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content role="main">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

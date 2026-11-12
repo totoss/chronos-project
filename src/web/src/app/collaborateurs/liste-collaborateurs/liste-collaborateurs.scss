@@ -5,15 +5,8 @@
   gap: 16px;
 }
 
-.contenu {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-}
-
 .cartes {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  flex: 1;
 }

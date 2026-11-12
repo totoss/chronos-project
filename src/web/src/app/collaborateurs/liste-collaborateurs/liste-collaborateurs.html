@@ -1,7 +1,11 @@
 <h2>Collaborateurs</h2>
 
 <div class="outils">
-  <app-barre-de-recherche libelle="Filtrer par nom" [(recherche)]="recherche" />
+  <app-barre-de-recherche
+    libelle="Filtrer par nom"
+    [recherche]="recherche()"
+    (rechercheChange)="rechercher($event)"
+  />
 
   <button matButton="outlined" type="button" (click)="basculerSortis()">
     @if (afficherSortis()) {
@@ -17,6 +21,10 @@
       Trier par nom
     }
   </button>
+  <a matButton="filled" routerLink="nouveau">
+    <mat-icon>add</mat-icon>
+    Nouveau collaborateur
+  </a>
 </div>
 
 @let resultats = collaborateursFiltres();
@@ -24,22 +32,10 @@
 <app-compteur-de-resultats [nombre]="resultats.length" [total]="collaborateurs().length" />
 <p>{{ repartition() }}</p>
 
-<div class="contenu">
-  <div class="cartes">
-    @for (c of resultats; track c.id) {
-      <app-carte-collaborateur
-        [collaborateur]="c"
-        [active]="c.id === selection()?.id"
-        (selection)="selection.set($event)"
-      />
-    } @empty {
-      <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
-    }
-  </div>
-
-  @if (selection(); as choisi) {
-    <app-fiche-collaborateur [collaborateur]="choisi">
-      <button matButton type="button" (click)="selection.set(null)">Fermer</button>
-    </app-fiche-collaborateur>
+<div class="cartes">
+  @for (c of resultats; track c.id) {
+    <app-carte-collaborateur [collaborateur]="c" />
+  } @empty {
+    <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
   }
 </div>
