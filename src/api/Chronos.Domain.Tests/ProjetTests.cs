@@ -223,4 +223,13 @@ public class ProjetTests
         Assert.Equal("CHRONOS", projet.Code);
         Assert.Equal("Refonte du suivi des temps", projet.Libelle);
     }
+
+    [Fact]
+    public void Le_code_est_enregistre_en_majuscules()
+    {
+        var projet = new Projet("bdl-refonte", "Refonte du portail client", NatureProjet.Interne,
+            clientId: null, Debut, dateFin: null, budgetJours: 120, responsableId: 1);
+
+        Assert.Equal("BDL-REFONTE", projet.Code);
+    }
 }

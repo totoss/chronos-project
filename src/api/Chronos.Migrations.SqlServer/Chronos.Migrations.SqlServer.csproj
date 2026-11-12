@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronos.Infrastructure\Chronos.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

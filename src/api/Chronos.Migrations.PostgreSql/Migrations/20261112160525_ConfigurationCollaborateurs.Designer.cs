@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Chronos.Infrastructure.Migrations
+namespace Chronos.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(ChronosDbContext))]
-    [Migration("20261112160157_Initiale")]
-    partial class Initiale
+    [Migration("20261112160525_ConfigurationCollaborateurs")]
+    partial class ConfigurationCollaborateurs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,8 +51,10 @@ namespace Chronos.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Categorie")
-                        .HasColumnType("integer");
+                    b.Property<string>("Categorie")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateOnly>("DateEntree")
                         .HasColumnType("date");
@@ -62,7 +64,8 @@ namespace Chronos.Infrastructure.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
 
                     b.Property<bool>("EstArchive")
                         .HasColumnType("boolean");
@@ -72,21 +75,33 @@ namespace Chronos.Infrastructure.Migrations
 
                     b.Property<string>("Matricule")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Nom")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Poste")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Prenom")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("ManagerId");
+
+                    b.HasIndex("Matricule")
+                        .IsUnique();
 
                     b.ToTable("Collaborateurs");
                 });
@@ -109,10 +124,13 @@ namespace Chronos.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<decimal>("Quotite")
-                        .HasColumnType("numeric");
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 
@@ -174,6 +192,16 @@ namespace Chronos.Infrastructure.Migrations
                     b.HasIndex("ResponsableId");
 
                     b.ToTable("Projets");
+                });
+
+            modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>
+                {
+                    b.HasOne("Chronos.Domain.Collaborateur", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Manager");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Contrat", b =>

@@ -19,10 +19,10 @@ public class Collaborateur
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(poste);
 
-        Matricule = matricule.Trim();
+        Matricule = matricule.Trim().ToUpperInvariant();
         Nom = nom.Trim();
         Prenom = prenom.Trim();
-        Email = email.Trim();
+        Email = email.Trim().ToLowerInvariant();
         Categorie = categorie;
         Poste = poste.Trim();
         DateEntree = dateEntree;
@@ -53,7 +53,7 @@ public class Collaborateur
 
         Nom = nom.Trim();
         Prenom = prenom.Trim();
-        Email = email.Trim();
+        Email = email.Trim().ToLowerInvariant();
         Poste = poste.Trim();
         DateSortie = dateSortie;
         ManagerId = managerId;

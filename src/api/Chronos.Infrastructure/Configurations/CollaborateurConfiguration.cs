@@ -16,6 +16,7 @@ public class CollaborateurConfiguration : IEntityTypeConfiguration<Collaborateur
         builder.HasIndex(c => c.Matricule).IsUnique();
 
         builder.Property(c => c.Nom).HasMaxLength(100);
+        builder.HasIndex(c => c.Nom);
         builder.Property(c => c.Prenom).HasMaxLength(100);
 
         builder.Property(c => c.Email).HasMaxLength(254);

@@ -90,6 +90,35 @@ public class CollaborateurTests
     }
 
     [Fact]
+    public void Le_matricule_est_enregistre_en_majuscules()
+    {
+        var collaborateur = new Collaborateur(" m0002 ", "Durand", "Camille", "camille.durand@chronos.example",
+            CategorieCollaborateur.Consultant, "Développeuse", Entree);
+
+        Assert.Equal("M0002", collaborateur.Matricule);
+    }
+
+    [Fact]
+    public void L_adresse_electronique_est_enregistree_en_minuscules()
+    {
+        var collaborateur = new Collaborateur("M0002", "Durand", "Camille", "Camille.Durand@Chronos.Example",
+            CategorieCollaborateur.Consultant, "Développeuse", Entree);
+
+        Assert.Equal("camille.durand@chronos.example", collaborateur.Email);
+    }
+
+    [Fact]
+    public void Modifier_une_fiche_enregistre_l_adresse_electronique_en_minuscules()
+    {
+        var collaborateur = CreerCollaborateur();
+
+        collaborateur.Modifier("Durand", "Camille", "C.Durand@Chronos.Example", "Développeuse",
+            dateSortie: null, managerId: null);
+
+        Assert.Equal("c.durand@chronos.example", collaborateur.Email);
+    }
+
+    [Fact]
     public void Rattacher_un_collaborateur_a_un_manager_renseigne_son_manager()
     {
         var collaborateur = CreerCollaborateur();

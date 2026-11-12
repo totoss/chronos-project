@@ -18,7 +18,7 @@ public class Projet
         VerifierClient(nature, clientId);
         VerifierDates(dateDebut, dateFin);
 
-        Code = code.Trim();
+        Code = code.Trim().ToUpperInvariant();
         Libelle = libelle.Trim();
         Nature = nature;
         ClientId = clientId;

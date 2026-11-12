@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Chronos.Infrastructure.Migrations
+namespace Chronos.Migrations.PostgreSql.Migrations
 {
     /// <inheritdoc />
     public partial class ConfigurationCollaborateurs : Migration

@@ -41,8 +41,11 @@ jobs:
       - name: Restaurer les outils .NET
         run: dotnet tool restore
 
-      - name: Vérifier que les migrations couvrent le modèle
-        run: dotnet ef migrations has-pending-model-changes --project Chronos.Infrastructure --startup-project Chronos.Api --no-build --configuration Release
+      - name: Vérifier que les migrations PostgreSQL couvrent le modèle
+        run: dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.PostgreSql --startup-project Chronos.Api --no-build --configuration Release -- --Chronos:Fournisseur PostgreSql
+
+      - name: Vérifier que les migrations SQL Server couvrent le modèle
+        run: dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.SqlServer --startup-project Chronos.Api --no-build --configuration Release -- --Chronos:Fournisseur SqlServer
 
       - name: Tester
         run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults

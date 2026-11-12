@@ -64,13 +64,14 @@ public static class ProjetsEndpoints
     private static async Task<Results<Created<ProjetDto>, Conflict>> Creer(
         CreerProjetRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
     {
-        if (await db.Projets.AnyAsync(p => p.Code == requete.Code, cancellationToken))
+        var projet = new Projet(requete.Code, requete.Libelle, requete.Nature, requete.ClientId,
+            requete.DateDebut, requete.DateFin, requete.BudgetJours, requete.ResponsableId);
+
+        // Le domaine a normalisé le code (majuscules) : c'est cette forme qu'on compare, sur les deux SGBD.
+        if (await db.Projets.AnyAsync(p => p.Code == projet.Code, cancellationToken))
         {
             return TypedResults.Conflict();
         }
-
-        var projet = new Projet(requete.Code, requete.Libelle, requete.Nature, requete.ClientId,
-            requete.DateDebut, requete.DateFin, requete.BudgetJours, requete.ResponsableId);
 
         db.Projets.Add(projet);
         await db.SaveChangesAsync(cancellationToken);

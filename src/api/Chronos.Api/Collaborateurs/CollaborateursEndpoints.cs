@@ -30,11 +30,20 @@ public static class CollaborateursEndpoints
             .FirstOrDefault());
 
     private static async Task<Ok<PageDto<CollaborateurDto>>> Lister(
-        ChronosDbContext db, CancellationToken cancellationToken, int page = 1, int taille = 20)
+        ChronosDbContext db, CancellationToken cancellationToken,
+        int page = 1, int taille = 20, string? recherche = null)
     {
-        var total = await db.Collaborateurs.CountAsync(cancellationToken);
+        var requete = db.Collaborateurs.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(recherche))
+        {
+            // Minuscules des deux côtés : la seule écriture qui donne le même résultat sur les deux SGBD.
+            var terme = recherche.Trim().ToLowerInvariant();
+            requete = requete.Where(c => c.Nom.ToLower().Contains(terme) || c.Prenom.ToLower().Contains(terme));
+        }
 
-        var elements = await db.Collaborateurs
+        var total = await requete.CountAsync(cancellationToken);
+
+        var elements = await requete
             .OrderBy(c => c.Nom)
             .ThenBy(c => c.Prenom)
             .ThenBy(c => c.Id)

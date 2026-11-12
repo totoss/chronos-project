@@ -2,6 +2,7 @@
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md) et le [référentiel Docker](../docs/references/docker.md).
 > L'organisation décrite ici a été **exécutée le 12 novembre 2026** dans le conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, `Microsoft.EntityFrameworkCore.SqlServer` 10.0.15) contre PostgreSQL 18.6 et SQL Server 2025 (17.0.5045.3) : deux jeux de migrations créés et appliqués, la même API démarrée sur l'une puis l'autre base. Les extraits SQL, les messages d'erreur et les tableaux de comportement sont ceux réellement obtenus ; les types de date et les jetons de concurrence l'ont été sur une entité d'essai. **Non exécutés** : la saisie des commandes dans PowerShell sous Windows (elles l'ont été dans un terminal Linux, et les variables d'environnement de l'étape 8 y ont été posées autrement), le projet Compose du dépôt (les bases d'essai étaient des conteneurs isolés, de mêmes images) et l'exercice sur l'intégration continue. Signalez au mentor tout écart constaté.
+> **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-06`, mêmes versions ; PostgreSQL 18 et SQL Server 2025 en conteneurs) : pas à pas, exercices 1 à 4, `database update` sur deux bases vides, `migrations list` et `has-pending-model-changes` pour les deux fournisseurs, appels HTTP aux trois ressources sur chaque base, `409` pour `bdl-refonte` sur les deux. Corrigés à cette occasion : la vérification du fournisseur (étape 3), qui ne s'exécutait qu'à la première requête ; le contrôle préalable de `Creer` (exercice 1) ; `has-pending-model-changes` sans l'argument (étape 10). Le workflow GitHub Actions lui-même n'a pas été exécuté.
 
 Chronos doit pouvoir s'installer chez un client équipé de SQL Server comme chez un client équipé de PostgreSQL. Depuis le module 06, l'application tourne sur PostgreSQL. Que faut-il changer pour qu'elle tourne aussi sur SQL Server ? Presque rien dans le code — et c'est justement ce « presque » qu'il faut connaître : les migrations, les dates, la casse des textes, la concurrence.
 
@@ -155,11 +156,17 @@ dotnet package add Microsoft.EntityFrameworkCore.SqlServer --project Chronos.Inf
 
 ### 3. Choisir le fournisseur par configuration
 
-Dans `Program.cs`, l'enregistrement du contexte devient :
+Dans `Program.cs`, avec `using System.Diagnostics;` en tête de fichier, l'enregistrement du contexte devient :
 
 ```csharp
 var fournisseur = builder.Configuration["Chronos:Fournisseur"] ?? "PostgreSql";
 var chaineDeConnexion = builder.Configuration.GetConnectionString("Chronos");
+
+if (fournisseur is not ("PostgreSql" or "SqlServer"))
+{
+    throw new InvalidOperationException(
+        $"Fournisseur de base de données inconnu : « {fournisseur} ». Valeurs admises : PostgreSql, SqlServer.");
+}
 
 builder.Services.AddDbContext<ChronosDbContext>(options =>
 {
@@ -171,8 +178,7 @@ builder.Services.AddDbContext<ChronosDbContext>(options =>
         "SqlServer" => options.UseSqlServer(chaineDeConnexion,
             sqlServer => sqlServer.MigrationsAssembly("Chronos.Migrations.SqlServer")),
 
-        _ => throw new InvalidOperationException(
-            $"Fournisseur de base de données inconnu : « {fournisseur} ». Valeurs admises : PostgreSql, SqlServer.")
+        _ => throw new UnreachableException()
     };
 
     if (builder.Environment.IsDevelopment())
@@ -188,6 +194,7 @@ builder.Services.AddDbContext<ChronosDbContext>(options =>
 - **`Chronos:Fournisseur`** est une clé de configuration ordinaire : fichier `appsettings.json`, secrets utilisateur, variable d'environnement ou argument de ligne de commande. Sans elle, c'est PostgreSQL.
 - **`MigrationsAssembly`** indique dans quel projet se trouvent les migrations du fournisseur choisi.
 - **Une valeur inconnue arrête l'application** au démarrage, avec un message qui dit quoi corriger. Un défaut silencieux enverrait l'application sur la mauvaise base.
+- **Pourquoi vérifier avant `AddDbContext`, et pas dans la troisième branche ?** Le bloc passé à `AddDbContext` ne s'exécute pas au démarrage, mais la première fois qu'un contexte est demandé. Une exception levée là laisserait l'application démarrer, et c'est la première requête qui répondrait `500`. La troisième branche reste nécessaire — sans elle, le compilateur avertit que le `switch` ne couvre pas toutes les valeurs (CS8509) — ; `UnreachableException` dit qu'on ne peut plus y arriver.
 - Le reste du code — endpoints, configurations, données initiales — ne change pas.
 
 ### 4. Un projet par jeu de migrations
@@ -367,11 +374,11 @@ dotnet ef migrations add NomDuChangement --project Chronos.Migrations.SqlServer 
 dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.SqlServer --startup-project Chronos.Api -- --Chronos:Fournisseur SqlServer
 ```
 
-Elle ne se connecte à aucune base.
+Elle ne se connecte à aucune base. Ici, l'argument est vital : sans lui, le contexte reste configuré pour PostgreSQL, et la commande compare le modèle au jeu PostgreSQL **même si `--project` désigne le jeu SQL Server**. Elle répond alors « aucun changement » alors que le jeu SQL Server est en retard, sans aucun message d'erreur (essai : migration créée dans le seul jeu PostgreSQL, vérification du jeu SQL Server sans l'argument).
 
 ## À vous
 
-1. **Décider de la casse (RG-01, RG-10).** Faites normaliser par le domaine le code d'un projet (majuscules) et l'adresse électronique d'un collaborateur (minuscules), dans leurs constructeurs. Écrivez d'abord les tests unitaires. Vérifiez ensuite que le `POST` de l'étape 9 répond `409` sur les **deux** bases. Les lignes déjà enregistrées sont-elles conformes ? Que faudrait-il faire en production ? Le matricule doit-il être normalisé aussi ?
+1. **Décider de la casse (RG-01, RG-10).** Faites normaliser par le domaine le code d'un projet (majuscules) et l'adresse électronique d'un collaborateur (minuscules), dans leurs constructeurs. Écrivez d'abord les tests unitaires. Vérifiez ensuite que le `POST` de l'étape 9 répond `409` sur les **deux** bases. Sur PostgreSQL, il répond encore `201` : le contrôle `AnyAsync` du module 06 compare `requete.Code`, la valeur brute. Construisez donc le `Projet` **avant** le contrôle, et comparez `projet.Code`, la valeur normalisée. Les lignes déjà enregistrées sont-elles conformes ? Que faudrait-il faire en production ? Le matricule doit-il être normalisé aussi ? (Le module 08 suppose que oui, en majuscules : faites-le, avec son test.)
 
 2. **Une recherche portable.** Ajoutez le paramètre `recherche` à `GET /api/collaborateurs` : il filtre sur le nom ou le prénom, sans tenir compte de la casse, avec le même résultat sur les deux bases. Comparez le SQL produit. Essayez ensuite une recherche de `helene` quand la base contient `Hélène` : que se passe-t-il sur chaque base, et pourquoi ?
 
@@ -402,7 +409,8 @@ Elle ne se connecte à aucune base.
 | Un seul dossier `Migrations` pour les deux SGBD | Une migration contient les types d'un fournisseur ; elle échoue ou crée un schéma faux sur l'autre. | Un jeu par fournisseur, chacun dans son projet. |
 | Une migration commune retouchée à la main pour tester le fournisseur actif | L'outil ne génère que pour un fournisseur à la fois : chaque migration serait à réécrire, sans rien pour vérifier le résultat. | Deux jeux, générés par l'outil, comme le prescrit la documentation. |
 | Générer la migration pour un seul fournisseur | L'autre base n'a plus le schéma du modèle ; on le découvre en déploiement. | Les deux commandes de l'étape 10, et la vérification en intégration continue. |
-| Oublier `-- --Chronos:Fournisseur …` | L'outil utilise le fournisseur de vos secrets : erreur de projet cible, ou migration créée dans le mauvais jeu. | Toujours écrire l'argument. |
+| Oublier `-- --Chronos:Fournisseur …` | L'outil utilise le fournisseur de vos secrets : erreur de projet cible, migration créée dans le mauvais jeu, ou `has-pending-model-changes` qui vérifie le jeu PostgreSQL à la place du jeu SQL Server, sans rien signaler. | Toujours écrire l'argument. |
+| Lever l'exception d'un fournisseur inconnu dans le bloc d'`AddDbContext` | Ce bloc ne s'exécute qu'à la première requête : l'application démarre, puis répond `500`. | Vérifier la valeur avant `AddDbContext`. |
 | `TrustServerCertificate=True` ou `Encrypt=False` en production | La connexion n'authentifie plus le serveur, ou n'est plus chiffrée. | Un certificat valide sur le serveur. |
 | Se connecter avec `sa` depuis l'application déployée | L'application a tous les droits sur le serveur. | Un compte dédié, limité à sa base. |
 | `System.Data.SqlClient` | Paquet déprécié. | `Microsoft.Data.SqlClient`, amené par le fournisseur EF Core. |

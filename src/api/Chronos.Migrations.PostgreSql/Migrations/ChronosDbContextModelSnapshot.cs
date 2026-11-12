@@ -3,20 +3,17 @@ using System;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Chronos.Infrastructure.Migrations
+namespace Chronos.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(ChronosDbContext))]
-    [Migration("20261112160525_ConfigurationCollaborateurs")]
-    partial class ConfigurationCollaborateurs
+    partial class ChronosDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,7 +37,7 @@ namespace Chronos.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Clients");
+                    b.ToTable("Clients", (string)null);
                 });
 
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>
@@ -103,7 +100,9 @@ namespace Chronos.Infrastructure.Migrations
                     b.HasIndex("Matricule")
                         .IsUnique();
 
-                    b.ToTable("Collaborateurs");
+                    b.HasIndex("Nom");
+
+                    b.ToTable("Collaborateurs", (string)null);
                 });
 
             modelBuilder.Entity("Chronos.Domain.Contrat", b =>
@@ -136,7 +135,7 @@ namespace Chronos.Infrastructure.Migrations
 
                     b.HasIndex("CollaborateurId");
 
-                    b.ToTable("Contrats");
+                    b.ToTable("Contrats", (string)null);
                 });
 
             modelBuilder.Entity("Chronos.Domain.Projet", b =>
@@ -191,7 +190,7 @@ namespace Chronos.Infrastructure.Migrations
 
                     b.HasIndex("ResponsableId");
 
-                    b.ToTable("Projets");
+                    b.ToTable("Projets", (string)null);
                 });
 
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>
