@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -15,9 +16,9 @@ public static class ClientsEndpoints
 
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
-        groupe.MapPost("/", Creer);
-        groupe.MapPut("/{id:int}", Modifier);
-        groupe.MapDelete("/{id:int}", Supprimer);
+        groupe.MapPost("/", Creer).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPut("/{id:int}", Modifier).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapDelete("/{id:int}", Supprimer).RequireAuthorization(Politiques.Pilotage);
 
         return groupe;
     }

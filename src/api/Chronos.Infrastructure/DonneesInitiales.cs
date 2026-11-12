@@ -5,6 +5,8 @@ namespace Chronos.Infrastructure;
 
 public static class DonneesInitiales
 {
+    private const string MatriculeGestionnaireRh = "M0003";
+
     public static void Alimenter(DbContext context)
     {
         if (!context.Set<Collaborateur>().Any())
@@ -21,6 +23,12 @@ public static class DonneesInitiales
         if (!context.Set<TypeAbsence>().Any())
         {
             context.AddRange(CreerTypesAbsence());
+            context.SaveChanges();
+        }
+
+        if (!context.Set<Collaborateur>().Any(c => c.Matricule == MatriculeGestionnaireRh))
+        {
+            context.Add(CreerGestionnaireRh());
             context.SaveChanges();
         }
     }
@@ -41,6 +49,12 @@ public static class DonneesInitiales
         if (!await context.Set<TypeAbsence>().AnyAsync(cancellationToken))
         {
             context.AddRange(CreerTypesAbsence());
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        if (!await context.Set<Collaborateur>().AnyAsync(c => c.Matricule == MatriculeGestionnaireRh, cancellationToken))
+        {
+            context.Add(CreerGestionnaireRh());
             await context.SaveChangesAsync(cancellationToken);
         }
     }
@@ -64,6 +78,16 @@ public static class DonneesInitiales
         camille.AjouterContrat(TypeContrat.Cdi, 0.8m, new DateOnly(2025, 9, 1));
 
         return camille;
+    }
+
+    // Un gestionnaire RH a besoin d'une fiche : il valide des feuilles, saisit les siennes (module 12).
+    private static Collaborateur CreerGestionnaireRh()
+    {
+        var hugo = new Collaborateur(MatriculeGestionnaireRh, "Bernard", "Hugo", "hugo.bernard@chronos.example",
+            CategorieCollaborateur.Interne, "Gestionnaire RH", new DateOnly(2020, 1, 6));
+        hugo.AjouterContrat(TypeContrat.Cdi, 1m, new DateOnly(2020, 1, 6));
+
+        return hugo;
     }
 
     private static Projet[] CreerProjets(int responsableId, int clientId) =>

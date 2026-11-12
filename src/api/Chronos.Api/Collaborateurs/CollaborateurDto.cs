@@ -2,6 +2,8 @@ using Chronos.Domain;
 
 namespace Chronos.Api.Collaborateurs;
 
+// La version réduite : tout ce qu'un manager ou un collègue a besoin de savoir, sans l'information contractuelle (RG-52).
+// Version est le jeton de concurrence du module 08 : l'interface en a besoin pour toute modification.
 public record CollaborateurDto(
     int Id,
     string Matricule,
@@ -12,7 +14,4 @@ public record CollaborateurDto(
     string Poste,
     int? ManagerId,
     string? ManagerNom,
-    DateOnly DateEntree,
-    DateOnly? DateSortie,
-    decimal Quotite,
     Guid Version);

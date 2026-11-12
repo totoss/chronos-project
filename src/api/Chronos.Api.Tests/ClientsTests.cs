@@ -4,9 +4,17 @@ using System.Text.Json;
 
 namespace Chronos.Api.Tests;
 
-public class ClientsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>
+public class ClientsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async ValueTask InitializeAsync() => _client = await factory.ClientRhAsync();
+
+    public ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 
     [Fact]
     public async Task Le_cycle_complet_d_un_client()

@@ -1,6 +1,6 @@
 namespace Chronos.Domain;
 
-public class Absence
+public class Absence : ITracable
 {
     public Absence(int collaborateurId, int typeAbsenceId, DateOnly dateDebut, DateOnly dateFin,
         bool debuteApresMidi, bool finitLeMatin)
@@ -34,6 +34,11 @@ public class Absence
 
     /// <summary>Jeton de concurrence optimiste : renouvelé à chaque changement d'état de l'absence.</summary>
     public Guid Version { get; private set; } = Guid.NewGuid();
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public Periode Periode => new(DateDebut, DateFin);
 

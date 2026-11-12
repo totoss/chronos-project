@@ -1,4 +1,5 @@
 using Chronos.Api.Commun;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,8 +15,9 @@ public static class JoursFeriesEndpoints
         var groupe = app.MapGroup("/api/jours-feries").WithTags("Jours fériés");
 
         groupe.MapGet("/", Lister);
-        groupe.MapPost("/", Creer);
-        groupe.MapDelete("/{date}", Supprimer);
+        // Le calendrier est tenu par le gestionnaire RH (cahier des charges § 2).
+        groupe.MapPost("/", Creer).RequireAuthorization(Politiques.GestionRh);
+        groupe.MapDelete("/{date}", Supprimer).RequireAuthorization(Politiques.GestionRh);
 
         return groupe;
     }

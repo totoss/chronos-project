@@ -9,9 +9,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
-public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>
+public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async ValueTask InitializeAsync() => _client = await factory.ClientRhAsync();
+
+    public ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 
     private static object NouveauCollaborateur(string matricule) => new
     {
@@ -106,6 +114,8 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
             c => c.GetProperty("matricule").GetString() == "C-0004");
 
         factory.Horloge.Advance(TimeSpan.FromDays(30));
+        // L'horloge pilote aussi la session, qui dure huit heures : on se reconnecte.
+        _client = await factory.ClientRhAsync();
 
         var apres = await _client.GetFromJsonAsync<JsonElement>("/api/collaborateurs?statut=sorti", ct);
         Assert.Contains(apres.GetProperty("elements").EnumerateArray(),

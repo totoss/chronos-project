@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Chronos.Api.Commun;
 using Chronos.Domain;
 using Chronos.Infrastructure;
+using Chronos.Api.Securite;
 using Chronos.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -17,14 +18,21 @@ public static class CollaborateursEndpoints
 
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
-        groupe.MapPost("/", Creer);
-        groupe.MapPut("/{id:int}", Modifier);
-        groupe.MapDelete("/{id:int}", Supprimer);
+        // RG-52 : la fiche porte les informations contractuelles, son écriture revient au gestionnaire RH.
+        groupe.MapPost("/", Creer).RequireAuthorization(Politiques.GestionRh);
+        groupe.MapPut("/{id:int}", Modifier).RequireAuthorization(Politiques.GestionRh);
+        groupe.MapDelete("/{id:int}", Supprimer).RequireAuthorization(Politiques.GestionRh);
 
         return groupe;
     }
 
     private static readonly Expression<Func<Collaborateur, CollaborateurDto>> VersDto = c => new CollaborateurDto(
+        c.Id, c.Matricule, c.Nom, c.Prenom, c.Email,
+        c.Categorie, c.Poste,
+        c.ManagerId, c.Manager == null ? null : c.Manager.Prenom + " " + c.Manager.Nom,
+        c.Version);
+
+    private static readonly Expression<Func<Collaborateur, CollaborateurRhDto>> VersDtoRh = c => new CollaborateurRhDto(
         c.Id, c.Matricule, c.Nom, c.Prenom, c.Email,
         c.Categorie, c.Poste,
         c.ManagerId, c.Manager == null ? null : c.Manager.Prenom + " " + c.Manager.Nom,
@@ -37,9 +45,16 @@ public static class CollaborateursEndpoints
 
     private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProblem>> Lister(
         [AsParameters] FiltreCollaborateurs filtre, ChronosDbContext db, TimeProvider horloge,
-        CancellationToken cancellationToken)
+        PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         var requete = db.Collaborateurs.AsQueryable();
+
+        // RG-50 et RG-51 : la liste ne contient que les collaborateurs du périmètre.
+        if (!perimetre.VoitTout)
+        {
+            var visibles = await perimetre.IdentifiantsVisiblesAsync(cancellationToken);
+            requete = requete.Where(c => visibles.Contains(c.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(filtre.Recherche))
         {
@@ -94,18 +109,35 @@ public static class CollaborateursEndpoints
         return TypedResults.Ok(new PageDto<CollaborateurDto>(elements, filtre.Page, filtre.Taille, total));
     }
 
-    private static async Task<Results<Ok<CollaborateurDto>, NotFound>> Obtenir(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    // Hors périmètre, la fiche « n'existe pas » : 404, comme pour un identifiant inconnu. La version complète va au
+    // gestionnaire RH et à l'intéressé ; les autres reçoivent la version réduite.
+    private static async Task<Results<Ok<CollaborateurRhDto>, Ok<CollaborateurDto>, NotFound>> Obtenir(
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
-        var collaborateur = await db.Collaborateurs
+        if (!await perimetre.PeutVoirAsync(id, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (perimetre.VoitTout || perimetre.EstMoi(id))
+        {
+            var complet = await db.Collaborateurs
+                .Where(c => c.Id == id)
+                .Select(VersDtoRh)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return complet is null ? TypedResults.NotFound() : TypedResults.Ok(complet);
+        }
+
+        var reduit = await db.Collaborateurs
             .Where(c => c.Id == id)
             .Select(VersDto)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return collaborateur is null ? TypedResults.NotFound() : TypedResults.Ok(collaborateur);
+        return reduit is null ? TypedResults.NotFound() : TypedResults.Ok(reduit);
     }
 
-    private static async Task<Results<Created<CollaborateurDto>, ProblemHttpResult, ValidationProblem>> Creer(
+    private static async Task<Results<Created<CollaborateurRhDto>, ProblemHttpResult, ValidationProblem>> Creer(
         CreerCollaborateurRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
     {
         if (!await ManagerExiste(db, requete.ManagerId, cancellationToken))
@@ -132,11 +164,11 @@ public static class CollaborateursEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         var dto = await db.Collaborateurs
-            .Where(c => c.Id == collaborateur.Id).Select(VersDto).SingleAsync(cancellationToken);
+            .Where(c => c.Id == collaborateur.Id).Select(VersDtoRh).SingleAsync(cancellationToken);
         return TypedResults.Created($"/api/collaborateurs/{dto.Id}", dto);
     }
 
-    private static async Task<Results<Ok<CollaborateurDto>, NotFound, ProblemHttpResult, ValidationProblem>> Modifier(
+    private static async Task<Results<Ok<CollaborateurRhDto>, NotFound, ProblemHttpResult, ValidationProblem>> Modifier(
         int id, ModifierCollaborateurRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
     {
         var collaborateur = await db.Collaborateurs.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -171,7 +203,7 @@ public static class CollaborateursEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(await db.Collaborateurs
-            .Where(c => c.Id == id).Select(VersDto).SingleAsync(cancellationToken));
+            .Where(c => c.Id == id).Select(VersDtoRh).SingleAsync(cancellationToken));
     }
 
     // Un manager archivé existe toujours : la clé étrangère l'accepte, la vérification aussi.

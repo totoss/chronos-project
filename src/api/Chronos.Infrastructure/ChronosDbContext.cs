@@ -1,10 +1,14 @@
 using System.Data;
 using Chronos.Domain;
+using Chronos.Infrastructure.Identite;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chronos.Infrastructure;
 
-public class ChronosDbContext(DbContextOptions<ChronosDbContext> options) : DbContext(options)
+public class ChronosDbContext(DbContextOptions<ChronosDbContext> options)
+    : IdentityDbContext<Utilisateur, IdentityRole<int>, int>(options)
 {
     public DbSet<Collaborateur> Collaborateurs { get; set; }
     public DbSet<Contrat> Contrats { get; set; }
@@ -42,7 +46,16 @@ public class ChronosDbContext(DbContextOptions<ChronosDbContext> options) : DbCo
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // En premier : c'est lui qui déclare les tables d'Identity.
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ChronosDbContext).Assembly);
+
+        modelBuilder.Entity<Utilisateur>(u =>
+        {
+            u.HasOne(x => x.Collaborateur).WithMany().HasForeignKey(x => x.CollaborateurId).OnDelete(DeleteBehavior.Restrict);
+            u.HasIndex(x => x.CollaborateurId).IsUnique();
+        });
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

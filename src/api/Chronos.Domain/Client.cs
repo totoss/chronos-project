@@ -1,6 +1,6 @@
 namespace Chronos.Domain;
 
-public class Client
+public class Client : ITracable
 {
     public Client(string nom)
     {
@@ -11,6 +11,11 @@ public class Client
 
     public int Id { get; private set; }
     public string Nom { get; private set; }
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public void Renommer(string nom)
     {

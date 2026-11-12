@@ -1,6 +1,6 @@
 namespace Chronos.Domain;
 
-public class Affectation
+public class Affectation : ITracable
 {
     private Affectation(int collaborateurId, int projetId, DateOnly dateDebut, DateOnly dateFin, decimal tauxAllocation)
     {
@@ -18,6 +18,11 @@ public class Affectation
     public DateOnly DateDebut { get; private set; }
     public DateOnly DateFin { get; private set; }
     public decimal TauxAllocation { get; private set; }
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public static Affectation Creer(
         Collaborateur collaborateur, Projet projet, DateOnly dateDebut, DateOnly dateFin, decimal tauxAllocation)

@@ -1,6 +1,6 @@
 namespace Chronos.Domain;
 
-public class Collaborateur
+public class Collaborateur : ITracable
 {
     private readonly List<Contrat> _contrats = [];
 
@@ -43,6 +43,11 @@ public class Collaborateur
 
     /// <summary>Jeton de concurrence optimiste : renouvelé à chaque modification de la fiche.</summary>
     public Guid Version { get; private set; } = Guid.NewGuid();
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public IReadOnlyCollection<Contrat> Contrats => _contrats;
 

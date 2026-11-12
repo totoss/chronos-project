@@ -9,6 +9,8 @@ public class AffectationConfiguration : IEntityTypeConfiguration<Affectation>
     public void Configure(EntityTypeBuilder<Affectation> builder)
     {
         builder.Property(a => a.TauxAllocation).HasPrecision(3, 2);
+        builder.Property(a => a.CreePar).HasMaxLength(64);
+        builder.Property(a => a.ModifiePar).HasMaxLength(64);
 
         builder.HasOne<Collaborateur>()
             .WithMany()

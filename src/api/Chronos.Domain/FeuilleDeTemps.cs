@@ -7,7 +7,7 @@ public sealed record ContexteDeSaisie(
     IReadOnlyDictionary<DateOnly, decimal> Absences,
     IReadOnlyList<AffectationPlanifiee> Affectations);
 
-public class FeuilleDeTemps
+public class FeuilleDeTemps : ITracable
 {
     private readonly List<SaisieDeTemps> _saisies = [];
 
@@ -31,6 +31,11 @@ public class FeuilleDeTemps
 
     /// <summary>Jeton de concurrence optimiste : renouvelé à chaque modification de la feuille.</summary>
     public Guid Version { get; private set; } = Guid.NewGuid();
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public IReadOnlyCollection<SaisieDeTemps> Saisies => _saisies;
 

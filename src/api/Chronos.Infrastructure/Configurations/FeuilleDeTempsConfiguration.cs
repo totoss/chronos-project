@@ -12,6 +12,8 @@ public class FeuilleDeTempsConfiguration : IEntityTypeConfiguration<FeuilleDeTem
         builder.HasIndex(f => new { f.CollaborateurId, f.Semaine }).IsUnique();
         builder.Property(f => f.MotifRejet).HasMaxLength(500);
         builder.Property(f => f.Version).IsConcurrencyToken();
+        builder.Property(f => f.CreePar).HasMaxLength(64);
+        builder.Property(f => f.ModifiePar).HasMaxLength(64);
 
         builder.HasOne<Collaborateur>()
             .WithMany()

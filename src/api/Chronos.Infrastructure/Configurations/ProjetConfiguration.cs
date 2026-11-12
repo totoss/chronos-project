@@ -14,6 +14,8 @@ public class ProjetConfiguration : IEntityTypeConfiguration<Projet>
         builder.Property(p => p.Libelle).HasMaxLength(200);
 
         builder.Property(p => p.Version).IsConcurrencyToken();
+        builder.Property(p => p.CreePar).HasMaxLength(64);
+        builder.Property(p => p.ModifiePar).HasMaxLength(64);
 
         builder.HasOne(p => p.Client)
             .WithMany()

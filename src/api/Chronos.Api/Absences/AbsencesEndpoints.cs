@@ -1,5 +1,7 @@
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
+using Chronos.Infrastructure.Tracabilite;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using static Chronos.Api.Commun.Reponses;
@@ -15,20 +17,34 @@ public static class AbsencesEndpoints
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
         groupe.MapPost("/", Demander);
-        groupe.MapPost("/{id:int}/approbation", Approuver);
-        groupe.MapPost("/{id:int}/refus", Refuser);
+        groupe.MapPost("/{id:int}/approbation", Approuver).RequireAuthorization(Politiques.Validation);
+        groupe.MapPost("/{id:int}/refus", Refuser).RequireAuthorization(Politiques.Validation);
         groupe.MapPost("/{id:int}/annulation", Annuler);
 
         return groupe;
     }
 
     // Une liste simple, comme celle des affectations : l'écran la demande pour un collaborateur.
-    private static async Task<Ok<List<AbsenceDto>>> Lister(
-        int? collaborateurId, ChronosDbContext db, CancellationToken cancellationToken)
+    // Hors périmètre, un collaborateur demandé « n'existe pas » : 404. Sans collaborateurId, la liste du périmètre.
+    private static async Task<Results<Ok<List<AbsenceDto>>, NotFound>> Lister(
+        int? collaborateurId, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
-        var absences = await db.Absences
+        if (collaborateurId is { } demande && !await perimetre.PeutVoirAsync(demande, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        var requete = db.Absences
             .AsNoTracking()
-            .Where(a => collaborateurId == null || a.CollaborateurId == collaborateurId)
+            .Where(a => collaborateurId == null || a.CollaborateurId == collaborateurId);
+
+        if (!perimetre.VoitTout)
+        {
+            var visibles = await perimetre.IdentifiantsVisiblesAsync(cancellationToken);
+            requete = requete.Where(a => visibles.Contains(a.CollaborateurId));
+        }
+
+        var absences = await requete
             .OrderBy(a => a.DateDebut)
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
@@ -37,21 +53,26 @@ public static class AbsencesEndpoints
     }
 
     private static async Task<Results<Ok<AbsenceDto>, NotFound>> Obtenir(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         var absence = await db.Absences.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
-        return absence is null ? TypedResults.NotFound() : TypedResults.Ok(AbsenceDto.Depuis(absence));
+        return absence is null || !await perimetre.PeutVoirAsync(absence.CollaborateurId, cancellationToken)
+            ? TypedResults.NotFound()
+            : TypedResults.Ok(AbsenceDto.Depuis(absence));
     }
 
+    // Le demandeur est l'utilisateur connecté : un compte sans fiche de collaborateur ne pose pas d'absence (403).
+    //
     // RG-41 lit les absences existantes pour décider d'en ajouter une : la lecture et l'écriture forment un tout,
     // dans une transaction sérialisable que la stratégie d'exécution rejoue si la base la fait échouer.
-    private static async Task<Results<Created<AbsenceDto>, ValidationProblem>> Demander(
-        CreerAbsenceRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Created<AbsenceDto>, ForbidHttpResult, ValidationProblem>> Demander(
+        CreerAbsenceRequete requete, ChronosDbContext db, IUtilisateurCourant utilisateur,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Collaborateurs.AnyAsync(c => c.Id == requete.CollaborateurId, cancellationToken))
+        if (utilisateur.CollaborateurId is not { } collaborateurId)
         {
-            return Invalide("CollaborateurId", "Aucun collaborateur ne porte cet identifiant.");
+            return TypedResults.Forbid();
         }
         if (!await db.TypesAbsence.AnyAsync(t => t.Id == requete.TypeAbsenceId, cancellationToken))
         {
@@ -60,7 +81,7 @@ public static class AbsencesEndpoints
 
         var absence = await db.EnTransactionSerialisableAsync(async () =>
         {
-            var demande = new Absence(requete.CollaborateurId!.Value, requete.TypeAbsenceId!.Value,
+            var demande = new Absence(collaborateurId, requete.TypeAbsenceId!.Value,
                 requete.DateDebut!.Value, requete.DateFin!.Value, requete.DebuteApresMidi, requete.FinitLeMatin);
 
             // RG-42 : une absence doit couvrir au moins une demi-journée ouvrée.
@@ -90,10 +111,20 @@ public static class AbsencesEndpoints
         return TypedResults.Created($"/api/absences/{absence.Id}", AbsenceDto.Depuis(absence));
     }
 
+    // Même protection que la validation d'une feuille (RG-36) : le manager direct du demandeur ou un gestionnaire RH.
+    //
     // RG-43 lit les feuilles de temps pour décider du sort d'une absence : même schéma que la demande.
-    private static async Task<Results<Ok<AbsenceDto>, NotFound>> Approuver(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<AbsenceDto>, NotFound, ForbidHttpResult>> Approuver(
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
+        switch (await ControlerValidation(db, perimetre, id, cancellationToken))
+        {
+            case Controle.Inconnue:
+                return TypedResults.NotFound();
+            case Controle.Interdite:
+                return TypedResults.Forbid();
+        }
+
         var absence = await db.EnTransactionSerialisableAsync(async () =>
         {
             var absence = await db.Absences.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
@@ -129,14 +160,18 @@ public static class AbsencesEndpoints
         return absence is null ? TypedResults.NotFound() : TypedResults.Ok(AbsenceDto.Depuis(absence));
     }
 
-    private static async Task<Results<Ok<AbsenceDto>, NotFound>> Refuser(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<AbsenceDto>, NotFound, ForbidHttpResult>> Refuser(
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
-        var absence = await db.Absences.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-        if (absence is null)
+        switch (await ControlerValidation(db, perimetre, id, cancellationToken))
         {
-            return TypedResults.NotFound();
+            case Controle.Inconnue:
+                return TypedResults.NotFound();
+            case Controle.Interdite:
+                return TypedResults.Forbid();
         }
+
+        var absence = await db.Absences.FirstAsync(a => a.Id == id, cancellationToken);
 
         absence.Refuser();
         await db.SaveChangesAsync(cancellationToken);
@@ -144,18 +179,47 @@ public static class AbsencesEndpoints
         return TypedResults.Ok(AbsenceDto.Depuis(absence));
     }
 
-    private static async Task<Results<Ok<AbsenceDto>, NotFound>> Annuler(
-        int id, ChronosDbContext db, TimeProvider horloge, CancellationToken cancellationToken)
+    // RG-40 : l'absence est annulée par le demandeur. Une absence du périmètre qui n'est pas la sienne se lit,
+    // elle ne s'annule pas (403).
+    private static async Task<Results<Ok<AbsenceDto>, NotFound, ForbidHttpResult>> Annuler(
+        int id, ChronosDbContext db, TimeProvider horloge, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
         var absence = await db.Absences.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-        if (absence is null)
+        if (absence is null || !await perimetre.PeutVoirAsync(absence.CollaborateurId, cancellationToken))
         {
             return TypedResults.NotFound();
+        }
+        if (!perimetre.EstMoi(absence.CollaborateurId))
+        {
+            return TypedResults.Forbid();
         }
 
         absence.Annuler(horloge.Aujourdhui());
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(AbsenceDto.Depuis(absence));
+    }
+
+    private enum Controle { Autorise, Inconnue, Interdite }
+
+    // Le périmètre cache les absences des autres équipes (404), puis la relation de validation refuse les siennes (403).
+    private static async Task<Controle> ControlerValidation(
+        ChronosDbContext db, PerimetreUtilisateur perimetre, int id, CancellationToken cancellationToken)
+    {
+        var demandeur = await db.Absences
+            .AsNoTracking()
+            .Where(a => a.Id == id)
+            .Select(a => (int?)a.CollaborateurId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (demandeur is not { } collaborateurId || !await perimetre.PeutVoirAsync(collaborateurId, cancellationToken))
+        {
+            return Controle.Inconnue;
+        }
+
+        return await perimetre.PeutValiderPourAsync(collaborateurId, cancellationToken)
+            ? Controle.Autorise
+            : Controle.Interdite;
     }
 }

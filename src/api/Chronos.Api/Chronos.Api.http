@@ -1,27 +1,31 @@
 @Chronos.Api_HostAddress = http://localhost:5080
 
-GET {{Chronos.Api_HostAddress}}/api/projets/1
-Accept: application/json
+# Le mot de passe d'un compte de démonstration vient de la variable {{motDePasse}}, définie dans un fichier non
+# versionné à côté de celui-ci, `http-client.env.json.user` (ignoré par git) :
+#   { "dev": { "motDePasse": "<le mot de passe de démonstration>" } }
+# Les écritures (POST, PUT, DELETE) exigent en plus l'en-tête X-XSRF-TOKEN : faites-les depuis l'interface ou les tests.
 
-###
-
-POST {{Chronos.Api_HostAddress}}/api/projets
+### Connexion : pose le cookie de session
+POST {{Chronos.Api_HostAddress}}/api/compte/login?useCookies=true
 Content-Type: application/json
 
 {
-  "code": "FORM-NET",
-  "libelle": "Formation .NET 10",
-  "nature": "Interne",
-  "clientId": null,
-  "dateDebut": "2026-11-16",
-  "dateFin": null,
-  "budgetJours": 15,
-  "responsableId": 1
+  "email": "hugo.bernard@chronos.example",
+  "password": "{{motDePasse}}"
 }
 
-###
+### Qui suis-je ? (pose aussi le cookie XSRF-TOKEN)
+GET {{Chronos.Api_HostAddress}}/api/compte/moi
+Accept: application/json
 
-POST {{Chronos.Api_HostAddress}}/api/collaborateurs
-Content-Type: application/json
+### Les collaborateurs que je peux voir
+GET {{Chronos.Api_HostAddress}}/api/collaborateurs
+Accept: application/json
 
-{}
+### Un projet
+GET {{Chronos.Api_HostAddress}}/api/projets/1
+Accept: application/json
+
+### Le plan de charge de la semaine
+GET {{Chronos.Api_HostAddress}}/api/plan-de-charge
+Accept: application/json

@@ -1,6 +1,8 @@
 using Chronos.Api.Commun;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
+using Chronos.Infrastructure.Tracabilite;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using static Chronos.Api.Commun.Reponses;
@@ -14,23 +16,32 @@ public static class FeuillesDeTempsEndpoints
         var groupe = app.MapGroup("/api/feuilles-de-temps").WithTags("Feuilles de temps");
 
         groupe.MapGet("/", ObtenirOuCreer);
-        groupe.MapGet("/soumises", ListerSoumises);
+        groupe.MapGet("/soumises", ListerSoumises).RequireAuthorization(Politiques.Validation);
         groupe.MapPut("/{id:int}/saisies", RemplacerSaisies);
         groupe.MapPost("/{id:int}/soumission", Soumettre);
-        groupe.MapPost("/{id:int}/validation", Valider);
-        groupe.MapPost("/{id:int}/rejet", Rejeter);
+        groupe.MapPost("/{id:int}/validation", Valider).RequireAuthorization(Politiques.Validation);
+        groupe.MapPost("/{id:int}/rejet", Rejeter).RequireAuthorization(Politiques.Validation);
 
         return groupe;
     }
 
     // Un GET qui écrit n'est pas orthodoxe : l'écran de saisie demande « la feuille de la semaine » sans savoir
     // si elle existe. La feuille absente est créée à l'état de brouillon, vide.
-    private static async Task<Results<Ok<FeuilleDeTempsDto>, ValidationProblem>> ObtenirOuCreer(
-        int? collaborateurId, string? semaine, ChronosDbContext db, CancellationToken cancellationToken)
+    //
+    // Sans collaborateurId, c'est la feuille de l'utilisateur connecté. Pour un autre, il faut l'avoir dans son
+    // périmètre (un manager consulte la feuille de son équipe) : sinon 404.
+    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ValidationProblem>> ObtenirOuCreer(
+        int? collaborateurId, string? semaine, ChronosDbContext db, IUtilisateurCourant utilisateur,
+        PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
+        collaborateurId ??= utilisateur.CollaborateurId;
         if (collaborateurId is null)
         {
-            return Invalide("CollaborateurId", "Le collaborateur est obligatoire.");
+            return Invalide("CollaborateurId", "Le collaborateur est obligatoire : ce compte n'est rattaché à aucune fiche.");
+        }
+        if (!await perimetre.PeutVoirAsync(collaborateurId.Value, cancellationToken))
+        {
+            return TypedResults.NotFound();
         }
         if (!DatesIso.TryLire(semaine, out var lundi))
         {
@@ -58,29 +69,54 @@ public static class FeuillesDeTempsEndpoints
         return TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }
 
-    // Les feuilles à valider. Un GET qui ne crée rien ; la route littérale l'emporte sur « /{id} » (qui est de toute façon un entier).
+    // Les feuilles que l'appelant peut valider (RG-36) : mêmes règles que PeutValiderPourAsync. Le gestionnaire RH
+    // en voit toutes sauf la sienne ; un manager, celles de son équipe directe. Un GET qui ne crée rien ; la route
+    // littérale l'emporte sur « /{id} » (qui est de toute façon un entier).
     private static async Task<Ok<List<FeuilleDeTempsDto>>> ListerSoumises(
-        ChronosDbContext db, CancellationToken cancellationToken)
+        ChronosDbContext db, IUtilisateurCourant utilisateur, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
-        var feuilles = await db.FeuillesDeTemps
+        if (utilisateur.CollaborateurId is not { } moi)
+        {
+            return TypedResults.Ok(new List<FeuilleDeTempsDto>());
+        }
+
+        var requete = db.FeuillesDeTemps
             .AsNoTracking()
             .Include(f => f.Saisies)
-            .Where(f => f.Statut == StatutFeuilleDeTemps.Soumise)
+            .Where(f => f.Statut == StatutFeuilleDeTemps.Soumise && f.CollaborateurId != moi);
+
+        if (!perimetre.VoitTout)
+        {
+            var equipe = await db.Collaborateurs
+                .Where(c => c.ManagerId == moi)
+                .Select(c => c.Id)
+                .ToListAsync(cancellationToken);
+            requete = requete.Where(f => equipe.Contains(f.CollaborateurId));
+        }
+
+        var feuilles = await requete
             .OrderBy(f => f.Semaine).ThenBy(f => f.CollaborateurId)
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(feuilles.ConvertAll(FeuilleDeTempsDto.Depuis));
     }
 
-    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ValidationProblem>> RemplacerSaisies(
-        int id, RemplacerSaisiesRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    // Chacun saisit ses propres temps : une feuille du périmètre mais qui n'est pas la sienne se lit, elle ne s'écrit pas (403).
+    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult, ValidationProblem>> RemplacerSaisies(
+        int id, RemplacerSaisiesRequete requete, ChronosDbContext db, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
         var feuille = await db.FeuillesDeTemps
             .Include(f => f.Saisies)
             .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (feuille is null)
+        if (feuille is null || !await perimetre.PeutVoirAsync(feuille.CollaborateurId, cancellationToken))
         {
             return TypedResults.NotFound();
+        }
+        if (!perimetre.EstMoi(feuille.CollaborateurId))
+        {
+            return TypedResults.Forbid();
         }
 
         var demandes = requete.Saisies
@@ -113,15 +149,19 @@ public static class FeuillesDeTempsEndpoints
         return TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }
 
-    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound>> Soumettre(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>> Soumettre(
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         var feuille = await db.FeuillesDeTemps
             .Include(f => f.Saisies)
             .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (feuille is null)
+        if (feuille is null || !await perimetre.PeutVoirAsync(feuille.CollaborateurId, cancellationToken))
         {
             return TypedResults.NotFound();
+        }
+        if (!perimetre.EstMoi(feuille.CollaborateurId))
+        {
+            return TypedResults.Forbid();
         }
 
         feuille.Soumettre();
@@ -133,14 +173,25 @@ public static class FeuillesDeTempsEndpoints
     // RG-43, vue du côté de la feuille : valider du temps sur lequel une absence a été approuvée entre-temps
     // serait aussi une violation. La validation LIT donc les absences approuvées, dans une transaction
     // sérialisable : si une approbation s'enregistre en même temps, la base fait échouer l'une des deux.
-    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ValidationProblem>> Valider(
-        int id, ValiderFeuilleRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    //
+    // RG-36 sur trois niveaux : la politique écarte ceux qui n'ont pas la fonction (403), le périmètre cache les
+    // feuilles des autres équipes (404), puis la relation de validation refuse sa propre feuille ou celle d'un
+    // collaborateur dont on n'est pas le manager direct (403). Le valideur est l'utilisateur connecté.
+    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>> Valider(
+        int id, ChronosDbContext db, IUtilisateurCourant utilisateur, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
-        if (!await ValideurExiste(db, requete.ValideurId!.Value, cancellationToken))
+        var proprietaire = await ProprietaireDeLaFeuille(db, id, cancellationToken);
+        if (proprietaire is not { } collaborateurId || !await perimetre.PeutVoirAsync(collaborateurId, cancellationToken))
         {
-            return Invalide("ValideurId", "Aucun collaborateur ne porte cet identifiant.");
+            return TypedResults.NotFound();
+        }
+        if (!await perimetre.PeutValiderPourAsync(collaborateurId, cancellationToken))
+        {
+            return TypedResults.Forbid();
         }
 
+        var valideurId = utilisateur.CollaborateurId!.Value;
         var feuille = await db.EnTransactionSerialisableAsync(async () =>
         {
             var feuille = await db.FeuillesDeTemps
@@ -151,7 +202,7 @@ public static class FeuillesDeTempsEndpoints
                 return null;
             }
 
-            feuille.Valider(requete.ValideurId!.Value);
+            feuille.Valider(valideurId);
 
             var absences = await db.Absences
                 .Where(a => a.CollaborateurId == feuille.CollaborateurId && a.Statut == StatutAbsence.Approuvee
@@ -166,30 +217,37 @@ public static class FeuillesDeTempsEndpoints
         return feuille is null ? TypedResults.NotFound() : TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }
 
-    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ValidationProblem>> Rejeter(
-        int id, RejeterFeuilleRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    // Même protection que la validation (RG-36).
+    private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>> Rejeter(
+        int id, RejeterFeuilleRequete requete, ChronosDbContext db, IUtilisateurCourant utilisateur,
+        PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
-        if (!await ValideurExiste(db, requete.ValideurId!.Value, cancellationToken))
+        var proprietaire = await ProprietaireDeLaFeuille(db, id, cancellationToken);
+        if (proprietaire is not { } collaborateurId || !await perimetre.PeutVoirAsync(collaborateurId, cancellationToken))
         {
-            return Invalide("ValideurId", "Aucun collaborateur ne porte cet identifiant.");
+            return TypedResults.NotFound();
+        }
+        if (!await perimetre.PeutValiderPourAsync(collaborateurId, cancellationToken))
+        {
+            return TypedResults.Forbid();
         }
 
         var feuille = await db.FeuillesDeTemps
             .Include(f => f.Saisies)
-            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-        if (feuille is null)
-        {
-            return TypedResults.NotFound();
-        }
+            .FirstAsync(f => f.Id == id, cancellationToken);
 
-        feuille.Rejeter(requete.ValideurId!.Value, requete.Motif);
+        feuille.Rejeter(utilisateur.CollaborateurId!.Value, requete.Motif);
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }
 
-    private static Task<bool> ValideurExiste(ChronosDbContext db, int valideurId, CancellationToken cancellationToken) =>
-        db.Collaborateurs.AnyAsync(c => c.Id == valideurId, cancellationToken);
+    private static Task<int?> ProprietaireDeLaFeuille(ChronosDbContext db, int id, CancellationToken cancellationToken) =>
+        db.FeuillesDeTemps
+            .AsNoTracking()
+            .Where(f => f.Id == id)
+            .Select(f => (int?)f.CollaborateurId)
+            .FirstOrDefaultAsync(cancellationToken);
 
     // Ce que la feuille ne sait pas d'elle-même : le calendrier, les affectations et les absences approuvées
     // du collaborateur, bornés à la semaine.

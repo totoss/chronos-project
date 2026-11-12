@@ -4,9 +4,17 @@ using System.Text.Json;
 
 namespace Chronos.Api.Tests;
 
-public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>
+public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async ValueTask InitializeAsync() => _client = await factory.ClientRhAsync();
+
+    public ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 
     // Sophie, la responsable des données initiales, porte l'identifiant 1.
     private static object NouveauProjet(string code, int clientId) => new

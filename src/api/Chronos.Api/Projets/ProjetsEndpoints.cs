@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Chronos.Api.Commun;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Configurations;
@@ -17,11 +18,11 @@ public static class ProjetsEndpoints
 
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
-        groupe.MapPost("/", Creer);
-        groupe.MapPut("/{id:int}", Modifier);
-        groupe.MapPost("/{id:int}/demarrage", Demarrer);
-        groupe.MapPost("/{id:int}/achevement", Terminer);
-        groupe.MapPost("/{id:int}/annulation", Annuler);
+        groupe.MapPost("/", Creer).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPut("/{id:int}", Modifier).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPost("/{id:int}/demarrage", Demarrer).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPost("/{id:int}/achevement", Terminer).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPost("/{id:int}/annulation", Annuler).RequireAuthorization(Politiques.Pilotage);
 
         return groupe;
     }

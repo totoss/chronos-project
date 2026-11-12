@@ -4,9 +4,17 @@ using System.Text.Json;
 
 namespace Chronos.Api.Tests;
 
-public class PlanDeChargeTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>
+public class PlanDeChargeTests(ChronosApiFactory factory) : IClassFixture<ChronosApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async ValueTask InitializeAsync() => _client = await factory.ClientRhAsync();
+
+    public ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        return ValueTask.CompletedTask;
+    }
 
     // L'exemple chiffré du cahier des charges (§ 7, précisé au § 8) : Camille (identifiant 2, 80 %) et les projets
     // 1 et 2 viennent des données initiales, comme le jour férié du vendredi 8 mai.
@@ -21,8 +29,10 @@ public class PlanDeChargeTests(ChronosApiFactory factory) : IClassFixture<Chrono
             Assert.Equal(HttpStatusCode.Created, affectation.StatusCode);
         }
 
-        var demande = await _client.PostAsJsonAsync("/api/absences",
-            new { collaborateurId = 2, typeAbsenceId = 1, dateDebut = "2026-05-04", dateFin = "2026-05-04" }, ct);
+        // Camille pose elle-même son congé ; le gestionnaire RH l'approuve.
+        using var camille = await factory.ClientCamilleAsync();
+        var demande = await camille.PostAsJsonAsync("/api/absences",
+            new { typeAbsenceId = 1, dateDebut = "2026-05-04", dateFin = "2026-05-04" }, ct);
         Assert.Equal(HttpStatusCode.Created, demande.StatusCode);
         var absence = await demande.Content.ReadFromJsonAsync<JsonElement>(ct);
         var approbation = await _client.PostAsync($"/api/absences/{absence.GetProperty("id").GetInt32()}/approbation", null, ct);
@@ -31,9 +41,9 @@ public class PlanDeChargeTests(ChronosApiFactory factory) : IClassFixture<Chrono
         var plan = await _client.GetFromJsonAsync<JsonElement>(
             "/api/plan-de-charge?du=2026-05-04&au=2026-05-08&pas=semaine", ct);
 
-        var camille = plan.GetProperty("lignes").EnumerateArray()
+        var ligneDeCamille = plan.GetProperty("lignes").EnumerateArray()
             .Single(l => l.GetProperty("collaborateurId").GetInt32() == 2);
-        var semaine = Assert.Single(camille.GetProperty("periodes").EnumerateArray());
+        var semaine = Assert.Single(ligneDeCamille.GetProperty("periodes").EnumerateArray());
         Assert.Equal(2.4m, semaine.GetProperty("capacite").GetDecimal());
         Assert.Equal(3.2m, semaine.GetProperty("chargePlanifiee").GetDecimal());
         Assert.Equal(1.3333m, semaine.GetProperty("tauxDeCharge").GetDecimal());

@@ -1,4 +1,5 @@
 using Chronos.Api.Commun;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -24,7 +25,7 @@ public static class PlanDeChargeEndpoints
 
     private static async Task<Results<Ok<PlanDeChargeDto>, ValidationProblem>> Obtenir(
         string? du, string? au, string? pas, int? managerId,
-        ChronosDbContext db, TimeProvider horloge, CancellationToken cancellationToken)
+        ChronosDbContext db, TimeProvider horloge, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         // Les dates sont lues au seul format ISO : « 04/05/2026 » serait sinon lu comme le 5 avril.
         DateOnly dateDu = default, dateAu = default;
@@ -52,10 +53,19 @@ public static class PlanDeChargeEndpoints
         var periode = new Periode(debut, fin);
         var tranches = (pas == "mois" ? Decoupage.ParMois(periode) : Decoupage.ParSemaine(periode)).ToList();
 
-        // Requête 1 : les collaborateurs présents sur la période, avec leurs contrats.
-        var collaborateurs = await db.Collaborateurs
+        // Requête 1 : les collaborateurs présents sur la période, avec leurs contrats. RG-50 et RG-51 : seuls ceux du
+        // périmètre figurent au plan, quel que soit le manager demandé (un manager étranger au périmètre donne un plan vide).
+        var presents = db.Collaborateurs
             .Where(c => managerId == null || c.ManagerId == managerId)
-            .Where(c => c.DateEntree <= fin && (c.DateSortie == null || c.DateSortie >= debut))
+            .Where(c => c.DateEntree <= fin && (c.DateSortie == null || c.DateSortie >= debut));
+
+        if (!perimetre.VoitTout)
+        {
+            var visibles = await perimetre.IdentifiantsVisiblesAsync(cancellationToken);
+            presents = presents.Where(c => visibles.Contains(c.Id));
+        }
+
+        var collaborateurs = await presents
             .OrderBy(c => c.Nom).ThenBy(c => c.Prenom).ThenBy(c => c.Id)
             .Select(c => new
             {

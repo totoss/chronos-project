@@ -9,6 +9,8 @@ public class AbsenceConfiguration : IEntityTypeConfiguration<Absence>
     public void Configure(EntityTypeBuilder<Absence> builder)
     {
         builder.Property(a => a.Version).IsConcurrencyToken();
+        builder.Property(a => a.CreePar).HasMaxLength(64);
+        builder.Property(a => a.ModifiePar).HasMaxLength(64);
         builder.HasIndex(a => new { a.CollaborateurId, a.DateDebut });
 
         builder.HasOne<Collaborateur>()

@@ -1,6 +1,6 @@
 namespace Chronos.Domain;
 
-public class Projet
+public class Projet : ITracable
 {
     public Projet(
         string code,
@@ -44,6 +44,11 @@ public class Projet
 
     /// <summary>Jeton de concurrence optimiste : renouvelé à chaque modification du projet.</summary>
     public Guid Version { get; private set; } = Guid.NewGuid();
+
+    public DateTimeOffset CreeLe { get; private set; }
+    public string CreePar { get; private set; } = string.Empty;
+    public DateTimeOffset? ModifieLe { get; private set; }
+    public string? ModifiePar { get; private set; }
 
     public bool EstClos => Statut is StatutProjet.Termine or StatutProjet.Annule;
 

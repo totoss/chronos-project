@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Chronos.Api.Securite;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Configurations;
@@ -16,9 +17,10 @@ public static class AffectationsEndpoints
 
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
-        groupe.MapPost("/", Creer);
-        groupe.MapPut("/{id:int}", Modifier);
-        groupe.MapDelete("/{id:int}", Supprimer);
+        // Le manager affecte les membres de son équipe (cahier des charges § 2) ; le gestionnaire RH aussi.
+        groupe.MapPost("/", Creer).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapPut("/{id:int}", Modifier).RequireAuthorization(Politiques.Pilotage);
+        groupe.MapDelete("/{id:int}", Supprimer).RequireAuthorization(Politiques.Pilotage);
 
         return groupe;
     }
@@ -27,12 +29,28 @@ public static class AffectationsEndpoints
         a.Id, a.CollaborateurId, a.ProjetId, a.DateDebut, a.DateFin, a.TauxAllocation);
 
     // Une liste simple, comme celle des clients : l'écran la demande pour un collaborateur ou pour un projet.
-    private static async Task<Ok<List<AffectationDto>>> Lister(
-        int? collaborateurId, int? projetId, ChronosDbContext db, CancellationToken cancellationToken)
+    // Hors périmètre, un collaborateur demandé « n'existe pas » : 404. Pour un projet, seules les affectations du
+    // périmètre sont listées.
+    private static async Task<Results<Ok<List<AffectationDto>>, NotFound>> Lister(
+        int? collaborateurId, int? projetId, ChronosDbContext db, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
-        var affectations = await db.Affectations
+        if (collaborateurId is { } demande && !await perimetre.PeutVoirAsync(demande, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        var requete = db.Affectations
             .Where(a => collaborateurId == null || a.CollaborateurId == collaborateurId)
-            .Where(a => projetId == null || a.ProjetId == projetId)
+            .Where(a => projetId == null || a.ProjetId == projetId);
+
+        if (!perimetre.VoitTout)
+        {
+            var visibles = await perimetre.IdentifiantsVisiblesAsync(cancellationToken);
+            requete = requete.Where(a => visibles.Contains(a.CollaborateurId));
+        }
+
+        var affectations = await requete
             .OrderBy(a => a.DateDebut)
             .ThenBy(a => a.Id)
             .Select(VersDto)
@@ -42,20 +60,24 @@ public static class AffectationsEndpoints
     }
 
     private static async Task<Results<Ok<AffectationDto>, NotFound>> Obtenir(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         var affectation = await LireDto(db, id, cancellationToken);
 
-        return affectation is null ? TypedResults.NotFound() : TypedResults.Ok(affectation);
+        return affectation is null || !await perimetre.PeutVoirAsync(affectation.CollaborateurId, cancellationToken)
+            ? TypedResults.NotFound()
+            : TypedResults.Ok(affectation);
     }
 
     private static async Task<Results<Created<AffectationDto>, ValidationProblem>> Creer(
-        CreerAffectationRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+        CreerAffectationRequete requete, ChronosDbContext db, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
         // Un collaborateur archivé n'est plus proposé : pour cette lecture, le filtre d'archivage s'applique.
+        // Hors périmètre, il « n'existe pas » : la même réponse que pour un identifiant inconnu.
         var collaborateur = await db.Collaborateurs
             .FirstOrDefaultAsync(c => c.Id == requete.CollaborateurId, cancellationToken);
-        if (collaborateur is null)
+        if (collaborateur is null || !await perimetre.PeutVoirAsync(collaborateur.Id, cancellationToken))
         {
             return Invalide("CollaborateurId", "Aucun collaborateur ne porte cet identifiant.");
         }
@@ -78,10 +100,11 @@ public static class AffectationsEndpoints
     }
 
     private static async Task<Results<Ok<AffectationDto>, NotFound>> Modifier(
-        int id, ModifierAffectationRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+        int id, ModifierAffectationRequete requete, ChronosDbContext db, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
         var affectation = await db.Affectations.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-        if (affectation is null)
+        if (affectation is null || !await perimetre.PeutVoirAsync(affectation.CollaborateurId, cancellationToken))
         {
             return TypedResults.NotFound();
         }
@@ -101,10 +124,10 @@ public static class AffectationsEndpoints
     }
 
     private static async Task<Results<NoContent, NotFound>> Supprimer(
-        int id, ChronosDbContext db, CancellationToken cancellationToken)
+        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
     {
         var affectation = await db.Affectations.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-        if (affectation is null)
+        if (affectation is null || !await perimetre.PeutVoirAsync(affectation.CollaborateurId, cancellationToken))
         {
             return TypedResults.NotFound();
         }

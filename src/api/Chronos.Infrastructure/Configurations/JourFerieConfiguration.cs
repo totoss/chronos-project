@@ -11,5 +11,7 @@ public class JourFerieConfiguration : IEntityTypeConfiguration<JourFerie>
         builder.HasKey(j => j.Date);
         builder.Property(j => j.Date).ValueGeneratedNever();
         builder.Property(j => j.Libelle).HasMaxLength(100);
+        builder.Property(j => j.CreePar).HasMaxLength(64);
+        builder.Property(j => j.ModifiePar).HasMaxLength(64);
     }
 }
