@@ -41,6 +41,6 @@ Les référentiels consignent, à une date donnée, les pratiques retenues, cell
 
 ## État d'avancement
 
-Le cadrage est terminé : cahier des charges, référentiels techniques et plan de cours sont rédigés. Deux modules le sont aussi : [Docker : les bases](cours/01-docker-les-bases.md) et [GitHub Actions : l'intégration continue](cours/05-github-actions-integration-continue.md). Leurs commandes et leurs workflows ont été vérifiés dans la documentation, mais pas encore exécutés.
+Le cadrage est terminé : cahier des charges, référentiels techniques et plan de cours sont rédigés. Deux modules le sont aussi : [Docker : les bases](cours/01-docker-les-bases.md) et [GitHub Actions : l'intégration continue](cours/05-github-actions-integration-continue.md). Les commandes du premier et le workflow du second ont été exécutés ; ce qui ne l'a pas été est signalé en tête de chaque module.
 
 Les autres modules et la solution de référence restent à écrire — voir le [suivi](cours/README.md#avancement-de-la-rédaction).

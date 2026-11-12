@@ -78,7 +78,9 @@ Le cours cible **.NET 10**. Trois conséquences pratiques :
 
 | Sujet | Pratique retenue | Source |
 | --- | --- | --- |
-| Framework | **xUnit v3**. Le modèle s'installe à part : `dotnet new install xunit.v3.templates`, puis `dotnet new xunit3`. | [migration v3](https://xunit.net/docs/getting-started/v3/migration) |
+| Framework | **xUnit v3**. Le modèle s'installe à part : `dotnet new install xunit.v3.templates`, puis `dotnet new xunit3 -f net10.0`. Sans `-f`, le modèle cible `net8.0`, qui n'est plus pris en charge (constaté). | [migration v3](https://xunit.net/docs/getting-started/v3/migration) |
+| Lanceur de tests | **Microsoft.Testing.Platform**. C'est le choix par défaut du modèle `xunit3`, qui référence `xunit.v3.mtp-v2` et écrit `"test": { "runner": "Microsoft.Testing.Platform" }` dans `global.json` (constaté). | [dotnet test](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test) |
+| Rapport de tests | `dotnet test --report-xunit-trx --results-directory TestResults` (exécuté). | [xUnit et MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform) |
 | Assertions | `Assert` de xUnit. Pas de bibliothèque d'assertions supplémentaire. | voir § 4 |
 | Tests d'intégration | `WebApplicationFactory<Program>`. | [tests d'intégration](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0) |
 | Base de données en test | Le vrai SGBD, démarré par Testcontainers. | [stratégie de test](https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy) |
@@ -202,6 +204,8 @@ PostgreSQL 19 est attendu le 19 novembre 2026. Le cours reste sur la version 18 
 | Ce qu'on voit dans les tutoriels | Statut | À écrire à la place | Source |
 | --- | --- | --- | --- |
 | Paquet `xunit` (v2), `dotnet new xunit` | En maintenance ; le modèle du SDK génère encore du v2 | `xunit.v3`, `dotnet new xunit3` | [versions](https://xunit.net/releases/) |
+| `dotnet new xunit3` sans option | Cible `net8.0`, **hors support** | `dotnet new xunit3 -f net10.0` | constaté le 12 nov. 2026 |
+| `dotnet test --logger trx` | Option de VSTest, **refusée** par Microsoft.Testing.Platform | `dotnet test --report-xunit-trx` | constaté le 12 nov. 2026 |
 | `new PostgreSqlBuilder()` sans image | Refusé depuis Testcontainers 4.10 | `new PostgreSqlBuilder("postgres:18")` | [versions](https://github.com/testcontainers/testcontainers-dotnet/releases) |
 | `coverlet.collector` | Incompatible avec Microsoft.Testing.Platform | `Microsoft.Testing.Extensions.CodeCoverage` | [couverture](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-code-coverage) |
 
@@ -229,7 +233,7 @@ Ces choix engagent le cours. Ils sont argumentés ici pour pouvoir être discut�
 
 - **Authentification.** La documentation déconseille de fabriquer ses propres jetons et recommande les cookies pour une application dans le navigateur ([Identity pour SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0)). Le cours partirait donc sur ASP.NET Core Identity avec cookies (`AddIdentityApiEndpoints`, `MapIdentityApi`). L'alternative est un fournisseur OpenID Connect (Keycloak, Microsoft Entra ID) : plus proche d'un contexte d'entreprise, mais nettement plus lourd pour un junior.
 - **Environnement local.** Docker Compose pour démarrer les deux bases : simple, sans dépendance au SDK. [Aspire](https://aspire.dev/get-started/what-is-aspire/) orchestre l'API, la base et le front et apporte un tableau de bord d'observabilité ; il est présenté dans le dernier module plutôt que dès le départ, pour ne pas ajouter un outil de plus à l'entrée.
-- **Lanceur de tests.** `dotnet test` utilise VSTest par défaut ; le mode Microsoft.Testing.Platform s'active dans `global.json` ([dotnet test](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test)). À trancher par un essai avec xUnit v3 lors du module sur les tests.
+- **Lanceur de tests — tranché.** Le modèle `xunit3` configure Microsoft.Testing.Platform par défaut ; le cours suit ce défaut plutôt que de revenir à VSTest (`--test-runner vstest`). L'essai du 12 novembre 2026 a confirmé que `dotnet restore --locked-mode`, `dotnet build --no-restore` et `dotnet test --no-build --report-xunit-trx` s'enchaînent sans autre réglage avec le SDK 10.0.404.
 
 ## 6. Points à surveiller
 

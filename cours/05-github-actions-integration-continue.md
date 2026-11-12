@@ -1,7 +1,7 @@
 # Module 05 — GitHub Actions : l'intégration continue
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
-> Les workflows de ce module ont été vérifiés dans la documentation officielle, mais **pas encore exécutés** : signalez au mentor tout écart constaté.
+> Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). Les étapes 8 (verrouillage des actions) et 9 (*ruleset*) ont été vérifiées dans la documentation, mais **pas exécutées** : signalez au mentor tout écart constaté.
 
 Au module 04, vous avez écrit vos premiers tests. Ils passent sur votre poste, à condition que vous pensiez à les lancer. L'**intégration continue** supprime cette condition : à chaque envoi de code, une machine neutre récupère le dépôt, le compile et exécute les tests. Si quelque chose casse, on le sait dans les minutes qui suivent, et non le jour de la livraison.
 
@@ -20,7 +20,7 @@ GitHub Actions est le service d'automatisation intégré à GitHub. C'est lui qu
 
 ## Prérequis
 
-- Module 04 : la solution .NET existe dans `src/api/`, avec un fichier `global.json` et au moins un projet de tests.
+- Module 04 : la solution .NET existe dans `src/api/`, avec un fichier `global.json` et au moins un projet de tests créé par `dotnet new xunit3 -f net10.0`.
 - Votre dépôt est hébergé sur GitHub et vous savez y pousser une branche et ouvrir une *pull request*.
 - L'outil en ligne de commande [`gh`](https://cli.github.com/) est installé (utile à l'étape 8).
 
@@ -158,7 +158,7 @@ Lire un échec dans un journal de plusieurs centaines de lignes devient vite pé
 
 ```yaml
       - name: Tester
-        run: dotnet test --no-build --configuration Release --logger trx --results-directory TestResults
+        run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults
 
       - name: Conserver les résultats des tests
         if: ${{ !cancelled() }}
@@ -169,12 +169,14 @@ Lire un échec dans un journal de plusieurs centaines de lignes devient vite pé
           if-no-files-found: ignore
 ```
 
-- **`--logger trx`** produit un rapport au format TRX, que Visual Studio et la plupart des outils savent ouvrir.
+- **`--report-xunit-trx`** produit un rapport au format TRX, que Visual Studio et la plupart des outils savent ouvrir. **`--results-directory`** fixe le dossier où il est écrit.
 - **`actions/upload-artifact`** attache des fichiers à l'exécution : c'est un **artefact**, téléchargeable depuis la page de l'exécution.
 - **`if: ${{ !cancelled() }}`** est indispensable. Sans condition, cette étape serait sautée dès que les tests échouent — c'est-à-dire exactement quand on a besoin du rapport. La condition signifie : « exécuter même si une étape précédente a échoué, sauf si l'exécution a été annulée ».
 - Le chemin de `path` part de la racine du dépôt : `working-directory` ne s'applique pas aux étapes `uses`.
 
-> Beaucoup de tutoriels écrivent `if: always()`. La documentation recommande `!cancelled()` : avec `always()`, l'étape s'exécute même quand vous annulez l'exécution, ce qui la prolonge inutilement.
+> **Presque tous les tutoriels écrivent `dotnet test --logger trx`.** Cette option appartient à l'ancien lanceur de tests, VSTest. Un projet créé par `dotnet new xunit3` utilise Microsoft.Testing.Platform — c'est la ligne `"runner": "Microsoft.Testing.Platform"` de votre `global.json` —, qui la refuse : `Option '--logger' uses VSTest syntax, which is not supported by Microsoft.Testing.Platform`.
+
+> Beaucoup de tutoriels écrivent aussi `if: always()`. La documentation recommande `!cancelled()` : avec `always()`, l'étape s'exécute même quand vous annulez l'exécution, ce qui la prolonge inutilement.
 
 ### 5. Ne pas gaspiller de machines
 
@@ -285,6 +287,8 @@ Documentation : [Fichiers de verrouillage des workflows](https://docs.github.com
 
 Pour l'instant, rien n'empêche de fusionner une *pull request* dont le workflow est rouge. Un *ruleset* y remédie.
 
+> **Dépôt privé et compte gratuit.** Les *rulesets* ne sont disponibles sur un dépôt privé qu'avec une offre payante ; avec un compte gratuit, GitHub répond « Upgrade to GitHub Pro or make this repository public ». Dans ce cas, faites cette étape sur un dépôt public, ou lisez-la et discutez-en en séance.
+
 Dans les réglages du dépôt, rubrique *Rules* puis *Rulesets*, créez un *ruleset* de branche :
 
 - **cible** : la branche par défaut ;
@@ -341,7 +345,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Tester
-        run: dotnet test --no-build --configuration Release --logger trx --results-directory TestResults
+        run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults
 
       - name: Conserver les résultats des tests
         if: ${{ !cancelled() }}
@@ -388,13 +392,12 @@ jobs:
 | `runs-on: ubuntu-latest` | Le système change sans prévenir. |
 | `dotnet-version: 6.0.x` | Version hors support ; et la version se lit dans `global.json`. |
 | Une étape `actions/cache` sur `~/.nuget/packages` | `setup-dotnet` le fait avec `cache: true`. |
+| `dotnet test --logger trx` | Option de VSTest, refusée par Microsoft.Testing.Platform. On écrit `--report-xunit-trx`. |
 | `echo "::set-output name=x::y"` | Déprécié. On écrit `echo "x=y" >> "$GITHUB_OUTPUT"`. |
 | `if: always()` | `if: ${{ !cancelled() }}`. |
 | Aucun bloc `permissions` | Les droits du workflow dépendent alors de réglages extérieurs au fichier. |
 | `uses: quelquun/action@main` | Le code exécuté peut changer à chaque instant. |
 | `on: pull_request_target` | Donne au workflow les droits et les secrets du dépôt face à du code venu de l'extérieur. Réservé à des cas précis ; `pull_request` suffit ici. |
-
-**Si le module 04 a activé Microsoft.Testing.Platform** (clé `test.runner` dans `global.json`), la commande de test change : l'option `--logger` n'existe plus et se remplace par `--report-xunit-trx`, et la solution se désigne par `--solution`. Voyez le [référentiel](../docs/references/github-actions.md#4-points-à-surveiller).
 
 La liste complète, avec les sources, est dans le [référentiel GitHub Actions](../docs/references/github-actions.md#3-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
 
