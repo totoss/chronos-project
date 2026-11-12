@@ -16,6 +16,8 @@ using Chronos.Infrastructure;
 using Chronos.Infrastructure.Identite;
 using Chronos.Infrastructure.Tracabilite;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -101,7 +103,34 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
+builder.Services.AddHealthChecks();
+
+// Derrière un relais (nginx), l'API ne voit ni l'adresse du client ni son protocole : elle les lit dans les
+// en-têtes X-Forwarded-*, mais seulement s'ils viennent du réseau du relais, désigné par la configuration.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    var reseau = builder.Configuration["Chronos:ReseauDuRelais"];
+    if (!string.IsNullOrEmpty(reseau))
+    {
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(reseau));
+    }
+});
+
+// Les clés qui protègent le cookie de session et les jetons anti-CSRF. Sans dossier configuré, elles restent
+// en mémoire et sont perdues au redémarrage ; en conteneur, le dossier est un volume.
+var dossierDesCles = builder.Configuration["Chronos:DossierDesCles"];
+if (!string.IsNullOrEmpty(dossierDesCles))
+{
+    builder.Services.AddDataProtection()
+        .SetApplicationName("Chronos")
+        .PersistKeysToFileSystem(new DirectoryInfo(dossierDesCles));
+}
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseExceptionHandler(new ExceptionHandlerOptions
 {
@@ -120,6 +149,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference().AllowAnonymous();
 }
+
+app.MapHealthChecks("/health").AllowAnonymous();
 
 // Seule la connexion d'Identity est exposée ; les neuf autres routes (inscription, jetons, gestion du compte…)
 // répondent 404. C'est une liste d'autorisation : une route ajoutée par une version future sera neutralisée d'office.

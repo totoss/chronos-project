@@ -34,6 +34,51 @@ services:
       retries: 10
       start_period: 30s
 
+  api:
+    profiles: [app]
+    build:
+      context: src/api
+      additional_contexts:
+        racine: .
+    environment:
+      ConnectionStrings__Chronos: Host=postgres;Database=chronos;Username=chronos;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant, voir .env.example}
+      Chronos__Fournisseur: PostgreSql
+      # Seul le réseau de nginx est cru quand il écrit X-Forwarded-For et X-Forwarded-Proto.
+      Chronos__ReseauDuRelais: 10.89.0.0/24
+      # Les clés de protection des données (session, jeton anti-CSRF) survivent au conteneur dans un volume.
+      Chronos__DossierDesCles: /cles
+      # « Aujourd'hui » (Horloge.Aujourdhui) se lit dans le fuseau du serveur, UTC par défaut dans l'image.
+      TZ: Europe/Paris
+    volumes:
+      - cles-api:/cles
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    profiles: [app]
+    build:
+      context: src/web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+
 volumes:
   postgres-donnees:
   sqlserver-donnees:
+  cles-api:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.89.0.0/24

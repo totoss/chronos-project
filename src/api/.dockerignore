@@ -1,0 +1,11 @@
+**/.env
+**/bin/
+**/obj/
+**/TestResults/
+**/artifacts/
+**/*.user
+**/appsettings.Development.json
+**/Properties/launchSettings.json
+.vs/
+Dockerfile
+.dockerignore
