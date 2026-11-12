@@ -1,0 +1,34 @@
+<h2>Collaborateurs</h2>
+
+<label for="filtre">Filtrer par nom</label>
+<input id="filtre" type="search" #champ [value]="filtre()" (input)="filtre.set(champ.value)" />
+<button type="button" [disabled]="filtre() === ''" (click)="effacerFiltre()">Effacer</button>
+<button type="button" (click)="basculerSortis()">
+  @if (afficherSortis()) {
+    Masquer les collaborateurs sortis
+  } @else {
+    Afficher les collaborateurs sortis
+  }
+</button>
+<button type="button" (click)="basculerTri()">
+  @if (tri() === 'nom') {
+    Trier par date d'entrée
+  } @else {
+    Trier par nom
+  }
+</button>
+
+@let resultats = collaborateursFiltres();
+
+<p>{{ resultats.length }} collaborateur(s) sur {{ collaborateurs().length }}</p>
+<p>{{ repartition() }}</p>
+
+<ul>
+  @for (c of resultats; track c.id) {
+    <li [class.sorti]="c.dateSortie !== null">
+      <strong>{{ c.nom }}</strong> {{ c.prenom }} — {{ c.poste }} ({{ c.matricule }})
+    </li>
+  } @empty {
+    <li>Aucun collaborateur ne correspond à « {{ filtre() }} ».</li>
+  }
+</ul>
