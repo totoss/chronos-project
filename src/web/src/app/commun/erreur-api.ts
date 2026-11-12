@@ -34,6 +34,8 @@ interface ProblemDetails {
 /** Quand l'API n'écrit pas de `detail`, son `title` est en anglais : on le remplace. */
 const LIBELLES: Record<number, string> = {
   400: 'Les données envoyées sont invalides.',
+  401: 'Votre session a expiré. Reconnectez-vous.',
+  403: "Vous n'avez pas le droit d'effectuer cette action.",
   404: "La ressource demandée n'existe pas, ou vous n'y avez pas accès.",
   500: 'Une erreur est survenue sur le serveur.',
 };

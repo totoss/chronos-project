@@ -8,12 +8,19 @@
     <mat-icon>menu</mat-icon>
   </button>
   <h1>{{ titre() }}</h1>
+
+  @if (session.utilisateur(); as utilisateur) {
+    <span class="utilisateur"
+      >{{ utilisateur.prenom ?? utilisateur.email }} {{ utilisateur.nom }}</span
+    >
+    <button matButton type="button" (click)="seDeconnecter()">Se déconnecter</button>
+  }
 </mat-toolbar>
 
 <mat-sidenav-container>
   <mat-sidenav #menu mode="side" opened>
     <mat-nav-list aria-label="Menu principal">
-      @for (lien of liens; track lien.chemin) {
+      @for (lien of liensVisibles(); track lien.chemin) {
         <a
           mat-list-item
           [routerLink]="lien.chemin"

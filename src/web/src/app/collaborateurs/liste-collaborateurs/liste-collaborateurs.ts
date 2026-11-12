@@ -10,6 +10,7 @@ import { debounceTime, Subject } from 'rxjs';
 import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
 import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
 import { demanderConfirmation } from '../../commun/dialogue-de-confirmation/dialogue-de-confirmation';
+import { SiRole } from '../../compte/si-role';
 import { CarteCollaborateur } from '../carte-collaborateur/carte-collaborateur';
 import { Collaborateur } from '../collaborateur';
 import { CollaborateursApi, TriCollaborateurs } from '../collaborateurs-api';
@@ -24,6 +25,7 @@ import { CollaborateursApi, TriCollaborateurs } from '../collaborateurs-api';
     MatPaginatorModule,
     MatProgressBarModule,
     RouterLink,
+    SiRole,
   ],
   selector: 'app-liste-collaborateurs',
   styleUrl: './liste-collaborateurs.scss',

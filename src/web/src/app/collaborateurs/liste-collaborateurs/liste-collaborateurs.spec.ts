@@ -5,12 +5,15 @@ import {
   provideHttpClientTesting,
   TestRequest,
 } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
 import { Page } from '../../commun/page';
 import { erreursInterceptor } from '../../commun/erreurs-interceptor';
+import { Session } from '../../compte/session';
+import { Role } from '../../compte/utilisateur';
 import { Collaborateur } from '../collaborateur';
 import { ListeCollaborateurs } from './liste-collaborateurs';
 
@@ -35,16 +38,25 @@ function page(elements: Collaborateur[], total = elements.length): Page<Collabor
 }
 
 describe('ListeCollaborateurs', () => {
+  const roles = signal<Role[]>(['Collaborateur', 'GestionnaireRh']);
   let harness: RouterTestingHarness;
   let http: HttpTestingController;
   let ecran: HTMLElement;
 
   beforeEach(async () => {
+    roles.set(['Collaborateur', 'GestionnaireRh']);
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes, withComponentInputBinding()),
         provideHttpClient(withInterceptors([erreursInterceptor])),
         provideHttpClientTesting(),
+        {
+          provide: Session,
+          useValue: {
+            estConnecte: () => true,
+            aLeRole: (...attendus: Role[]) => roles().some((r) => attendus.includes(r)),
+          },
+        },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -267,5 +279,15 @@ describe('ListeCollaborateurs', () => {
     const liens = Array.from(ecran.querySelectorAll('a')).map((a) => a.getAttribute('href'));
     expect(liens).toContain('/collaborateurs/2');
     expect(liens).toContain('/collaborateurs/nouveau');
+  });
+
+  it('ne propose ni création ni suppression sans le rôle de gestionnaire RH (RG-52)', async () => {
+    roles.set(['Collaborateur', 'Manager']);
+    await ouvrir('/collaborateurs');
+
+    const liens = Array.from(ecran.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(liens).toContain('/collaborateurs/2');
+    expect(liens).not.toContain('/collaborateurs/nouveau');
+    expect(ecran.textContent).not.toContain('Supprimer');
   });
 });

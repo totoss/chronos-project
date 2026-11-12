@@ -1,5 +1,8 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Session } from '../../compte/session';
+import { Role } from '../../compte/utilisateur';
 import { Collaborateur } from '../collaborateur';
 import { CarteCollaborateur } from './carte-collaborateur';
 
@@ -19,6 +22,7 @@ const camille: Collaborateur = {
 };
 
 describe('CarteCollaborateur', () => {
+  const roles = signal<Role[]>(['Collaborateur', 'GestionnaireRh']);
   let component: CarteCollaborateur;
   let fixture: ComponentFixture<CarteCollaborateur>;
 
@@ -27,9 +31,16 @@ describe('CarteCollaborateur', () => {
   }
 
   beforeEach(async () => {
+    roles.set(['Collaborateur', 'GestionnaireRh']);
     await TestBed.configureTestingModule({
       imports: [CarteCollaborateur],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: Session,
+          useValue: { aLeRole: (...attendus: Role[]) => roles().some((r) => attendus.includes(r)) },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(CarteCollaborateur);
@@ -66,5 +77,13 @@ describe('CarteCollaborateur', () => {
     bouton!.click();
 
     expect(emissions).toBe(1);
+  });
+
+  it('ne propose la suppression qu’au gestionnaire RH (RG-52)', async () => {
+    roles.set(['Collaborateur', 'Manager']);
+    await fixture.whenStable();
+
+    expect(texte()).not.toContain('Supprimer');
+    expect(texte()).toContain('Voir la fiche');
   });
 });

@@ -1,58 +1,64 @@
 <h2>Feuille de temps</h2>
 
-<nav aria-label="Semaine affichée">
-  <button matButton type="button" (click)="selection.decaler(-1)">Semaine précédente</button>
-  <strong>Semaine du {{ libelleJour(selection.semaine()) }}</strong>
-  <button matButton type="button" (click)="selection.decaler(1)">Semaine suivante</button>
-</nav>
-
-@if (feuille.isLoading()) {
-  <mat-progress-bar mode="indeterminate" aria-label="Chargement de la feuille de temps" />
-}
-
-@if (feuille.error()) {
-  <p role="alert">
-    La feuille de temps n'a pas pu être chargée.
-    <button matButton type="button" (click)="feuille.reload()">Réessayer</button>
+@if (collaborateurId() === null) {
+  <p role="status">
+    Ce compte n'est rattaché à aucun collaborateur : il n'a pas de feuille de temps.
   </p>
-} @else if (feuille.hasValue()) {
-  <p>État : {{ libelleStatut() }}</p>
+} @else {
+  <nav aria-label="Semaine affichée">
+    <button matButton type="button" (click)="selection.decaler(-1)">Semaine précédente</button>
+    <strong>Semaine du {{ libelleJour(selection.semaine()) }}</strong>
+    <button matButton type="button" (click)="selection.decaler(1)">Semaine suivante</button>
+  </nav>
 
-  @if (feuille.value().motifRejet; as motif) {
-    <p role="status">Feuille rejetée : {{ motif }}</p>
+  @if (feuille.isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Chargement de la feuille de temps" />
   }
 
-  <app-grille-de-saisie
-    [jours]="selection.jours()"
-    [lignes]="lignes()"
-    [joursFermes]="joursFermes()"
-    [joursEnDemiAbsence]="joursEnDemiAbsence()"
-    [lectureSeule]="lectureSeule()"
-    [(grille)]="grille"
-  />
-
-  @if (joursEnDepassement().length > 0) {
+  @if (feuille.error()) {
     <p role="alert">
-      Le total dépasse une journée :
-      @for (jour of joursEnDepassement(); track jour) {
-        {{ libelleJour(jour) }}{{ $last ? '.' : ', ' }}
-      }
+      La feuille de temps n'a pas pu être chargée.
+      <button matButton type="button" (click)="feuille.reload()">Réessayer</button>
     </p>
-  }
+  } @else if (feuille.hasValue()) {
+    <p>État : {{ libelleStatut() }}</p>
 
-  @if (!lectureSeule()) {
-    <div class="actions">
-      <button
-        matButton="outlined"
-        type="button"
-        [disabled]="!peutEnvoyer()"
-        (click)="enregistrer()"
-      >
-        Enregistrer le brouillon
-      </button>
-      <button matButton="filled" type="button" [disabled]="!peutEnvoyer()" (click)="soumettre()">
-        Soumettre
-      </button>
-    </div>
+    @if (feuille.value().motifRejet; as motif) {
+      <p role="status">Feuille rejetée : {{ motif }}</p>
+    }
+
+    <app-grille-de-saisie
+      [jours]="selection.jours()"
+      [lignes]="lignes()"
+      [joursFermes]="joursFermes()"
+      [joursEnDemiAbsence]="joursEnDemiAbsence()"
+      [lectureSeule]="lectureSeule()"
+      [(grille)]="grille"
+    />
+
+    @if (joursEnDepassement().length > 0) {
+      <p role="alert">
+        Le total dépasse une journée :
+        @for (jour of joursEnDepassement(); track jour) {
+          {{ libelleJour(jour) }}{{ $last ? '.' : ', ' }}
+        }
+      </p>
+    }
+
+    @if (!lectureSeule()) {
+      <div class="actions">
+        <button
+          matButton="outlined"
+          type="button"
+          [disabled]="!peutEnvoyer()"
+          (click)="enregistrer()"
+        >
+          Enregistrer le brouillon
+        </button>
+        <button matButton="filled" type="button" [disabled]="!peutEnvoyer()" (click)="soumettre()">
+          Soumettre
+        </button>
+      </div>
+    }
   }
 }

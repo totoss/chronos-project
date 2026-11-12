@@ -84,6 +84,30 @@ describe('erreursInterceptor', () => {
     expect((erreur as ErreurApi).code).toBe('concurrence');
   });
 
+  it('donne un libellé français à un 403, sans reprendre le titre anglais de l’API', () => {
+    const { erreur } = recevoir('DELETE', { title: 'Forbidden' }, 403);
+
+    expect((erreur as ErreurApi).message).toBe(
+      "Vous n'avez pas le droit d'effectuer cette action.",
+    );
+    expect(notifier).toHaveBeenCalledWith(
+      "Vous n'avez pas le droit d'effectuer cette action.",
+      'Fermer',
+      { duration: 8000 },
+    );
+  });
+
+  it('ne notifie pas le refus d’une connexion : l’écran de connexion le signale', () => {
+    const resultat: { erreur?: unknown } = {};
+    http.post('/api/compte/login', {}).subscribe({ error: (e) => (resultat.erreur = e) });
+    controleur
+      .expectOne('/api/compte/login')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect((resultat.erreur as ErreurApi).statut).toBe(401);
+    expect(notifier).not.toHaveBeenCalled();
+  });
+
   it('relance l’erreur sans notifier quand c’est une lecture', () => {
     const { erreur } = recevoir('GET', { title: 'Not Found' }, 404);
 

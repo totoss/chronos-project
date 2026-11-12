@@ -12,7 +12,7 @@
   </mat-card-content>
 
   <mat-card-actions align="end">
-    <button matButton type="button" (click)="supprimer.emit()">
+    <button *appSiRole="'GestionnaireRh'" matButton type="button" (click)="supprimer.emit()">
       <mat-icon>delete</mat-icon>
       Supprimer
     </button>

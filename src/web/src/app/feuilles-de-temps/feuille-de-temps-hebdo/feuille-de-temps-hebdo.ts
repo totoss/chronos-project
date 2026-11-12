@@ -2,9 +2,9 @@ import { Component, computed, inject, linkedSignal, signal } from '@angular/core
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { concatMap, finalize, Observable } from 'rxjs';
-import { COLLABORATEUR_COURANT_ID } from '../../commun/collaborateur-courant';
 import { estWeekEnd, libelleJour } from '../../commun/dates';
 import { SelectionSemaine } from '../../commun/selection-semaine';
+import { Session } from '../../compte/session';
 import {
   disponible,
   joursAbsents,
@@ -30,8 +30,8 @@ export class FeuilleDeTempsHebdo {
   protected readonly selection = inject(SelectionSemaine);
   protected readonly libelleJour = libelleJour;
 
-  // PROVISOIRE : le module 19 lira l'identifiant dans la session.
-  private readonly collaborateurId = signal(COLLABORATEUR_COURANT_ID);
+  /** La fiche de l'utilisateur connecté (RG-50) ; `null` pour un compte qui n'en a pas. */
+  protected readonly collaborateurId = inject(Session).collaborateurId;
 
   protected readonly feuille = this.api.deLaSemaine(this.collaborateurId, this.selection.semaine);
   private readonly affectations = this.api.affectations(this.collaborateurId);

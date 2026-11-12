@@ -64,7 +64,9 @@
       </mat-card-content>
 
       <mat-card-actions align="end">
-        <button matButton type="button" (click)="enEdition.set(true)">Modifier</button>
+        @if (session.aLeRole('GestionnaireRh')) {
+          <button matButton type="button" (click)="enEdition.set(true)">Modifier</button>
+        }
         <a matButton routerLink="/collaborateurs">Retour à la liste</a>
       </mat-card-actions>
     </mat-card>

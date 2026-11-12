@@ -11,24 +11,35 @@ export class FeuillesDeTempsApi {
   private readonly url = '/api/feuilles-de-temps';
 
   /** La feuille d'un collaborateur pour une semaine ; l'API la crée en brouillon si besoin. */
-  deLaSemaine(collaborateurId: () => number, semaine: () => string) {
-    return httpResource<FeuilleDeTemps>(() => ({
-      url: this.url,
-      params: { collaborateurId: collaborateurId(), semaine: semaine() },
-    }));
+  deLaSemaine(collaborateurId: () => number | null, semaine: () => string) {
+    return httpResource<FeuilleDeTemps>(() => {
+      const id = collaborateurId();
+      // Un compte sans fiche n'a pas de feuille (l'API répond 400) : aucune requête ne part.
+      return id === null
+        ? undefined
+        : { url: this.url, params: { collaborateurId: id, semaine: semaine() } };
+    });
   }
 
-  affectations(collaborateurId: () => number) {
+  affectations(collaborateurId: () => number | null) {
     return httpResource<Affectation[]>(
-      () => ({ url: '/api/affectations', params: { collaborateurId: collaborateurId() } }),
+      () => {
+        const id = collaborateurId();
+        return id === null
+          ? undefined
+          : { url: '/api/affectations', params: { collaborateurId: id } };
+      },
       { defaultValue: [] },
     );
   }
 
   /** Toutes les absences du collaborateur : l'écran ne garde que les approuvées (RG-32). */
-  absences(collaborateurId: () => number) {
+  absences(collaborateurId: () => number | null) {
     return httpResource<Absence[]>(
-      () => ({ url: '/api/absences', params: { collaborateurId: collaborateurId() } }),
+      () => {
+        const id = collaborateurId();
+        return id === null ? undefined : { url: '/api/absences', params: { collaborateurId: id } };
+      },
       { defaultValue: [] },
     );
   }

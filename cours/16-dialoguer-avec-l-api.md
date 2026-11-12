@@ -625,7 +625,7 @@ Les tests doivent passer (`q` quitte le mode surveillance) et la compilation ré
 
 2. **Les projets.** Écrivez le type `Projet` d'après votre `ProjetDto`, le service `ProjetsApi` et l'écran `ListeProjets` sur la route `/projets` : pagination, recherche, filtre par statut. Qu'avez-vous pu reprendre tel quel du travail sur les collaborateurs ? Qu'est-ce que cela suggère ?
 
-3. **Valeur par défaut.** `httpResource` accepte une option `defaultValue`. Réécrivez la liste des projets avec une page vide par défaut, sans `hasValue()`. Qu'y gagne le template ? Que ne sait-il plus distinguer ?
+3. **Valeur par défaut.** `httpResource` accepte une option `defaultValue`. Réécrivez la liste des projets avec une page vide par défaut, sans `hasValue()`. Qu'y gagne le template ? Que ne sait-il plus distinguer ? Provoquez ensuite une erreur (arrêtez l'API) : `value()` lève une exception quand la ressource est en erreur, même avec une valeur par défaut — constaté dans le code d'Angular 22.2. Une lecture hors du template s'écrit donc `hasValue() ? value() : …` ; le module 18 s'en servira.
 
 4. **Se méfier de la réponse.** L'option `parse` reçoit la réponse brute et renvoie la valeur typée. Écrivez une fonction qui vérifie que la réponse de `/api/collaborateurs` a bien un tableau `elements` et un nombre `total`, et lève une erreur sinon. Renommez un champ côté API : que voit l'utilisateur, avec et sans `parse` ?
 

@@ -17,7 +17,9 @@ export const erreursInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((reponse: unknown) => {
       const erreur = versErreurApi(reponse);
       const geree = req.context.get(ERREURS_DE_SAISIE_GEREES) && erreur.estDeSaisie;
-      if (req.method !== 'GET' && !geree) {
+      // Les refus de connexion et de déconnexion sont signalés par l'écran de connexion et par Session.
+      const duCompte = req.url.startsWith('/api/compte/');
+      if (req.method !== 'GET' && !geree && !duCompte) {
         snackBar.open(erreur.message, 'Fermer', { duration: 8000 });
       }
       return throwError(() => erreur);

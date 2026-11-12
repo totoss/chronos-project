@@ -1,0 +1,32 @@
+<h2>Connexion</h2>
+
+<form [formRoot]="formulaire">
+  <mat-form-field>
+    <mat-label>Adresse électronique</mat-label>
+    <input matInput type="email" autocomplete="username" [formField]="formulaire.email" />
+    @if (formulaire.email().touched() && formulaire.email().invalid()) {
+      <mat-error>{{ formulaire.email().errors()[0].message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Mot de passe</mat-label>
+    <input
+      matInput
+      type="password"
+      autocomplete="current-password"
+      [formField]="formulaire.password"
+    />
+    @if (formulaire.password().touched() && formulaire.password().invalid()) {
+      <mat-error>{{ formulaire.password().errors()[0].message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (echec(); as message) {
+    <p role="alert">{{ message }}</p>
+  }
+
+  <button matButton="filled" type="submit" [disabled]="formulaire().submitting()">
+    Se connecter
+  </button>
+</form>

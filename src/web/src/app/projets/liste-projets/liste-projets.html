@@ -16,7 +16,7 @@
     <option value="Annule">Annulé</option>
   </select>
 
-  <a matButton="filled" routerLink="nouveau">
+  <a *appSiRole="['Manager', 'GestionnaireRh']" matButton="filled" routerLink="nouveau">
     <mat-icon>add</mat-icon>
     Nouveau projet
   </a>

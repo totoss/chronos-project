@@ -7,6 +7,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { ErreurApi } from '../../commun/erreur-api';
+import { Session } from '../../compte/session';
 import { Collaborateur } from '../collaborateur';
 import { CollaborateursApi } from '../collaborateurs-api';
 import { FormulaireCollaborateur } from '../formulaire-collaborateur/formulaire-collaborateur';
@@ -29,6 +30,7 @@ import { FormulaireCollaborateur } from '../formulaire-collaborateur/formulaire-
 })
 export class FicheCollaborateur {
   private readonly api = inject(CollaborateursApi);
+  protected readonly session = inject(Session);
 
   readonly id = input.required({ transform: numberAttribute });
 

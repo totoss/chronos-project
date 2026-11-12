@@ -1,8 +1,11 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { erreursInterceptor } from '../../commun/erreurs-interceptor';
+import { Session } from '../../compte/session';
+import { Role } from '../../compte/utilisateur';
 import { Collaborateur } from '../collaborateur';
 import { FicheCollaborateur } from './fiche-collaborateur';
 
@@ -25,17 +28,23 @@ const camille: Collaborateur = {
 };
 
 describe('FicheCollaborateur', () => {
+  const roles = signal<Role[]>(['Collaborateur', 'GestionnaireRh']);
   let component: FicheCollaborateur;
   let fixture: ComponentFixture<FicheCollaborateur>;
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    roles.set(['Collaborateur', 'GestionnaireRh']);
     await TestBed.configureTestingModule({
       imports: [FicheCollaborateur],
       providers: [
         provideRouter([]),
         provideHttpClient(withInterceptors([erreursInterceptor])),
         provideHttpClientTesting(),
+        {
+          provide: Session,
+          useValue: { aLeRole: (...attendus: Role[]) => roles().some((r) => attendus.includes(r)) },
+        },
       ],
     }).compileComponents();
 
@@ -86,6 +95,14 @@ describe('FicheCollaborateur', () => {
     expect(texte()).not.toContain("Date d'entrée");
     expect(texte()).not.toContain('Quotité');
     expect(texte()).not.toContain('Date de sortie');
+  });
+
+  it('ne propose « Modifier » qu’au gestionnaire RH (RG-52)', async () => {
+    roles.set(['Collaborateur', 'Manager']);
+    await afficher('2', camille);
+
+    expect(texte()).toContain('Retour à la liste');
+    expect(texte()).not.toContain('Modifier');
   });
 
   function cliquer(libelle: string): void {

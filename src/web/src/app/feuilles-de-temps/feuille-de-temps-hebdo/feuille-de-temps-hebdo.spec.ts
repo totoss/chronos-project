@@ -1,7 +1,9 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { erreursInterceptor } from '../../commun/erreurs-interceptor';
+import { Session } from '../../compte/session';
 import { Absence, Affectation, FeuilleDeTemps } from '../feuille-de-temps';
 import { FeuilleDeTempsHebdo } from './feuille-de-temps-hebdo';
 
@@ -57,6 +59,8 @@ const projets = {
 };
 
 describe('FeuilleDeTempsHebdo', () => {
+  /** La fiche de l’utilisateur connecté : 2 est Camille ; `null` serait un compte sans fiche. */
+  const collaborateurId = signal<number | null>(2);
   let fixture: ComponentFixture<FeuilleDeTempsHebdo>;
   let http: HttpTestingController;
   let ecran: HTMLElement;
@@ -97,10 +101,12 @@ describe('FeuilleDeTempsHebdo', () => {
     // Seule la date est figée : le reste du temps (promesses, minuteries) continue de s'écouler.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 6, 10, 0));
+    collaborateurId.set(2);
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([erreursInterceptor])),
         provideHttpClientTesting(),
+        { provide: Session, useValue: { collaborateurId } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -117,6 +123,27 @@ describe('FeuilleDeTempsHebdo', () => {
     expect(requete.params.get('collaborateurId')).toBe('2');
     expect(requete.params.get('semaine')).toBe('2026-05-04');
     expect(ecran.textContent).toContain('Semaine du lun. 4 mai');
+  });
+
+  it('demande la feuille du collaborateur de la session, pas d’un identifiant écrit en dur', async () => {
+    collaborateurId.set(3);
+    const requete = await ouvrir();
+
+    expect(requete.params.get('collaborateurId')).toBe('3');
+  });
+
+  it('n’envoie aucune requête de feuille pour un compte sans fiche, et le dit', async () => {
+    collaborateurId.set(null);
+    fixture = TestBed.createComponent(FeuilleDeTempsHebdo);
+    ecran = fixture.nativeElement;
+    TestBed.tick();
+
+    http.expectOne((r) => r.url === '/api/projets').flush(projets);
+    http.expectOne('/api/jours-feries').flush([]);
+    await fixture.whenStable();
+
+    http.expectNone((r) => /feuilles-de-temps|affectations|absences/.test(r.url));
+    expect(ecran.textContent).toContain('aucun collaborateur');
   });
 
   it('affiche une ligne par affectation de la semaine, et pas les autres (RG-33)', async () => {

@@ -8,6 +8,7 @@ import { RouterLink } from '@angular/router';
 import { debounceTime, Subject } from 'rxjs';
 import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
 import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
+import { SiRole } from '../../compte/si-role';
 import { CarteProjet } from '../carte-projet/carte-projet';
 import { StatutProjet } from '../projet';
 import { ProjetsApi } from '../projets-api';
@@ -22,6 +23,7 @@ import { ProjetsApi } from '../projets-api';
     MatPaginatorModule,
     MatProgressBarModule,
     RouterLink,
+    SiRole,
   ],
   selector: 'app-liste-projets',
   styleUrl: './liste-projets.scss',
