@@ -1,7 +1,7 @@
 # Module 08 — Une API robuste
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core et EF Core 10.0.15, Npgsql 10.0.3) contre PostgreSQL 18.6, puis rejoué contre SQL Server 2025 (17.0.5045) : les réponses HTTP reproduites ici sont celles qui ont été obtenues. Les commandes `curl.exe` et `Invoke-RestMethod` ont été essayées sous Windows PowerShell 5.1. **Non exécutés** : les migrations (le schéma de l'essai a été créé sans elles), l'envoi depuis un fichier `.http`, les exercices. Les méthodes de `Collaborateur` utilisées ici sont celles que vous avez écrites dans les exercices du module 04 : leurs noms peuvent différer des vôtres.
+> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core et EF Core 10.0.15, Npgsql 10.0.3) contre PostgreSQL 18.6, puis rejoué contre SQL Server 2025 (17.0.5045) : les réponses HTTP reproduites ici sont celles qui ont été obtenues. Les commandes `curl.exe` et `Invoke-RestMethod` ont été essayées sous Windows PowerShell 5.1. **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-07`, mêmes versions ; PostgreSQL 18.6 et SQL Server 2025 en conteneurs, bases recréées par `database drop` puis `database update`) : pas à pas, migrations dans les deux jeux, exercices 1 à 5, `has-pending-model-changes` pour les deux fournisseurs, appels HTTP des critères de réussite sur chaque base (réponses identiques). Corrigés à cette occasion : la réponse de l'étape 2 (avant `AddProblemDetails()`), la vérification d'unicité de l'étape 5 (valeurs normalisées), `Invalide` et `Conflit` rangées dans `Commun/Reponses.cs` et les clés d'erreur en PascalCase (étapes 5 et 6), la borne de `Page` (étape 6), l'application de la migration (étape 7). Non exécutés : l'envoi depuis un fichier `.http`, l'exercice 6.
 
 À la fin du module 07, l'API de Chronos fonctionne tant qu'on lui parle poliment. Envoyez-lui un collaborateur sans nom, une quotité de 5 %, un matricule déjà pris, ou deux modifications de la même fiche à une seconde d'intervalle : elle répond par une erreur 500, par un message différent à chaque fois, ou — pire — elle enregistre.
 
@@ -138,13 +138,11 @@ Content-Type: application/json
 {}
 ```
 
-Réponse `400 Bad Request`, de type `application/problem+json` :
+Réponse `400 Bad Request`, de type `application/json` :
 
 ```json
 {
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
   "title": "One or more validation errors occurred.",
-  "status": 400,
   "errors": {
     "Matricule": ["The Matricule field is required."],
     "Nom": ["The Nom field is required."],
@@ -154,7 +152,7 @@ Réponse `400 Bad Request`, de type `application/problem+json` :
 }
 ```
 
-(La réponse réelle liste les neuf champs obligatoires.) Votre gestionnaire n'a pas été appelé. Faites maintenant l'expérience inverse : remplacez un instant `[Required] DateOnly? DateEntree` par `DateOnly DateEntree` et renvoyez `{}`. L'erreur sur `DateEntree` disparaît, et la date vaudrait `0001-01-01` : un type valeur non nullable **a toujours une valeur**, celle par défaut, et `[Required]` n'y voit rien. Pire pour une énumération : `Categorie` vaudrait silencieusement `Consultant`. Remettez `DateOnly?`.
+(La réponse réelle liste les neuf champs obligatoires.) Votre gestionnaire n'a pas été appelé. Il manque encore `type` et `status`, et le type `application/problem+json` : l'étape 3 les ajoute. Faites maintenant l'expérience inverse : remplacez un instant `[Required] DateOnly? DateEntree` par `DateOnly DateEntree` et renvoyez `{}`. L'erreur sur `DateEntree` disparaît, et la date vaudrait `0001-01-01` : un type valeur non nullable **a toujours une valeur**, celle par défaut, et `[Required]` n'y voit rien. Pire pour une énumération : `Categorie` vaudrait silencieusement `Consultant`. Remettez `DateOnly?`.
 
 Ce qui a été constaté en .NET 10.0.15 :
 
@@ -187,7 +185,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
 app.UseStatusCodePages();
 ```
 
-Trois observations à faire :
+Trois observations à faire. La première suppose que `/api/collaborateurs` sait lire une fiche : si ce n'est pas encore le cas, ajoutez `groupe.MapGet("/{id:int}", Obtenir);` et un gestionnaire `Obtenir` sur le modèle de celui des projets (module 06), qui projette par `VersDto` et répond `TypedResults.NotFound()` quand la fiche n'existe pas ; l'étape 7 s'en sert aussi.
 
 ```powershell
 curl.exe -i http://localhost:5080/api/collaborateurs/999
@@ -255,26 +253,44 @@ builder.Services.AddExceptionHandler<RegleMetierExceptionHandler>();
 
 ### 5. Créer un collaborateur : 201, 409 ou 422
 
-Remplacez le gestionnaire provisoire :
+Plusieurs endpoints vont refuser de la même façon. Rangez ces réponses dans `Chronos.Api/Commun/Reponses.cs`, à côté de `PageDto<T>` :
+
+```csharp
+using Microsoft.AspNetCore.Http.HttpResults;
+
+namespace Chronos.Api.Commun;
+
+/// <summary>Les réponses d'erreur que plusieurs endpoints produisent de la même façon.</summary>
+public static class Reponses
+{
+    /// <summary>400 : un paramètre est refusé. Le nom du champ est écrit comme celui des annotations (PascalCase).</summary>
+    public static ValidationProblem Invalide(string champ, string message) =>
+        TypedResults.ValidationProblem(new Dictionary<string, string[]> { [champ] = [message] });
+
+    /// <summary>409 : la demande est correcte, mais l'état de la ressource ne la permet pas.</summary>
+    public static ProblemHttpResult Conflit(string detail) =>
+        TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: "Conflit", detail: detail);
+}
+```
+
+et ajoutez `using static Chronos.Api.Commun.Reponses;` en tête de `CollaborateursEndpoints.cs` : `Conflit(…)` et `Invalide(…)` s'écrivent alors sans préfixe. `Invalide` sert à l'étape 6 ; les modules 09 et 10 l'appellent aussi. Remplacez ensuite le gestionnaire provisoire :
 
 ```csharp
 private static async Task<Results<Created<CollaborateurDto>, ProblemHttpResult>> Creer(
     CreerCollaborateurRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
 {
-    var dejaPris = await db.Collaborateurs
-        .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
-        .AnyAsync(c => c.Matricule == requete.Matricule || c.Email == requete.Email, cancellationToken);
-    if (dejaPris)
-    {
-        return TypedResults.Problem(
-            statusCode: StatusCodes.Status409Conflict,
-            detail: "Un collaborateur porte déjà ce matricule ou cette adresse électronique (RG-01).");
-    }
-
     var collaborateur = new Collaborateur(requete.Matricule, requete.Nom, requete.Prenom, requete.Email,
         requete.Categorie!.Value, requete.Poste, requete.DateEntree!.Value);
     collaborateur.AjouterContrat(requete.TypeContrat!.Value, requete.Quotite!.Value, requete.DateEntree.Value);
     collaborateur.RattacherA(requete.ManagerId);
+
+    var dejaPris = await db.Collaborateurs
+        .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
+        .AnyAsync(c => c.Matricule == collaborateur.Matricule || c.Email == collaborateur.Email, cancellationToken);
+    if (dejaPris)
+    {
+        return Conflit("Un collaborateur porte déjà ce matricule ou cette adresse électronique (RG-01).");
+    }
 
     db.Collaborateurs.Add(collaborateur);
     await db.SaveChangesAsync(cancellationToken);
@@ -287,7 +303,8 @@ private static async Task<Results<Created<CollaborateurDto>, ProblemHttpResult>>
 
 - **Les `!.Value`** sont légitimes ici, et ici seulement : la validation a garanti que ces valeurs sont présentes.
 - **`IgnoreQueryFilters`** : l'index unique voit aussi les collaborateurs archivés ; la vérification doit les voir également.
-- **La casse** : PostgreSQL distingue `m010` de `M010`, SQL Server non (module 07). La vérification compare donc des valeurs que le domaine a déjà normalisées — c'était l'exercice 1 du module 07.
+- **La casse** : PostgreSQL distingue `m010` de `M010`, SQL Server non (module 07). La vérification compare donc les valeurs que le domaine a déjà normalisées — `collaborateur.Matricule`, et non `requete.Matricule` — : c'était l'exercice 1 du module 07. C'est pourquoi l'entité est construite **avant** la vérification.
+- **Le titre `Conflit`** est celui qu'écrira aussi le filet ci-dessous : un client reçoit le même `409`, quelle que soit la pièce qui l'a détecté.
 - **`AjouterContrat` lève RG-03** si la quotité sort des bornes. Essayez `"quotite": 0.05` :
 
 ```json
@@ -300,7 +317,7 @@ private static async Task<Results<Created<CollaborateurDto>, ProblemHttpResult>>
 }
 ```
 
-Avec un corps valide, la réponse est `201 Created`, porte l'en-tête `Location: /api/collaborateurs/4` et le DTO. Renvoyez la même requête : `409`.
+Avec un corps valide, la réponse est `201 Created`, porte l'en-tête `Location: /api/collaborateurs/3` (sur une base qui ne contient que les deux collaborateurs des données initiales) et le DTO. Renvoyez la même requête : `409`.
 
 **La vérification préalable ne suffit pas.** Entre `AnyAsync` et `SaveChangesAsync`, une autre requête peut insérer le même matricule : l'index unique refuse alors, EF Core lève `DbUpdateException`, et le client reçoit un 500. Il faut un filet. Chaque SGBD signale cette violation par son propre code ; on enferme ce savoir dans l'infrastructure. `Chronos.Infrastructure/ErreursBaseDeDonnees.cs` :
 
@@ -352,12 +369,14 @@ La pagination existe depuis le module 06 (`PageDto<T>`, `page`, `taille`). Il lu
 
 ```csharp
 public record FiltreCollaborateurs(
-    [Range(1, int.MaxValue)] int Page = 1,
-    [Range(1, 100)] int Taille = 20,
-    [StringLength(100)] string? Recherche = null,
+    [property: Range(1, 1_000_000)] int Page = 1,
+    [property: Range(1, 100)] int Taille = 20,
+    [property: StringLength(100)] string? Recherche = null,
     string? Statut = null,
     string? Tri = null);
 ```
+
+**Notez le `property:`** devant chaque annotation. Dans un record, une annotation écrite sur un paramètre du constructeur s'applique au paramètre ; `property:` la fait porter sur la propriété générée. Pour un type reçu par `[AsParameters]`, la différence n'est pas un détail : avec l'annotation sur le paramètre, la validation fonctionne, mais la génération du document OpenAPI échoue — `/openapi/v1.json` répond `500` et Scalar n'affiche plus rien. Constaté en construisant la solution de référence, et resté inaperçu pendant quatre modules faute d'un test qui appelle ce document : ouvrez Scalar après cette étape.
 
 Le gestionnaire le reçoit avec `[AsParameters]` : chaque propriété est lue dans la chaîne de requête, les valeurs par défaut s'appliquent, et les annotations sont validées (`?taille=500` répond `400`, avec la clé `Taille`).
 
@@ -389,7 +408,7 @@ private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProbl
             requete = requete.Where(c => c.DateSortie < aujourdhui);
             break;
         default:
-            return Invalide("statut", "Valeurs acceptées : actif, sorti.");
+            return Invalide("Statut", "Valeurs acceptées : actif, sorti.");
     }
 
     IOrderedQueryable<Collaborateur> triee;
@@ -405,7 +424,7 @@ private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProbl
             triee = requete.OrderBy(c => c.Matricule);
             break;
         default:
-            return Invalide("tri", "Valeurs acceptées : nom, -nom, matricule.");
+            return Invalide("Tri", "Valeurs acceptées : nom, -nom, matricule.");
     }
 
     var total = await requete.CountAsync(cancellationToken);
@@ -419,15 +438,14 @@ private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProbl
 
     return TypedResults.Ok(new PageDto<CollaborateurDto>(elements, filtre.Page, filtre.Taille, total));
 }
-
-private static ValidationProblem Invalide(string parametre, string message) =>
-    TypedResults.ValidationProblem(new Dictionary<string, string[]> { [parametre] = [message] });
 ```
+
+- **`Invalide("Statut", …)`** produit la même réponse qu'une annotation violée, avec une clé en PascalCase comme celles d'`AddValidation()` : l'interface n'a qu'une convention à connaître.
 
 - **Une requête se compose** : chaque `Where` s'ajoute, rien n'est exécuté avant `CountAsync` et `ToListAsync`. Deux requêtes SQL partent, quel que soit le filtre.
 - **Le tri est une liste blanche.** La chaîne `tri` ne sert qu'à **choisir** parmi des expressions écrites par vous. Elle n'est jamais collée dans une requête : `?tri=email;drop table` répond `400`, rien de plus.
 - **`ThenBy(c => c.Id)`** rend l'ordre total. Deux collaborateurs de même nom n'ont sinon aucun ordre garanti entre eux, et l'un d'eux peut apparaître sur deux pages ou sur aucune.
-- **`Taille` est bornée** : sans plafond, `?taille=1000000` devient un moyen simple de mettre l'API à genoux.
+- **`Taille` est bornée** : sans plafond, `?taille=1000000` devient un moyen simple de mettre l'API à genoux. **`Page` aussi** : avec `[Range(1, int.MaxValue)]`, `?page=2147483647` fait déborder `(Page - 1) * Taille`, et la base reçoit un décalage négatif (`500`, constaté).
 - **`ToLower()` des deux côtés** donne une recherche insensible à la casse sur les deux SGBD (PostgreSQL y est sensible par défaut, SQL Server non). Le prix : aucun index ne sert. C'est acceptable pour quelques centaines de collaborateurs.
 - **`TimeProvider`** fournit la date du jour. Enregistrez-le avec `builder.Services.AddSingleton(TimeProvider.System);` ; le [module 09](09-affectations-et-calcul-de-charge.md) explique pourquoi on ne lit pas l'horloge directement.
 
@@ -463,7 +481,11 @@ dotnet ef migrations add VersionCollaborateur --project Chronos.Migrations.Postg
 dotnet ef migrations add VersionCollaborateur --project Chronos.Migrations.SqlServer --startup-project Chronos.Api -- --Chronos:Fournisseur SqlServer
 ```
 
-Lisez les migrations avant de les appliquer : les lignes existantes reçoivent toutes le même jeton, `00000000-…`. Ce n'est pas gênant — il sera renouvelé à leur première modification.
+Lisez les migrations avant de les appliquer : les lignes existantes reçoivent toutes le même jeton, `00000000-…`. Ce n'est pas gênant — il sera renouvelé à leur première modification. Appliquez ensuite celle de votre fournisseur courant, par exemple :
+
+```powershell
+dotnet ef database update --project Chronos.Migrations.PostgreSql --startup-project Chronos.Api -- --Chronos:Fournisseur PostgreSql
+```
 
 Ajoutez `Guid Version` en dernière position de `CollaborateurDto` et de sa projection `VersDto`. Votre DTO est né d'un exercice du module 06 ; c'est le moment de lui donner sa forme de référence, celle sur laquelle s'appuient les modules suivants et l'interface :
 
@@ -499,12 +521,13 @@ private static async Task<Results<Ok<CollaborateurDto>, NotFound, ProblemHttpRes
         return TypedResults.NotFound();
     }
 
-    // Même vérification d'unicité qu'à l'étape 5, sur l'adresse seule et en excluant c.Id == id.
-
     db.Entry(collaborateur).Property(c => c.Version).OriginalValue = requete.Version!.Value;
 
     collaborateur.Modifier(requete.Nom, requete.Prenom, requete.Email, requete.Poste,
         requete.DateSortie, requete.ManagerId);
+
+    // Même vérification d'unicité qu'à l'étape 5, sur l'adresse normalisée (collaborateur.Email)
+    // et en excluant c.Id == id ; Conflit(…) si elle est prise.
 
     await db.SaveChangesAsync(cancellationToken);
 
@@ -604,11 +627,11 @@ Dans les deux cas le client reçoit `204`, et un `GET` suivant répond `404`. Le
 
 2. **Les clients.** Écrivez le CRUD complet de `/api/clients`. Que répond `DELETE` pour un client qui a des projets ? Lisez l'exception dans le journal, décidez du code HTTP, et traitez ce cas **avant** d'appeler la base.
 
-3. **Changer le statut d'un projet.** `Demarrer()`, `Terminer()` et `Annuler()` lèvent `InvalidOperationException` quand la transition est impossible. Constatez ce que reçoit le client aujourd'hui. Proposez une réponse plus juste, et mettez-la en œuvre sans traduire globalement toutes les `InvalidOperationException`.
+3. **Changer le statut d'un projet.** `Demarrer()`, `Terminer()` et `Annuler()` lèvent `InvalidOperationException` quand la transition est impossible. Constatez ce que reçoit le client aujourd'hui. Proposez une réponse plus juste, et mettez-la en œuvre sans traduire globalement toutes les `InvalidOperationException`. Exposez chaque transition comme le fera le module 10 pour les feuilles de temps : un `POST` vers un **nom** d'action — `POST /api/projets/{id}/demarrage`, `…/achevement`, `…/annulation` —, qui renvoie le `ProjetDto` à jour.
 
 4. **Des messages pour l'utilisateur.** Donnez un `ErrorMessage` en français aux annotations de `CreerCollaborateurRequete`. Puis envoyez à `PUT /api/collaborateurs/{id}` un corps sans `version` : la réponse est-elle celle que vous attendiez ? Et avec `"version": "abc"` ?
 
-5. **Finir RG-04.** Un `managerId` inconnu répond aujourd'hui `500` : faites-en un `400` avec une entrée `errors`, à la création comme à la modification. La création a-t-elle besoin de `VerifierChaineDeManagers` ? Pourquoi ? Comptez dans le journal les requêtes émises pour une chaîne de trois niveaux. Enfin, deux gestionnaires RH modifient au même instant deux fiches différentes, chacun rattachant l'une à l'autre : la vérification suffit-elle ? Gardez la question pour le module 10.
+5. **Finir RG-04.** Un `managerId` inconnu répond aujourd'hui `500` : faites-en un `400` avec une entrée `errors` (clé `ManagerId`, par `Invalide`), à la création comme à la modification. Faites de même pour le client et le responsable d'un projet (`ClientId`, `ResponsableId`). La création a-t-elle besoin de `VerifierChaineDeManagers` ? Pourquoi ? Comptez dans le journal les requêtes émises pour une chaîne de trois niveaux. Enfin, deux gestionnaires RH modifient au même instant deux fiches différentes, chacun rattachant l'une à l'autre : la vérification suffit-elle ? Gardez la question pour le module 10.
 
 6. **Le filet, pour de vrai.** Provoquez la violation d'index unique sans passer par la vérification préalable (retirez-la un instant) et vérifiez que la réponse est bien `409` sur PostgreSQL **et** sur SQL Server. Quelle exception interne voyez-vous dans le journal de chacun ?
 
@@ -617,6 +640,7 @@ Dans les deux cas le client reçoit `204`, et un `GET` suivant répond `404`. Le
 - `POST /api/collaborateurs` répond `400` avec un `errors` par champ pour `{}`, `422` avec `"regle": "RG-03"` pour une quotité de 5 %, `201` avec `Location` pour une requête valide, `409` pour un matricule ou une adresse déjà pris — y compris ceux d'un collaborateur archivé.
 - Un JSON illisible répond `400` en `Development` comme en production ; une exception inattendue répond `500` sans message ni pile d'appels dans le corps.
 - Toutes les réponses d'erreur ont le type `application/problem+json`, `404` compris.
+- En développement, `/openapi/v1.json` répond `200` et Scalar affiche les bornes de `page` et de `taille`.
 - `GET /api/collaborateurs` refuse `taille=500`, `page=0` et un `tri` inconnu par un `400`, et n'émet que deux requêtes SQL.
 - Deux `PUT` envoyés avec la même `version` donnent `200` puis `409` ; le journal montre `AND "Version" = …` dans l'`UPDATE`.
 - Rattacher un manager à l'un de ses subordonnés, direct ou indirect, répond `422` avec `"regle": "RG-04"`.
@@ -628,6 +652,7 @@ Dans les deux cas le client reçoit `204`, et un `GET` suivant répond `404`. Le
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
+| `[Range(…)] int Page` dans un record reçu par `[AsParameters]` | L'annotation porte sur le paramètre du constructeur : la validation passe, mais le document OpenAPI ne se génère plus (`500`). Constaté. | `[property: Range(…)] int Page`, et un test qui lit `/openapi/v1.json`. |
 | Renvoyer ou recevoir l'entité EF Core | Le JSON public suit le schéma de la base ; le client peut fixer des propriétés qu'il ne devrait pas toucher. | Une requête en entrée, un DTO en sortie. |
 | Valider à la main dans chaque endpoint, ou par un filtre d'endpoint | Pratique d'avant .NET 10 : du code répété, des réponses différentes d'un endpoint à l'autre. | Annotations et `AddValidation()`. |
 | `[Required]` sur un `DateOnly`, un `int` ou une énumération non nullables | Le champ absent prend la valeur par défaut (`0001-01-01`, `0`, la première valeur) sans erreur. Constaté. | `DateOnly?`, `int?`, `Enum?` avec `[Required]`. |

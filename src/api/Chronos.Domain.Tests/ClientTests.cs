@@ -17,4 +17,22 @@ public class ClientTests
     {
         Assert.Throws<ArgumentException>(() => new Client(nom));
     }
+
+    [Fact]
+    public void Renommer_remplace_le_nom_sans_espaces_superflus()
+    {
+        var client = new Client("Banque du Littoral");
+
+        client.Renommer("  Banque de l'Ouest ");
+
+        Assert.Equal("Banque de l'Ouest", client.Nom);
+    }
+
+    [Fact]
+    public void Renommer_avec_un_nom_vide_est_refuse()
+    {
+        var client = new Client("Banque du Littoral");
+
+        Assert.Throws<ArgumentException>(() => client.Renommer("  "));
+    }
 }

@@ -39,6 +39,7 @@ public static class DonneesInitiales
     {
         var sophie = new Collaborateur("M0001", "Martin", "Sophie", "sophie.martin@chronos.example",
             CategorieCollaborateur.Interne, "Directrice de projets", new DateOnly(2019, 9, 2));
+        sophie.AjouterContrat(TypeContrat.Cdi, 1m, new DateOnly(2019, 9, 2));
         var client = new Client("Banque du Littoral");
 
         context.AddRange(sophie, client);

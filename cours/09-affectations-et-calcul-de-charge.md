@@ -552,11 +552,11 @@ private static async Task<Results<Ok<PlanDeChargeDto>, ValidationProblem>> Obten
 
     if (fin < debut || fin.DayNumber - debut.DayNumber > 366)
     {
-        return Invalide("au", "La période demandée va de « du » à « au », sur un an au plus.");
+        return Invalide("Au", "La période demandée va de « du » à « au », sur un an au plus.");
     }
     if (pas is not (null or "semaine" or "mois"))
     {
-        return Invalide("pas", "Valeurs acceptées : semaine, mois.");
+        return Invalide("Pas", "Valeurs acceptées : semaine, mois.");
     }
 
     var periode = new Periode(debut, fin);

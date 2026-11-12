@@ -40,6 +40,10 @@ public class Collaborateur
     public int? ManagerId { get; private set; }
     public Collaborateur? Manager { get; private set; }
     public bool EstArchive { get; private set; }
+
+    /// <summary>Jeton de concurrence optimiste : renouvelé à chaque modification de la fiche.</summary>
+    public Guid Version { get; private set; } = Guid.NewGuid();
+
     public IReadOnlyCollection<Contrat> Contrats => _contrats;
 
     public void Modifier(
@@ -57,6 +61,7 @@ public class Collaborateur
         Poste = poste.Trim();
         DateSortie = dateSortie;
         ManagerId = managerId;
+        Version = Guid.NewGuid();
     }
 
     public void DeclarerSortie(DateOnly dateSortie)
@@ -64,11 +69,20 @@ public class Collaborateur
         VerifierDateSortie(dateSortie);
 
         DateSortie = dateSortie;
+        Version = Guid.NewGuid();
     }
 
-    public void RattacherA(int? managerId) => ManagerId = managerId;
+    public void RattacherA(int? managerId)
+    {
+        ManagerId = managerId;
+        Version = Guid.NewGuid();
+    }
 
-    public void Archiver() => EstArchive = true;
+    public void Archiver()
+    {
+        EstArchive = true;
+        Version = Guid.NewGuid();
+    }
 
     public void AjouterContrat(TypeContrat type, decimal quotite, DateOnly dateDebut)
     {
@@ -87,6 +101,7 @@ public class Collaborateur
         }
 
         _contrats.Add(contrat);
+        Version = Guid.NewGuid();
     }
 
     public decimal QuotiteAu(DateOnly jour) =>

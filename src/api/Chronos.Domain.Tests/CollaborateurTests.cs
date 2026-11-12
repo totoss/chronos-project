@@ -220,4 +220,46 @@ public class CollaborateurTests
         Assert.Throws<InvalidOperationException>(() =>
             collaborateur.AjouterContrat(TypeContrat.Cdi, 0.8m, Entree));
     }
+
+    private static void VerifierQueLaVersionChange(Action<Collaborateur> modification)
+    {
+        var collaborateur = CreerCollaborateur();
+        var avant = collaborateur.Version;
+
+        modification(collaborateur);
+
+        Assert.NotEqual(avant, collaborateur.Version);
+    }
+
+    [Fact]
+    public void Modifier_renouvelle_la_version() =>
+        VerifierQueLaVersionChange(c =>
+            c.Modifier("Durand", "Camille", "camille.durand@chronos.example", "Cheffe de projet", null, null));
+
+    [Fact]
+    public void DeclarerSortie_renouvelle_la_version() =>
+        VerifierQueLaVersionChange(c => c.DeclarerSortie(Entree.AddDays(30)));
+
+    [Fact]
+    public void RattacherA_renouvelle_la_version() =>
+        VerifierQueLaVersionChange(c => c.RattacherA(1));
+
+    [Fact]
+    public void Archiver_renouvelle_la_version() =>
+        VerifierQueLaVersionChange(c => c.Archiver());
+
+    [Fact]
+    public void AjouterContrat_renouvelle_la_version() =>
+        VerifierQueLaVersionChange(c => c.AjouterContrat(TypeContrat.Cdi, 1m, Entree));
+
+    [Fact]
+    public void Une_modification_refusee_ne_renouvelle_pas_la_version()
+    {
+        var collaborateur = CreerCollaborateur();
+        var avant = collaborateur.Version;
+
+        Assert.Throws<RegleMetierException>(() => collaborateur.DeclarerSortie(Entree.AddDays(-1)));
+
+        Assert.Equal(avant, collaborateur.Version);
+    }
 }

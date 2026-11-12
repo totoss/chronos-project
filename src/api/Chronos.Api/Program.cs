@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json.Serialization;
 using Chronos.Api.Clients;
 using Chronos.Api.Collaborateurs;
+using Chronos.Api.Erreurs;
 using Chronos.Api.Projets;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,11 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddValidation();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<RegleMetierExceptionHandler>();
+builder.Services.AddExceptionHandler<ConflitExceptionHandler>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 
@@ -45,6 +51,14 @@ builder.Services.AddDbContext<ChronosDbContext>(options =>
 });
 
 var app = builder.Build();
+
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    StatusCodeSelector = exception => exception is BadHttpRequestException requeteIllisible
+        ? requeteIllisible.StatusCode
+        : StatusCodes.Status500InternalServerError,
+});
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {

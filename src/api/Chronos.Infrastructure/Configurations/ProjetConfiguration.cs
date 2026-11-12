@@ -13,6 +13,8 @@ public class ProjetConfiguration : IEntityTypeConfiguration<Projet>
 
         builder.Property(p => p.Libelle).HasMaxLength(200);
 
+        builder.Property(p => p.Version).IsConcurrencyToken();
+
         builder.HasOne(p => p.Client)
             .WithMany()
             .HasForeignKey(p => p.ClientId)

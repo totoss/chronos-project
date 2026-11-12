@@ -232,4 +232,86 @@ public class ProjetTests
 
         Assert.Equal("BDL-REFONTE", projet.Code);
     }
+
+    [Fact]
+    public void Modifier_remplace_les_champs_et_renouvelle_la_version()
+    {
+        var projet = CreerProjetInterne();
+        var avant = projet.Version;
+
+        projet.Modifier("  Nouveau libellé ", NatureProjet.Facturable, clientId: 3, Debut, Debut.AddDays(30),
+            budgetJours: 80, responsableId: 2);
+
+        Assert.Equal("Nouveau libellé", projet.Libelle);
+        Assert.Equal(NatureProjet.Facturable, projet.Nature);
+        Assert.Equal(3, projet.ClientId);
+        Assert.Equal(Debut.AddDays(30), projet.DateFin);
+        Assert.Equal(80, projet.BudgetJours);
+        Assert.Equal(2, projet.ResponsableId);
+        Assert.NotEqual(avant, projet.Version);
+    }
+
+    [Fact]
+    public void Modifier_un_projet_facturable_sans_client_est_refuse_et_laisse_la_version_intacte()
+    {
+        var projet = CreerProjetInterne();
+        var avant = projet.Version;
+
+        var exception = Assert.Throws<RegleMetierException>(() =>
+            projet.Modifier("Refonte", NatureProjet.Facturable, clientId: null, Debut, null, 80, 1));
+
+        Assert.Equal("RG-11", exception.CodeRegle);
+        Assert.Equal(avant, projet.Version);
+    }
+
+    [Fact]
+    public void Modifier_avec_une_fin_avant_le_debut_est_refuse()
+    {
+        var projet = CreerProjetInterne();
+
+        var exception = Assert.Throws<RegleMetierException>(() =>
+            projet.Modifier("Refonte", NatureProjet.Interne, null, Debut, Debut.AddDays(-1), 80, 1));
+
+        Assert.Equal("RG-12", exception.CodeRegle);
+    }
+
+    [Theory]
+    [InlineData(StatutProjet.EnPreparation, true, false, true)]
+    [InlineData(StatutProjet.EnCours, false, true, true)]
+    [InlineData(StatutProjet.Termine, false, false, false)]
+    [InlineData(StatutProjet.Annule, false, false, false)]
+    public void Les_transitions_possibles_dependent_du_statut(
+        StatutProjet statut, bool peutDemarrer, bool peutTerminer, bool peutAnnuler)
+    {
+        var projet = CreerProjetAuStatut(statut);
+
+        Assert.Equal(peutDemarrer, projet.PeutDemarrer);
+        Assert.Equal(peutTerminer, projet.PeutTerminer);
+        Assert.Equal(peutAnnuler, projet.PeutAnnuler);
+    }
+
+    [Fact]
+    public void Chaque_transition_renouvelle_la_version()
+    {
+        var projet = CreerProjetInterne();
+        var versions = new List<Guid> { projet.Version };
+
+        projet.Demarrer();
+        versions.Add(projet.Version);
+        projet.Terminer();
+        versions.Add(projet.Version);
+
+        Assert.Equal(3, versions.Distinct().Count());
+    }
+
+    [Fact]
+    public void Annuler_renouvelle_la_version()
+    {
+        var projet = CreerProjetInterne();
+        var avant = projet.Version;
+
+        projet.Annuler();
+
+        Assert.NotEqual(avant, projet.Version);
+    }
 }

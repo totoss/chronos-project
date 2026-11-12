@@ -11,4 +11,11 @@ public class Client
 
     public int Id { get; private set; }
     public string Nom { get; private set; }
+
+    public void Renommer(string nom)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nom);
+
+        Nom = nom.Trim();
+    }
 }

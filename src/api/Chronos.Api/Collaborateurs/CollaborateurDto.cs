@@ -14,4 +14,5 @@ public record CollaborateurDto(
     string? ManagerNom,
     DateOnly DateEntree,
     DateOnly? DateSortie,
-    decimal Quotite);
+    decimal Quotite,
+    Guid Version);

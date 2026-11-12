@@ -37,7 +37,7 @@ namespace Chronos.Migrations.PostgreSql.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Clients", (string)null);
+                    b.ToTable("Clients");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>
@@ -90,6 +90,10 @@ namespace Chronos.Migrations.PostgreSql.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
@@ -102,7 +106,7 @@ namespace Chronos.Migrations.PostgreSql.Migrations
 
                     b.HasIndex("Nom");
 
-                    b.ToTable("Collaborateurs", (string)null);
+                    b.ToTable("Collaborateurs");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Contrat", b =>
@@ -135,7 +139,7 @@ namespace Chronos.Migrations.PostgreSql.Migrations
 
                     b.HasIndex("CollaborateurId");
 
-                    b.ToTable("Contrats", (string)null);
+                    b.ToTable("Contrats");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Projet", b =>
@@ -181,6 +185,10 @@ namespace Chronos.Migrations.PostgreSql.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
@@ -190,7 +198,7 @@ namespace Chronos.Migrations.PostgreSql.Migrations
 
                     b.HasIndex("ResponsableId");
 
-                    b.ToTable("Projets", (string)null);
+                    b.ToTable("Projets");
                 });
 
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>

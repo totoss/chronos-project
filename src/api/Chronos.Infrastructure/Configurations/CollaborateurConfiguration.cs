@@ -24,6 +24,8 @@ public class CollaborateurConfiguration : IEntityTypeConfiguration<Collaborateur
 
         builder.Property(c => c.Poste).HasMaxLength(100);
 
+        builder.Property(c => c.Version).IsConcurrencyToken();
+
         builder.HasOne(c => c.Manager)
             .WithMany()
             .HasForeignKey(c => c.ManagerId)

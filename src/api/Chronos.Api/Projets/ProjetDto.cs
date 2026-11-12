@@ -14,14 +14,5 @@ public record ProjetDto(
     int BudgetJours,
     int ResponsableId,
     string ResponsableNom,
-    StatutProjet Statut);
-
-public record CreerProjetRequete(
-    string Code,
-    string Libelle,
-    NatureProjet Nature,
-    int? ClientId,
-    DateOnly DateDebut,
-    DateOnly? DateFin,
-    int BudgetJours,
-    int ResponsableId);
+    StatutProjet Statut,
+    Guid Version);

@@ -42,36 +42,72 @@ public class Projet
     public Collaborateur? Responsable { get; private set; }
     public StatutProjet Statut { get; private set; }
 
+    /// <summary>Jeton de concurrence optimiste : renouvelé à chaque modification du projet.</summary>
+    public Guid Version { get; private set; } = Guid.NewGuid();
+
     public bool EstClos => Statut is StatutProjet.Termine or StatutProjet.Annule;
+
+    public bool PeutDemarrer => Statut == StatutProjet.EnPreparation;
+
+    public bool PeutTerminer => Statut == StatutProjet.EnCours;
+
+    public bool PeutAnnuler => !EstClos;
+
+    public void Modifier(
+        string libelle,
+        NatureProjet nature,
+        int? clientId,
+        DateOnly dateDebut,
+        DateOnly? dateFin,
+        int budgetJours,
+        int responsableId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(libelle);
+        ArgumentOutOfRangeException.ThrowIfNegative(budgetJours);
+        VerifierClient(nature, clientId);
+        VerifierDates(dateDebut, dateFin);
+
+        Libelle = libelle.Trim();
+        Nature = nature;
+        ClientId = clientId;
+        DateDebut = dateDebut;
+        DateFin = dateFin;
+        BudgetJours = budgetJours;
+        ResponsableId = responsableId;
+        Version = Guid.NewGuid();
+    }
 
     public void Demarrer()
     {
-        if (Statut != StatutProjet.EnPreparation)
+        if (!PeutDemarrer)
         {
             throw new InvalidOperationException($"Un projet {Statut} ne peut pas être démarré.");
         }
 
         Statut = StatutProjet.EnCours;
+        Version = Guid.NewGuid();
     }
 
     public void Terminer()
     {
-        if (Statut != StatutProjet.EnCours)
+        if (!PeutTerminer)
         {
             throw new InvalidOperationException($"Un projet {Statut} ne peut pas être terminé.");
         }
 
         Statut = StatutProjet.Termine;
+        Version = Guid.NewGuid();
     }
 
     public void Annuler()
     {
-        if (EstClos)
+        if (!PeutAnnuler)
         {
             throw new InvalidOperationException($"Un projet {Statut} ne peut pas être annulé.");
         }
 
         Statut = StatutProjet.Annule;
+        Version = Guid.NewGuid();
     }
 
     public void VerifierOuvert()

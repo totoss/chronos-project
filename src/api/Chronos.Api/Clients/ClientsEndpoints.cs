@@ -3,6 +3,7 @@ using Chronos.Domain;
 using Chronos.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using static Chronos.Api.Commun.Reponses;
 
 namespace Chronos.Api.Clients;
 
@@ -15,6 +16,8 @@ public static class ClientsEndpoints
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
         groupe.MapPost("/", Creer);
+        groupe.MapPut("/{id:int}", Modifier);
+        groupe.MapDelete("/{id:int}", Supprimer);
 
         return groupe;
     }
@@ -55,5 +58,42 @@ public static class ClientsEndpoints
 
         var dto = new ClientDto(client.Id, client.Nom, ProjetsEnCours: 0);
         return TypedResults.Created($"/api/clients/{dto.Id}", dto);
+    }
+
+    private static async Task<Results<Ok<ClientDto>, NotFound>> Modifier(
+        int id, ModifierClientRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    {
+        var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (client is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        client.Renommer(requete.Nom);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.Ok(await db.Clients
+            .Where(c => c.Id == id).Select(VersDto(db)).SingleAsync(cancellationToken));
+    }
+
+    private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> Supprimer(
+        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    {
+        var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (client is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // La clé étrangère refuserait de toute façon (RESTRICT) ; on répond avant, et par un 409 plutôt qu'une 500.
+        if (await db.Projets.AnyAsync(p => p.ClientId == id, cancellationToken))
+        {
+            return Conflit("Ce client a des projets : il ne peut pas être supprimé.");
+        }
+
+        db.Clients.Remove(client);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.NoContent();
     }
 }

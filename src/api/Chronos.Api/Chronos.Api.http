@@ -18,3 +18,10 @@ Content-Type: application/json
   "budgetJours": 15,
   "responsableId": 1
 }
+
+###
+
+POST {{Chronos.Api_HostAddress}}/api/collaborateurs
+Content-Type: application/json
+
+{}
