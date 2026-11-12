@@ -1,13 +1,10 @@
-using System.Net.Http.Json;
 using Chronos.Api.Securite;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Identite;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 

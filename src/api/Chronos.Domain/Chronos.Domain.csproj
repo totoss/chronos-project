@@ -1,3 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+  </PropertyGroup>
+
 </Project>

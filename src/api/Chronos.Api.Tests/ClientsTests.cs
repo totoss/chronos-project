@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Chronos.Api.Tests;
@@ -12,6 +11,7 @@ public class ClientsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _client.Dispose();
         return ValueTask.CompletedTask;
     }
@@ -52,8 +52,16 @@ public class ClientsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
         var client = await creation.Content.ReadFromJsonAsync<JsonElement>(ct);
         var clientId = client.GetProperty("id").GetInt32();
         var projet = await _client.PostAsJsonAsync("/api/projets",
-            new { code = "CLI-PROJET", libelle = "Projet du client", nature = "Facturable", clientId,
-                dateDebut = "2026-05-04", budgetJours = 10, responsableId = 1 }, ct);
+            new
+            {
+                code = "CLI-PROJET",
+                libelle = "Projet du client",
+                nature = "Facturable",
+                clientId,
+                dateDebut = "2026-05-04",
+                budgetJours = 10,
+                responsableId = 1
+            }, ct);
         Assert.Equal(HttpStatusCode.Created, projet.StatusCode);
 
         var suppression = await _client.DeleteAsync($"/api/clients/{clientId}", ct);

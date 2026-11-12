@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Chronos.Api.Tests;
@@ -12,6 +11,7 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _client.Dispose();
         return ValueTask.CompletedTask;
     }
@@ -39,8 +39,16 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
     public async Task Un_projet_facturable_sans_client_renvoie_422_et_cite_la_regle()
     {
         var ct = TestContext.Current.CancellationToken;
-        var requete = new { code = "P-001", libelle = "Refonte", nature = "Facturable", clientId = (int?)null,
-            dateDebut = "2026-05-04", budgetJours = 40, responsableId = 1 };
+        var requete = new
+        {
+            code = "P-001",
+            libelle = "Refonte",
+            nature = "Facturable",
+            clientId = (int?)null,
+            dateDebut = "2026-05-04",
+            budgetJours = 40,
+            responsableId = 1
+        };
 
         var reponse = await _client.PostAsJsonAsync("/api/projets", requete, ct);
 
@@ -62,8 +70,16 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
         Assert.Equal("EnPreparation", cree.GetProperty("statut").GetString());
 
         var modification = await _client.PutAsJsonAsync(creation.Headers.Location,
-            new { libelle = "Refonte du portail", nature = "Facturable", clientId, dateDebut = "2026-05-04",
-                budgetJours = 55, responsableId = 1, version = cree.GetProperty("version").GetGuid() }, ct);
+            new
+            {
+                libelle = "Refonte du portail",
+                nature = "Facturable",
+                clientId,
+                dateDebut = "2026-05-04",
+                budgetJours = 55,
+                responsableId = 1,
+                version = cree.GetProperty("version").GetGuid()
+            }, ct);
         Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
 
         var lu = await _client.GetFromJsonAsync<JsonElement>(creation.Headers.Location, ct);
@@ -100,8 +116,16 @@ public class ProjetsTests(ChronosApiFactory factory) : IClassFixture<ChronosApiF
         var clientId = await CreerClientAsync("Concurrence SA");
         var creation = await _client.PostAsJsonAsync("/api/projets", NouveauProjet("P-CONCURRENCE", clientId), ct);
         var cree = await creation.Content.ReadFromJsonAsync<JsonElement>(ct);
-        var modification = new { libelle = "Modifié", nature = "Facturable", clientId, dateDebut = "2026-05-04",
-            budgetJours = 41, responsableId = 1, version = cree.GetProperty("version").GetGuid() };
+        var modification = new
+        {
+            libelle = "Modifié",
+            nature = "Facturable",
+            clientId,
+            dateDebut = "2026-05-04",
+            budgetJours = 41,
+            responsableId = 1,
+            version = cree.GetProperty("version").GetGuid()
+        };
 
         var premiere = await _client.PutAsJsonAsync(creation.Headers.Location, modification, ct);
         var seconde = await _client.PutAsJsonAsync(creation.Headers.Location, modification, ct);

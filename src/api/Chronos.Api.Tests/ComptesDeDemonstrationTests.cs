@@ -1,11 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Api.Securite;
 using Chronos.Infrastructure.Identite;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 

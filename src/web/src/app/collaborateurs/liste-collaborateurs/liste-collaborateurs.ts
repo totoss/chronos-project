@@ -107,7 +107,9 @@ export class ListeCollaborateurs {
 
     this.api.supprimer(collaborateur.id).subscribe({
       next: () => this.collaborateurs.reload(),
-      error: () => {}, // l'intercepteur a déjà notifié l'utilisateur
+      error: () => {
+        // l'intercepteur a déjà notifié l'utilisateur
+      },
     });
   }
 

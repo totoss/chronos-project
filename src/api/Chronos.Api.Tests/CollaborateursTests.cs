@@ -1,11 +1,10 @@
+using System.Globalization;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Chronos.Infrastructure.Configurations;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
@@ -17,6 +16,7 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _client.Dispose();
         return ValueTask.CompletedTask;
     }
@@ -57,9 +57,18 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
     public async Task Une_requete_invalide_renvoie_400_avec_les_erreurs_par_champ()
     {
         var ct = TestContext.Current.CancellationToken;
-        var requete = new { matricule = "", nom = "Martin", prenom = "Camille", email = "pas-une-adresse",
-            categorie = "Consultant", poste = "Développeuse", dateEntree = "2024-09-02",
-            typeContrat = "Cdi", quotite = 1 };
+        var requete = new
+        {
+            matricule = "",
+            nom = "Martin",
+            prenom = "Camille",
+            email = "pas-une-adresse",
+            categorie = "Consultant",
+            poste = "Développeuse",
+            dateEntree = "2024-09-02",
+            typeContrat = "Cdi",
+            quotite = 1
+        };
 
         var reponse = await _client.PostAsJsonAsync("/api/collaborateurs", requete, ct);
 
@@ -95,8 +104,14 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
             $"/api/collaborateurs/{(await _client.CreerCollaborateurAsync("C-0021")).Id}", ct);
 
         var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{second.GetProperty("id").GetInt32()}",
-            new { nom = "Martin", prenom = "Camille", email = premier.Email, poste = "Développeuse",
-                version = second.GetProperty("version").GetGuid() }, ct);
+            new
+            {
+                nom = "Martin",
+                prenom = "Camille",
+                email = premier.Email,
+                poste = "Développeuse",
+                version = second.GetProperty("version").GetGuid()
+            }, ct);
 
         Assert.Equal(HttpStatusCode.Conflict, modification.StatusCode);
         var probleme = await modification.LireAsync();
@@ -110,8 +125,14 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
         var ct = TestContext.Current.CancellationToken;
         var id = (await _client.CreerCollaborateurAsync("C-0022")).Id;
         var fiche = await _client.GetFromJsonAsync<JsonElement>($"/api/collaborateurs/{id}", ct);
-        var modification = new { nom = "Martin", prenom = "Camille", email = "c-0022@chronos.example", poste = "Lead",
-            version = fiche.GetProperty("version").GetGuid() };
+        var modification = new
+        {
+            nom = "Martin",
+            prenom = "Camille",
+            email = "c-0022@chronos.example",
+            poste = "Lead",
+            version = fiche.GetProperty("version").GetGuid()
+        };
 
         var premiere = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}", modification, ct);
         var seconde = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}", modification, ct);
@@ -159,8 +180,15 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
 
         // La création n'accepte pas de date de sortie : on la renseigne par une modification.
         var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{cree.GetProperty("id").GetInt32()}",
-            new { nom = "Martin", prenom = "Camille", email = "c-0004@chronos.example", poste = "Développeuse",
-                dateSortie = "2026-05-15", version = cree.GetProperty("version").GetGuid() }, ct);
+            new
+            {
+                nom = "Martin",
+                prenom = "Camille",
+                email = "c-0004@chronos.example",
+                poste = "Développeuse",
+                dateSortie = "2026-05-15",
+                version = cree.GetProperty("version").GetGuid()
+            }, ct);
         Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
 
         var avant = await _client.GetFromJsonAsync<JsonElement>("/api/collaborateurs?statut=sorti", ct);
@@ -182,9 +210,19 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
     {
         var ct = TestContext.Current.CancellationToken;
         var creation = await _client.PostAsJsonAsync("/api/collaborateurs",
-            new { matricule, nom = "Martin", prenom = "Camille", email = $"{matricule.ToLowerInvariant()}@chronos.example",
-                categorie = "Consultant", poste = "Développeuse", dateEntree = "2024-09-02",
-                typeContrat = "Cdi", quotite = 1, managerId = ChronosApiFactory.SophieId }, ct);
+            new
+            {
+                matricule,
+                nom = "Martin",
+                prenom = "Camille",
+                email = $"{matricule.ToLowerInvariant()}@chronos.example",
+                categorie = "Consultant",
+                poste = "Développeuse",
+                dateEntree = "2024-09-02",
+                typeContrat = "Cdi",
+                quotite = 1,
+                managerId = ChronosApiFactory.SophieId
+            }, ct);
         var cree = await creation.Content.ReadFromJsonAsync<JsonElement>(ct);
         var id = cree.GetProperty("id").GetInt32();
 
@@ -193,9 +231,16 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
             var aujourdhui = DateOnly.FromDateTime(factory.Horloge.GetLocalNow().DateTime);
             var sortie = aujourdhui.AddDays(decalageDeLaSortieEnJours);
             var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}",
-                new { nom = "Martin", prenom = "Camille", email = $"{matricule.ToLowerInvariant()}@chronos.example",
-                    poste = "Développeuse", managerId = ChronosApiFactory.SophieId,
-                    dateSortie = sortie.ToString("yyyy-MM-dd"), version = cree.GetProperty("version").GetGuid() }, ct);
+                new
+                {
+                    nom = "Martin",
+                    prenom = "Camille",
+                    email = $"{matricule.ToLowerInvariant()}@chronos.example",
+                    poste = "Développeuse",
+                    managerId = ChronosApiFactory.SophieId,
+                    dateSortie = sortie.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    version = cree.GetProperty("version").GetGuid()
+                }, ct);
             Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
         }
 

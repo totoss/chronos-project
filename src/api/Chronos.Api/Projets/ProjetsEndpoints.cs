@@ -48,8 +48,12 @@ public static class ProjetsEndpoints
         if (!string.IsNullOrWhiteSpace(filtre.Recherche))
         {
             var recherche = filtre.Recherche.Trim().ToLowerInvariant();
+            // CA1304, CA1311, CA1862 : ce lambda est traduit en SQL par EF Core (LOWER), jamais exécuté en .NET.
+            // Les surcharges avec StringComparison ne sont pas traduisibles.
+#pragma warning disable CA1304, CA1311, CA1862
             requete = requete.Where(p =>
                 p.Code.ToLower().Contains(recherche) || p.Libelle.ToLower().Contains(recherche));
+#pragma warning restore CA1304, CA1311, CA1862
         }
 
         // Le texte est comparé aux noms de l'énumération : « 1 » (un rang) est refusé, comme dans le JSON.

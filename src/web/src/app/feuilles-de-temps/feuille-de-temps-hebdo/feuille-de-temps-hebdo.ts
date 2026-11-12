@@ -140,7 +140,9 @@ export class FeuilleDeTempsHebdo {
         void this.annonceur.announce(annonce, 'polite');
         if (focusSurLeTitre) this.titre().nativeElement.focus();
       },
-      error: () => {}, // déjà notifiée par l'intercepteur ; la saisie reste à l'écran
+      error: () => {
+        // déjà notifiée par l'intercepteur ; la saisie reste à l'écran
+      },
     });
   }
 }

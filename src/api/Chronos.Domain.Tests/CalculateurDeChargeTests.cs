@@ -91,7 +91,10 @@ public class CalculateurDeChargeTests
             affectations: [Affectation(0.5m)],
             absences: new Dictionary<DateOnly, decimal>
             {
-                [Lundi] = 1m, [Lundi.AddDays(1)] = 1m, [Lundi.AddDays(2)] = 1m, [Lundi.AddDays(3)] = 1m,
+                [Lundi] = 1m,
+                [Lundi.AddDays(1)] = 1m,
+                [Lundi.AddDays(2)] = 1m,
+                [Lundi.AddDays(3)] = 1m,
             });
 
         var charge = new CalculateurDeCharge(Calendrier).Calculer(absentTouteLaSemaine, LaSemaine);

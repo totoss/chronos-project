@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Api.Securite;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
@@ -36,6 +34,7 @@ public class ValidationTests(ChronosApiFactory factory) : IClassFixture<ChronosA
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _rh.Dispose();
         _clientA.Dispose();
         _clientB.Dispose();

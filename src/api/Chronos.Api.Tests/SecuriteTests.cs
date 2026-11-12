@@ -1,11 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Infrastructure.Identite;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
@@ -84,8 +82,11 @@ public class SecuriteTests(ChronosApiFactory factory) : IClassFixture<ChronosApi
                 // Un corps qui satisfait toutes les formes de requête d'Identity : sinon la lecture du corps échoue (400) avant le filtre.
                 requete.Content = JsonContent.Create(new
                 {
-                    email = "intrus@chronos.example", password = ChronosApiFactory.MotDePasse,
-                    refreshToken = "x", resetCode = "x", newPassword = ChronosApiFactory.MotDePasse,
+                    email = "intrus@chronos.example",
+                    password = ChronosApiFactory.MotDePasse,
+                    refreshToken = "x",
+                    resetCode = "x",
+                    newPassword = ChronosApiFactory.MotDePasse,
                 });
             }
 

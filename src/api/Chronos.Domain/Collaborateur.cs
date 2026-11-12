@@ -22,7 +22,10 @@ public class Collaborateur : ITracable
         Matricule = matricule.Trim().ToUpperInvariant();
         Nom = nom.Trim();
         Prenom = prenom.Trim();
+        // CA1308 préfère les majuscules pour normaliser ; une adresse e-mail se conserve pourtant en minuscules.
+#pragma warning disable CA1308
         Email = email.Trim().ToLowerInvariant();
+#pragma warning restore CA1308
         Categorie = categorie;
         Poste = poste.Trim();
         DateEntree = dateEntree;
@@ -62,7 +65,10 @@ public class Collaborateur : ITracable
 
         Nom = nom.Trim();
         Prenom = prenom.Trim();
+        // CA1308 préfère les majuscules pour normaliser ; une adresse e-mail se conserve pourtant en minuscules.
+#pragma warning disable CA1308
         Email = email.Trim().ToLowerInvariant();
+#pragma warning restore CA1308
         Poste = poste.Trim();
         DateSortie = dateSortie;
         ManagerId = managerId;

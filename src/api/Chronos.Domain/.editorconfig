@@ -1,0 +1,4 @@
+[*.cs]
+# CA1062 demande de vérifier à l'exécution qu'un argument n'est pas null. Le domaine active les types référence nullables
+# et n'est appelé que par du code qui les active aussi : le compilateur (CS8604) fait déjà ce contrôle, à la compilation.
+dotnet_diagnostic.CA1062.severity = none

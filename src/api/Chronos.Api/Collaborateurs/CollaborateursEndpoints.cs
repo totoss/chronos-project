@@ -63,10 +63,14 @@ public static class CollaborateursEndpoints
         {
             // Minuscules des deux côtés : la seule écriture qui donne le même résultat sur les deux SGBD.
             var recherche = filtre.Recherche.Trim().ToLowerInvariant();
+            // CA1304, CA1311, CA1862 : ce lambda est traduit en SQL par EF Core (LOWER), jamais exécuté en .NET.
+            // Les surcharges avec StringComparison ne sont pas traduisibles.
+#pragma warning disable CA1304, CA1311, CA1862
             requete = requete.Where(c =>
                 c.Nom.ToLower().Contains(recherche) ||
                 c.Prenom.ToLower().Contains(recherche) ||
                 c.Matricule.ToLower().Contains(recherche));
+#pragma warning restore CA1304, CA1311, CA1862
         }
 
         var aujourdhui = horloge.Aujourdhui();

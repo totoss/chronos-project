@@ -1,7 +1,7 @@
 # Module 22 — Qualité du code
 
 > Pratiques vérifiées le 12 novembre 2026 — voir les référentiels [.NET 10](../docs/references/dotnet-10.md), [Angular 22](../docs/references/angular-22.md) et [GitHub Actions](../docs/references/github-actions.md).
-> Les commandes de ce module ont été **exécutées le 12 novembre 2026** dans des conteneurs Linux, sur des projets d'essai et non sur Chronos, dont la solution de référence n'existe pas encore. Côté .NET (SDK 10.0.404) : une solution de trois projets issus des modèles `classlib`, `webapi` et `xunit3`. Côté Angular (Node.js 24.22.3, CLI 22.2.7) : une application créée par `ng new`, avec angular-eslint 22.6.0, ESLint 10.14 et Prettier 3.10. Les messages cités sont ceux qui ont été obtenus. **Non exécutés** : les étapes ajoutées au workflow, sur GitHub, et l'ensemble sous Windows. Sur votre code, la liste des avertissements sera différente : c'est attendu.
+> Les commandes de ce module ont été **exécutées le 12 novembre 2026** dans des conteneurs Linux, d'abord sur des projets d'essai (dont proviennent les exemples `Essai.cs`), puis **rejouées sur la solution de référence de Chronos** (état du module 21 : sept projets .NET, 348 tests ; application Angular, 262 tests et 33 parcours) avec le SDK .NET 10.0.404, EF Core 10.0.15, Node.js 24.22, Angular CLI 22.2.7, angular-eslint 22.6.0, ESLint 10.14 et Prettier 3.10. Les nombres et messages cités pour Chronos sont ceux qui ont été obtenus. **Non exécutés** : les étapes ajoutées au workflow, sur GitHub, et l'ensemble sous Windows. Si votre code diffère de la solution de référence, la liste des avertissements différera aussi : c'est attendu.
 
 Chronos compile, ses tests passent, l'interface fonctionne. Ouvrez pourtant deux fichiers écrits à trois mois d'écart : les accolades ne sont pas au même endroit, ici une variable ne sert à rien, là une comparaison de chaînes dépend de la langue du serveur. Rien de tout cela ne fait échouer un test. Tout cela ralentit la relecture, et une partie finira en anomalie.
 
@@ -120,11 +120,23 @@ dotnet format --verify-no-changes
 
 Cette commande ne modifie rien. Elle liste ce que `dotnet format` changerait et, s'il y a quoi que ce soit, se termine par un code de sortie non nul — `2` lors de l'essai. Affichez-le en tapant `$LASTEXITCODE`.
 
-Il y a presque toujours quelque chose. Lors de l'essai, le `Program.cs` produit par le modèle `webapi` contenait lui-même une espace en trop :
+Il y a presque toujours quelque chose. Sur la solution de référence : 118 lignes `WHITESPACE` dans neuf fichiers — surtout des objets anonymes écrits sur une ligne dans les tests, que le formateur veut voir à raison d'une propriété par ligne — et 17 lignes `CHARSET`, une par fichier de migration :
 
 ```text
-…/Chronos.Api/Program.cs(24,20): error WHITESPACE: Fix whitespace formatting. Delete 1 characters.
+…/Chronos.Api.Tests/AutorisationTests.cs(116,31): error WHITESPACE: Fix whitespace formatting. Replace 1 characters with '\n\s\s\s\s\s\s\s\s\s\s\s\s'.
+…/Chronos.Migrations.PostgreSql/Migrations/20261112160157_Initiale.cs(1,1): error CHARSET: Fix file encoding.
 ```
+
+**Le code que vous n'écrivez pas.** Les migrations du module 07 sont écrites par `dotnet ef`, dans un style qui n'est pas le vôtre : encodage avec BOM, espaces de noms à accolades, tableaux littéraux. On ne corrige pas à la main — ni par `dotnet format` — du code généré, qui sera réécrit à la prochaine migration : on le déclare comme tel, **avant** de formater. Dans chacun des deux projets de migrations, créez `Migrations/.editorconfig` :
+
+```ini
+[*.cs]
+generated_code = true
+```
+
+Le formateur et les analyseurs ignorent alors ces fichiers, et eux seulement. Relancez `dotnet format --verify-no-changes` : les 17 lignes `CHARSET` ont disparu. Sans ce fichier, l'étape 2 réécrirait les dix-sept migrations, et l'étape 4 y ajouterait 25 avertissements (`IDE0161`, `CA1861`).
+
+Documentation : [options de configuration de l'analyse de code](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-options)
 
 ### 2. Formater une fois pour toutes
 
@@ -132,7 +144,7 @@ Il y a presque toujours quelque chose. Lors de l'essai, le `Program.cs` produit 
 dotnet format
 ```
 
-Relisez le résultat avec `git diff` : seuls des espaces et des sauts de ligne doivent avoir changé. Validez ensuite **ce changement seul**, dans un commit dont le message dit qu'il ne s'agit que de formatage. Mêlé à une modification de fond, il la rendrait illisible en relecture.
+Relisez le résultat avec `git diff` : seuls des espaces et des sauts de ligne doivent avoir changé — sur la solution de référence, neuf fichiers, dont huit de tests. Validez ensuite **ce changement seul**, dans un commit dont le message dit qu'il ne s'agit que de formatage. Mêlé à une modification de fond, il la rendrait illisible en relecture.
 
 ```powershell
 dotnet format --verify-no-changes
@@ -168,7 +180,7 @@ Si un fichier s'écarte de ces deux conventions, il apparaît :
 …/Chronos.Domain/Projet.cs(10,13): warning IDE0011: Add braces to 'if' statement.
 ```
 
-`dotnet format` sait corriger ces deux règles : relancez-le, relisez, validez.
+`dotnet format` sait corriger ces deux règles : relancez-le, relisez, validez. Sur la solution de référence, rien n'apparaît : le code suivait déjà ces deux conventions, et les migrations sont exclues depuis l'étape 1.
 
 Deux conventions suffisent pour comprendre le mécanisme. La [liste des options de style](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-style-rule-options) en compte des dizaines, et `dotnet new editorconfig` produit un fichier complet de près de 400 lignes qui peut servir de catalogue. N'en adoptez que ce que l'équipe a réellement décidé.
 
@@ -213,7 +225,23 @@ Essai.cs(8,21): warning CA1311: Specify a culture or use an invariant version to
 
 Chaque message se termine par l'adresse de la page qui explique la règle. **Lisez-la avant de toucher au code** : elle dit pourquoi la règle existe, comment la respecter et dans quels cas il est légitime de la désactiver.
 
-Le reste de votre solution produit aussi ses avertissements. Ne les corrigez pas encore.
+Le reste de votre solution produit aussi ses avertissements. Ne les corrigez pas encore. Sur la solution de référence, sans `Essai.cs` : **266 avertissements**, dont 243 `CA1707`, 6 `CA1816`, 5 `CA1304`, 5 `CA1311`, 5 `CA1862`, 1 `CA1305` et 1 `CA1725`.
+
+**Une surprise de `dotnet format`.** Relancez `dotnet format --verify-no-changes` : avec ces réglages, il exécute aussi les analyseurs, et signale neuf erreurs que la compilation ne montre pas :
+
+```text
+…/Chronos.Infrastructure/ChronosDbContext.cs(13,33): warning CS8618: Non-nullable property 'Collaborateurs' must contain a non-null value when exiting constructor. […]
+```
+
+Les propriétés `DbSet<T> … { get; set; }` du module 06 ne sont jamais nulles : EF Core les remplit lui-même, et un *suppresseur* fourni par EF Core retire cet avertissement à la compilation. `dotnet format` ne connaît pas ce suppresseur. **Ne lancez pas `dotnet format` pour « corriger »** : il rend les neuf propriétés nullables (`DbSet<Collaborateur>?`), et la compilation échoue ensuite sur chaque usage — 80 erreurs. Écrivez plutôt chaque propriété comme le recommande la documentation d'EF Core, en lecture seule :
+
+```csharp
+    public DbSet<Collaborateur> Collaborateurs => Set<Collaborateur>();
+```
+
+Le modèle ne change pas : `dotnet ef migrations has-pending-model-changes` répond toujours `No changes have been made to the model since the last migration.` Retenez la leçon : `dotnet format` sans sous-commande applique aussi les correctifs des analyseurs ; relisez son `git diff` comme celui d'un collègue.
+
+Documentation : [EF Core et les types référence nullables](https://learn.microsoft.com/en-us/ef/core/miscellaneous/nullable-reference-types)
 
 ### 5. Décider du sort de chaque avertissement
 
@@ -235,7 +263,7 @@ Pour chaque règle qui se manifeste, quatre décisions sont possibles. Aucune n'
 
 Il reste deux avertissements, `CA1848` et `CA1873`, sur la ligne de journalisation.
 
-**Reporter.** Ces deux règles demandent de passer par l'attribut `[LoggerMessage]`. C'est justement le sujet du module 25. On l'écrit, à la fin de la section `[*.cs]` du `.editorconfig` de la racine :
+**Reporter.** Ces deux règles demandent de passer par l'attribut `[LoggerMessage]`. C'est justement le sujet du module 25. Si votre API journalisait déjà, on l'écrirait, à la fin de la section `[*.cs]` du `.editorconfig` de la racine :
 
 ```ini
 # CA1848, CA1873 : journalisation par [LoggerMessage], traitée au module 25.
@@ -243,7 +271,9 @@ dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1873.severity = suggestion
 ```
 
-**Régler pour un dossier.** Depuis le module 04, vos méthodes de test portent des noms en forme de phrase — `Un_projet_facturable_sans_client_est_refuse`. La règle `CA1707` réclame le retrait des tirets bas. Elle est utile pour le code de l'application, pas pour des noms de tests. Créez `Chronos.Domain.Tests/.editorconfig` :
+Chronos ne journalise encore rien : une fois `Essai.cs` supprimé, ces deux règles ne se manifestent nulle part. Ne les reportez donc pas — un report sans objet éteindrait le contrôle pour rien. Elles restent actives, et le module 25 écrira directement ses messages avec `[LoggerMessage]`.
+
+**Régler pour un dossier.** Depuis le module 04, vos méthodes de test portent des noms en forme de phrase — `Un_projet_facturable_sans_client_est_refuse`. La règle `CA1707` réclame le retrait des tirets bas : 243 avertissements sur la solution de référence. Elle est utile pour le code de l'application, pas pour des noms de tests. Créez `Chronos.Domain.Tests/.editorconfig`, et le même fichier dans `Chronos.Api.Tests/` :
 
 ```ini
 [*.cs]
@@ -261,7 +291,11 @@ Ce fichier ne contient pas `root = true` : il complète celui de la racine au li
 #pragma warning restore CA1848, CA1873
 ```
 
-Appliquez maintenant cette grille à **tous** les avertissements de votre solution, jusqu'à ce que `dotnet build --no-incremental` annonce `0 Warning(s)`. Supprimez ensuite `Essai.cs`.
+Appliquez maintenant cette grille à **tous** les avertissements de votre solution, jusqu'à ce que `dotnet build --no-incremental` annonce `0 Warning(s)`. Supprimez ensuite `Essai.cs`. Sur la solution de référence, après `CA1707` :
+
+- **`CA1816`** (6, les `DisposeAsync` des classes de tests) : corrigé, par `GC.SuppressFinalize(this);` ;
+- **`CA1305`** (un `ToString("yyyy-MM-dd")` dans un test) et **`CA1725`** (`OnModelCreating` doit garder le nom de paramètre `builder` de `IdentityDbContext`) : corrigés ;
+- **`CA1304`, `CA1311`, `CA1862`** (les cinq `ToLower().Contains(…)` des recherches de collaborateurs et de projets) : supprimés par `#pragma`, avec la raison. Ce lambda n'est jamais exécuté en .NET : EF Core le traduit en SQL (`LOWER(…) LIKE …`). Les écritures que les règles proposent — `Contains(…, StringComparison.OrdinalIgnoreCase)`, `ToLower(CultureInfo.InvariantCulture)`, `ToLowerInvariant()` — ne sont traduites ni pour PostgreSQL ni pour SQL Server (vérifié), et `EF.Functions.Like` seul distingue les majuscules sur PostgreSQL, pas sur SQL Server.
 
 Documentation : [supprimer un avertissement](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/suppress-warnings)
 
@@ -296,17 +330,6 @@ La compilation échoue : ce qui était un avertissement qu'on pouvait laisser pa
 La seconde ligne mérite une explication. À chaque restauration, NuGet compare vos paquets à une base de vulnérabilités connues et émet les avertissements `NU1901` à `NU1904`. Avec `TreatWarningsAsErrors` seul, ils deviennent des erreurs — vérifié lors de l'essai avec un paquet vulnérable : `dotnet restore` échoue. Une faille publiée un mardi ferait donc échouer, le mercredi, la compilation d'un code que personne n'a modifié. `WarningsNotAsErrors` les maintient à l'état d'avertissements : visibles, mais non bloquants. C'est la ligne que propose la documentation de NuGet ; ce choix se discute, et il figure dans les questions de séance.
 
 Documentation : [audit des paquets NuGet](https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages)
-
-**Et le code que vous n'écrivez pas ?** Les migrations du module 07 sont écrites par `dotnet ef`, dans un style qui n'est pas le vôtre : espaces de noms à accolades, notamment. Avec `EnforceCodeStyleInBuild` et `TreatWarningsAsErrors`, elles font échouer la compilation sur `IDE0161` — constaté lors de l'essai du module 23, sur la solution complète. On ne corrige pas à la main du code généré, qui sera réécrit à la prochaine migration : on le déclare comme tel. Dans chacun des deux projets de migrations, créez `Migrations/.editorconfig` :
-
-```ini
-[*.cs]
-generated_code = true
-```
-
-Les analyseurs ignorent alors ces fichiers, et eux seulement.
-
-Documentation : [options de configuration de l'analyse de code](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-options)
 
 ### 7. Faire respecter les règles par le job `api`
 
@@ -346,14 +369,16 @@ npx ng add angular-eslint
 `ng add` cherche la version du paquet qui correspond à votre version d'Angular, vous demande de confirmer l'installation, puis configure le projet. Regardez ce qui a changé avec `git status` et `git diff` :
 
 - **`package.json`** : quatre dépendances de développement (`angular-eslint`, `eslint`, `typescript-eslint`, `@eslint/js`) et un script `lint` ;
-- **`angular.json`** : une cible `lint`, qui porte sur les fichiers `.ts` et `.html` de `src` ;
+- **`angular.json`** : une cible `lint`, qui porte sur les fichiers `.ts` et `.html` de `src`, et `angular-eslint` en tête de `cli.schematicCollections` — `ng generate` consultera d'abord ses schémas (une nouvelle application ou bibliothèque recevrait ainsi sa configuration de lint) ;
 - **`eslint.config.js`** : la configuration.
+
+Les parcours du module 20 sont du code, eux aussi : ajoutez `"e2e/**/*.ts"` aux `lintFilePatterns` de la cible `lint`.
 
 ```powershell
 npx ng lint
 ```
 
-Sur une application tout juste créée, la commande répond `All files pass linting.` Sur la vôtre, après huit modules, elle trouvera sans doute de quoi dire.
+Sur une application tout juste créée, la commande répond `All files pass linting.` Sur la solution de référence, elle trouve six erreurs : quatre `@typescript-eslint/no-unused-vars` dans des tests et deux `@typescript-eslint/no-empty-function` (des `error: () => {}` dont le commentaire suivait l'accolade). Aucune règle d'accessibilité des templates ne se déclenche.
 
 ### 9. Lire la configuration et l'éprouver
 
@@ -438,7 +463,11 @@ La sortie, dont les colonnes ont été resserrées :
 
 Neuf erreurs, dont trois dans le template : une image sans texte de remplacement, et un `<div>` cliquable qu'on ne peut ni atteindre ni actionner au clavier. La commande se termine par un code de sortie `1`.
 
-`npx ng lint --fix` corrige ce qui peut l'être sans risque — ici, seulement le `var`. Le reste demande votre jugement. Supprimez le fichier d'essai, puis traitez les erreurs de votre application avec la grille de l'étape 5 : la décision « régler » s'écrit dans le bloc `rules`.
+`npx ng lint --fix` corrige ce qui peut l'être sans risque — ici, seulement le `var`. Le reste demande votre jugement. Supprimez le fichier d'essai, puis traitez les erreurs de votre application avec la grille de l'étape 5 : la décision « régler » s'écrit dans le bloc `rules`. Sur la solution de référence : les deux fonctions vides reçoivent leur commentaire **dans** leurs accolades ; les quatre variables « inutilisées » sont celles qu'un test écarte par déstructuration (`const { quotite, ...sansQuotite } = camille;`), ce que l'option `ignoreRestSiblings` de la règle autorise, commentaire à l'appui :
+
+```js
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+```
 
 Documentation : [fichiers de configuration d'ESLint](https://eslint.org/docs/latest/use/configure/configuration-files)
 
@@ -450,7 +479,7 @@ Documentation : [fichiers de configuration d'ESLint](https://eslint.org/docs/lat
 npx prettier --check .
 ```
 
-Prettier liste les fichiers qui s'écartent de son format et se termine par le code `1` s'il y en a. Constat de l'essai : sur une application qui sort de `ng new`, neuf fichiers sont signalés, dont `angular.json` et `package.json`. Les fichiers produits par la CLI ne respectent donc pas tous le format qu'elle configure ; ne soyez pas surpris.
+Prettier liste les fichiers qui s'écartent de son format et se termine par le code `1` s'il y en a. Constat de l'essai : sur une application qui sort de `ng new`, neuf fichiers sont signalés, dont `angular.json` et `package.json`. Les fichiers produits par la CLI ne respectent donc pas tous le format qu'elle configure ; ne soyez pas surpris. Sur la solution de référence, trois restaient à reprendre : `src/main.ts`, `tsconfig.app.json` et `tsconfig.spec.json`.
 
 ```powershell
 npx prettier --write .
@@ -532,6 +561,8 @@ Poussez, ouvrez une *pull request* et vérifiez que les deux jobs sont verts. Le
 | Activer `latest-all` et `TreatWarningsAsErrors` d'un coup sur un code existant | Des centaines d'erreurs ; on renonce le jour même. | Monter par paliers : formatage, puis `recommended`, puis erreurs. |
 | Le paquet `Microsoft.CodeAnalysis.FxCopAnalyzers`, des fichiers `.ruleset` | Paquet déprécié, format déprécié. | Les analyseurs du SDK et `.editorconfig`. |
 | `dotnet format` sans `--verify-no-changes` dans le workflow | Les fichiers sont corrigés sur une machine qui sera détruite : le job est vert et le dépôt reste mal formaté. | `--verify-no-changes`. |
+| Lancer `dotnet format` pour faire taire `CS8618` sur les `DbSet<T> { get; set; }` | Il les rend nullables : 80 erreurs de compilation (constaté). | `public DbSet<T> X => Set<T>();` : étape 4. |
+| Formater avant d'avoir déclaré les migrations comme code généré | `dotnet format` réécrit les dix-sept migrations. | `Migrations/.editorconfig` d'abord : étape 1. |
 | Formatage et modification de fond dans le même commit | La relecture devient impossible. | Un commit de formatage à part. |
 | Déclarer `IDE0005` en `warning` sans autre réglage | La compilation réclame `GenerateDocumentationFile` (constaté) : voir l'exercice 1. | Suivre le message. |
 | `TreatWarningsAsErrors` sans exception pour `NU1901` à `NU1904` | Une vulnérabilité publiée fait échouer la restauration sans qu'aucun commit n'ait eu lieu (constaté). | Décider explicitement : étape 6. |
@@ -547,7 +578,7 @@ Poussez, ouvrez une *pull request* et vérifiez que les deux jobs sont verts. Le
 - Qu'est-ce qu'une relecture de code humaine devrait encore regarder, une fois ces outils en place ? Et que ne devrait-elle plus jamais commenter ?
 - `TreatWarningsAsErrors` gêne aussi pendant qu'on écrit : une variable pas encore utilisée bloque la compilation. Faut-il ne l'activer que dans l'intégration continue ? Que perd-on alors ?
 - Une vulnérabilité publiée dans un paquet doit-elle faire échouer la compilation ? Le cours répond non, et laisse un avertissement. Qui le lira ? Que mettriez-vous en place pour qu'il ne soit pas oublié ?
-- Vous avez abaissé `CA1848` en attendant le module 25. Comment vous assurer qu'un report ne devient pas définitif ?
+- Si vous aviez dû abaisser `CA1848` en attendant le module 25, comment vous assureriez-vous qu'un report ne devienne pas définitif ?
 - Les règles d'accessibilité d'angular-eslint ont-elles trouvé quelque chose que vos vérifications du module 21 avaient manqué ? Que ne pourront-elles jamais vérifier ?
 - Deux développeurs préfèrent deux styles différents. Comment une équipe choisit-elle, et quelle importance a le choix lui-même ?
 - Sur une application de 200 000 lignes écrite sans aucun de ces outils, par où commenceriez-vous ?
@@ -559,4 +590,4 @@ Poussez, ouvrez une *pull request* et vérifiez que les deux jobs sont verts. Le
 - [`Directory.Build.props`](https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory) : comment MSBuild trouve ce fichier, et comment en combiner plusieurs niveaux.
 - [angular-eslint](https://github.com/angular-eslint/angular-eslint) : `ng add angular-eslint --tseslint-preset=strictTypeChecked` active des règles qui s'appuient sur les types.
 - [Guide de style d'Angular](https://angular.dev/style-guide) : les conventions que plusieurs règles d'angular-eslint font respecter.
-- Suite dans le cours : le module 23 conteneurise l'application ; le module 25 remplace les appels de journalisation par `[LoggerMessage]` et permet de rendre à `CA1848` sa sévérité d'origine.
+- Suite dans le cours : le module 23 conteneurise l'application ; le module 25 ajoute la journalisation, directement par `[LoggerMessage]`, sous le contrôle de `CA1848` et `CA1873` restées actives.

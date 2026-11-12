@@ -10,17 +10,17 @@ namespace Chronos.Infrastructure;
 public class ChronosDbContext(DbContextOptions<ChronosDbContext> options)
     : IdentityDbContext<Utilisateur, IdentityRole<int>, int>(options)
 {
-    public DbSet<Collaborateur> Collaborateurs { get; set; }
-    public DbSet<Contrat> Contrats { get; set; }
-    public DbSet<Client> Clients { get; set; }
-    public DbSet<Projet> Projets { get; set; }
-    public DbSet<Affectation> Affectations { get; set; }
-    public DbSet<JourFerie> JoursFeries { get; set; }
+    public DbSet<Collaborateur> Collaborateurs => Set<Collaborateur>();
+    public DbSet<Contrat> Contrats => Set<Contrat>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Projet> Projets => Set<Projet>();
+    public DbSet<Affectation> Affectations => Set<Affectation>();
+    public DbSet<JourFerie> JoursFeries => Set<JourFerie>();
 
     // Les saisies de temps n'ont pas de DbSet : on n'y accède que par leur feuille (agrégat).
-    public DbSet<FeuilleDeTemps> FeuillesDeTemps { get; set; }
-    public DbSet<Absence> Absences { get; set; }
-    public DbSet<TypeAbsence> TypesAbsence { get; set; }
+    public DbSet<FeuilleDeTemps> FeuillesDeTemps => Set<FeuilleDeTemps>();
+    public DbSet<Absence> Absences => Set<Absence>();
+    public DbSet<TypeAbsence> TypesAbsence => Set<TypeAbsence>();
 
     /// <summary>
     /// Exécute une lecture suivie d'une écriture dans une transaction sérialisable, confiée à la stratégie
@@ -44,14 +44,14 @@ public class ChronosDbContext(DbContextOptions<ChronosDbContext> options)
         });
     }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
         // En premier : c'est lui qui déclare les tables d'Identity.
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(builder);
 
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ChronosDbContext).Assembly);
+        builder.ApplyConfigurationsFromAssembly(typeof(ChronosDbContext).Assembly);
 
-        modelBuilder.Entity<Utilisateur>(u =>
+        builder.Entity<Utilisateur>(u =>
         {
             u.HasOne(x => x.Collaborateur).WithMany().HasForeignKey(x => x.CollaborateurId).OnDelete(DeleteBehavior.Restrict);
             u.HasIndex(x => x.CollaborateurId).IsUnique();

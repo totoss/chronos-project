@@ -1,9 +1,7 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Domain;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
@@ -54,7 +52,10 @@ public class TracabiliteTests(ChronosApiFactory factory) : IClassFixture<Chronos
 
         var modification = await rh.PutAsJsonAsync($"/api/collaborateurs/{personne.Id}", new
         {
-            nom = "Nouveau nom", prenom = "Prenom", email = personne.Email, poste = "Architecte",
+            nom = "Nouveau nom",
+            prenom = "Prenom",
+            email = personne.Email,
+            poste = "Architecte",
             version = fiche.GetProperty("version").GetGuid(),
         }, ct);
 
@@ -110,13 +111,20 @@ public class TracabiliteTests(ChronosApiFactory factory) : IClassFixture<Chronos
         var client = await (await rh.PostAsJsonAsync("/api/clients", new { nom = "Trace SA" }, ct)).LireAsync();
         var projet = await (await rh.PostAsJsonAsync("/api/projets", new
         {
-            code = "TRA-P", libelle = "Projet tracé", nature = "Interne", dateDebut = "2026-05-04",
-            budgetJours = 5, responsableId = ChronosApiFactory.SophieId,
+            code = "TRA-P",
+            libelle = "Projet tracé",
+            nature = "Interne",
+            dateDebut = "2026-05-04",
+            budgetJours = 5,
+            responsableId = ChronosApiFactory.SophieId,
         }, ct)).LireAsync();
         var affectation = await (await rh.PostAsJsonAsync("/api/affectations", new
         {
-            collaborateurId = ChronosApiFactory.CamilleId, projetId = projet.GetProperty("id").GetInt32(),
-            dateDebut = "2026-05-04", dateFin = "2026-05-08", tauxAllocation = 0.1,
+            collaborateurId = ChronosApiFactory.CamilleId,
+            projetId = projet.GetProperty("id").GetInt32(),
+            dateDebut = "2026-05-04",
+            dateFin = "2026-05-08",
+            tauxAllocation = 0.1,
         }, ct)).LireAsync();
         (await rh.PostAsJsonAsync("/api/jours-feries", new { date = "2026-12-25", libelle = "Noël" }, ct)).EnsureSuccessStatusCode();
 

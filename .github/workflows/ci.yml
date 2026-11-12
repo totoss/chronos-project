@@ -35,6 +35,9 @@ jobs:
       - name: Restaurer les paquets
         run: dotnet restore --locked-mode
 
+      - name: Vérifier le formatage
+        run: dotnet format --verify-no-changes --no-restore
+
       - name: Compiler
         run: dotnet build --no-restore --configuration Release
 
@@ -81,6 +84,12 @@ jobs:
 
       - name: Installer les dépendances
         run: npm ci
+
+      - name: Vérifier le formatage
+        run: npm run format:check
+
+      - name: Analyser le code
+        run: npx ng lint
 
       - name: Tester
         run: npx ng test --coverage --reporters=default --reporters=junit --output-file=resultats-tests/junit.xml

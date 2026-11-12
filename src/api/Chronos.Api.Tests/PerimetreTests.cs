@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Api.Securite;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Chronos.Api.Tests;
 
@@ -34,6 +32,7 @@ public class PerimetreTests(ChronosApiFactory factory) : IClassFixture<ChronosAp
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _rh.Dispose();
         _clientA.Dispose();
         _clientB.Dispose();
@@ -214,7 +213,11 @@ public class PerimetreTests(ChronosApiFactory factory) : IClassFixture<ChronosAp
         var ct = TestContext.Current.CancellationToken;
         object Affectation(int collaborateurId) => new
         {
-            collaborateurId, projetId = 2, dateDebut = "2026-06-01", dateFin = "2026-06-05", tauxAllocation = 0.1,
+            collaborateurId,
+            projetId = 2,
+            dateDebut = "2026-06-01",
+            dateFin = "2026-06-05",
+            tauxAllocation = 0.1,
         };
 
         var horsEquipe = await _clientA.PostAsJsonAsync("/api/affectations", Affectation(_d.Id), ct);

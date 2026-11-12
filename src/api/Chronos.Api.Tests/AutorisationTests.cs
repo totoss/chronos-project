@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Chronos.Api.Securite;
 
@@ -113,12 +112,19 @@ public class AutorisationTests(ChronosApiFactory factory) : IClassFixture<Chrono
         var client = await sophie.PostAsJsonAsync("/api/clients", new { nom = "Client de Sophie SA" }, ct);
         var projet = await sophie.PostAsJsonAsync("/api/projets", new
         {
-            code = "SOPHIE-1", libelle = "Projet de Sophie", nature = "Interne", dateDebut = "2026-05-04",
-            budgetJours = 10, responsableId = ChronosApiFactory.SophieId,
+            code = "SOPHIE-1",
+            libelle = "Projet de Sophie",
+            nature = "Interne",
+            dateDebut = "2026-05-04",
+            budgetJours = 10,
+            responsableId = ChronosApiFactory.SophieId,
         }, ct);
         var affectation = await sophie.PostAsJsonAsync("/api/affectations", new
         {
-            collaborateurId = ChronosApiFactory.CamilleId, projetId = 2, dateDebut = "2026-07-06", dateFin = "2026-07-10",
+            collaborateurId = ChronosApiFactory.CamilleId,
+            projetId = 2,
+            dateDebut = "2026-07-06",
+            dateFin = "2026-07-10",
             tauxAllocation = 0.1,
         }, ct);
 
@@ -149,8 +155,15 @@ public class AutorisationTests(ChronosApiFactory factory) : IClassFixture<Chrono
         var ct = TestContext.Current.CancellationToken;
         using var camille = await factory.ClientCamilleAsync();
         using var sophie = await factory.ClientSophieAsync();
-        var requete = new { nom = "Durand", prenom = "Camille", email = "camille.durand@chronos.example", poste = "Développeuse",
-            dateSortie = "2027-01-31", version = Guid.NewGuid() };
+        var requete = new
+        {
+            nom = "Durand",
+            prenom = "Camille",
+            email = "camille.durand@chronos.example",
+            poste = "Développeuse",
+            dateSortie = "2027-01-31",
+            version = Guid.NewGuid()
+        };
 
         // Camille, l'intéressée, et Sophie, sa manager : ni l'une ni l'autre ne fixe une date de sortie.
         Assert.Equal(HttpStatusCode.Forbidden, (await camille.PutAsJsonAsync($"/api/collaborateurs/{ChronosApiFactory.CamilleId}", requete, ct)).StatusCode);
@@ -167,7 +180,9 @@ public class AutorisationTests(ChronosApiFactory factory) : IClassFixture<Chrono
 
         var creation = await admin.PostAsJsonAsync("/api/comptes", new
         {
-            email = personne.Email, motDePasse = "Initial-Chronos-1!", collaborateurId = personne.Id,
+            email = personne.Email,
+            motDePasse = "Initial-Chronos-1!",
+            collaborateurId = personne.Id,
             roles = new[] { Roles.Collaborateur, Roles.Manager },
         }, ct);
 

@@ -33,6 +33,17 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 | [compose.yaml](compose.yaml) | Les deux bases de données en conteneur (module 01). Copier `.env.example` en `.env` avant de démarrer. |
 | `src/` | La solution de référence. Elle sera construite au fil des modules. |
 
+## Qualité
+
+L'intégration continue refuse tout code mal formaté ou qui enfreint une règle. Côté API, `dotnet format --verify-no-changes` contrôle le formatage et le style, et `dotnet build` échoue au moindre avertissement (analyseurs `latest-recommended`, `TreatWarningsAsErrors`) ; seuls les avertissements d'audit des paquets (`NU1901` à `NU1904`) restent des avertissements. Côté interface, `npm run format:check` contrôle Prettier et `npx ng lint` applique ESLint (`src` et `e2e`).
+
+Pour lancer les mêmes contrôles sur son poste :
+
+- dans `src/api` : `dotnet format --verify-no-changes`, puis `dotnet build --no-incremental` ; `dotnet format` seul corrige le formatage et les conventions de style, à relire avec `git diff` (jamais dans un commit mêlé à une autre modification) ;
+- dans `src/web` : `npm run format:check` (`npm run format` pour corriger), puis `npx ng lint`.
+
+Une suppression n'est acceptée que si elle est la plus étroite possible (une ligne, puis un dossier, et un projet entier seulement quand la règle n'a pas d'objet pour lui), si la raison est écrite à côté, et si elle est encore vraie à la relecture. Attention : `dotnet format` sans sous-commande applique aussi les correctifs automatiques des analyseurs (c'est ce qui a réécrit le `DbContext` lors du module 22) : relire `git diff` après chaque passage. Le code généré (dossiers `Migrations/`) est déclaré comme tel avec `generated_code = true` plutôt que corrigé à la main.
+
 ## Un cours sans pratiques obsolètes
 
 Les frameworks évoluent vite, et une grande partie des tutoriels disponibles en ligne enseignent des pratiques dépassées. Ce dépôt applique donc une règle simple : **toute indication technique est vérifiée dans la documentation officielle du moment, et sa source est citée.**

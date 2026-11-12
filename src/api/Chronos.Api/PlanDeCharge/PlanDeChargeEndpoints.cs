@@ -69,7 +69,12 @@ public static class PlanDeChargeEndpoints
             .OrderBy(c => c.Nom).ThenBy(c => c.Prenom).ThenBy(c => c.Id)
             .Select(c => new
             {
-                c.Id, c.Nom, c.Prenom, c.Categorie, c.DateEntree, c.DateSortie,
+                c.Id,
+                c.Nom,
+                c.Prenom,
+                c.Categorie,
+                c.DateEntree,
+                c.DateSortie,
                 Contrats = c.Contrats.Select(k => new { k.DateDebut, k.DateFin, k.Quotite }).ToList(),
             })
             .ToListAsync(cancellationToken);

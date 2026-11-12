@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Chronos.Api.Tests;
@@ -12,6 +11,7 @@ public class PlanDeChargeTests(ChronosApiFactory factory) : IClassFixture<Chrono
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         _client.Dispose();
         return ValueTask.CompletedTask;
     }
