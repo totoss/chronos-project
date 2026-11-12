@@ -1,7 +1,7 @@
 # Module 18 — Écrans métier
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Le code de ce module a été **compilé et testé le 12 novembre 2026** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite de celui des modules 16 et 17 ; les calculs de dates ont été testés sous quatre fuseaux horaires. Les deux écrans ont été affichés dans un navigateur contre une **API factice** qui renvoie les formes décrites aux modules 09 et 10 ; ils n'ont **pas** été branchés sur la véritable API .NET. Signalez au mentor tout écart constaté.
+> Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite de celui des modules 16 et 17, exercices 1 à 5 compris : `ng build` réussit (avec l'avertissement de budget) et les 194 tests passent ; les calculs de dates passent sous six fuseaux horaires, de UTC−11 à UTC+14. Les écrans ont été parcourus dans Chromium contre la **véritable API .NET** du module 12 (PostgreSQL 18), avec les comptes de Camille (collaboratrice) et de Sophie (sa manager) : saisie, refus `422`, soumission, rejet, validation, plan de charge par semaine et par mois, confirmation de surcharge. L'ajustement que ce module apporte à l'API (RG-05 ne compte plus une feuille vide) a été appliqué avec ses tests d'intégration, sans migration. Signalez au mentor tout écart constaté.
 
 Les modules 16 et 17 ont produit des écrans de gestion : une liste, une fiche, un formulaire. Les deux écrans de ce module sont d'une autre nature. La **feuille de temps** est une grille que le collaborateur remplit chaque semaine ; le **plan de charge** est le tableau que le manager consulte pour savoir qui est surchargé et qui est sans mission. Tous deux manipulent beaucoup d'état dérivé — totaux, jours fermés, niveaux de charge — et partagent une même information : la semaine affichée.
 
@@ -21,7 +21,7 @@ Les modules 16 et 17 ont produit des écrans de gestion : une liste, une fiche, 
 - [Module 16](16-dialoguer-avec-l-api.md) et [module 17](17-formulaires.md) : `httpResource`, services d'accès à l'API, `erreursInterceptor`, `linkedSignal`.
 - [Module 15](15-routage.md), exercice 1 : les routes `/feuille-de-temps` et `/plan-de-charge` existent, avec un composant provisoire et une entrée de menu.
 - [Module 09](09-affectations-et-calcul-de-charge.md) et [module 10](10-temps-et-absences.md) : l'API expose le plan de charge, les affectations, les jours fériés et les feuilles de temps.
-- Une session ouverte à la main (module 16, étape 2) : avec un compte dont la fiche a des affectations pour la feuille de temps, avec un compte de manager pour le plan de charge.
+- Une session ouverte à la main (module 16, étape 2) : avec un compte dont la fiche a des affectations pour la feuille de temps, avec un compte de manager pour le plan de charge. La base de démonstration n'a aucune affectation : créez-en d'abord par `POST /api/affectations` (module 09), par exemple deux pour Camille, sur deux projets.
 
 ## Règles de gestion
 
@@ -214,10 +214,10 @@ L'API demande pour qui on lit la feuille de temps. L'interface ne sait pas encor
  * PROVISOIRE — l'interface n'a pas encore d'authentification.
  * Le module 19 remplace cette constante par le collaborateur de la session.
  */
-export const COLLABORATEUR_COURANT_ID = 1;
+export const COLLABORATEUR_COURANT_ID = 2;
 ```
 
-Donnez-lui le `collaborateurId` du compte avec lequel vous avez ouvert la session : pour tout autre, l'API répond `404`. Une constante nommée, dans un seul fichier, avec un commentaire qui dit qu'elle est provisoire : le jour venu, il n'y aura qu'un endroit à changer.
+Donnez-lui le `collaborateurId` du compte avec lequel vous avez ouvert la session : 2 pour Camille Durand, dans les données de démonstration. Avec un autre identifiant, l'API répond `404` s'il est hors de votre périmètre ; s'il y est (un manager et son équipe), elle vous laisse **lire** la feuille, mais refuse par un `403` de l'enregistrer ou de la soumettre : chacun saisit ses propres temps. Une constante nommée, dans un seul fichier, avec un commentaire qui dit qu'elle est provisoire : le jour venu, il n'y aura qu'un endroit à changer.
 
 ### 4. Les types et les calculs de la feuille
 
@@ -235,9 +235,8 @@ Puis ce dont la grille a besoin :
 export interface LigneDeSaisie {
   projetId: number;
   libelle: string;
-  /** Période de l'affectation : on ne saisit pas en dehors (RG-33). */
-  du: string;
-  au: string;
+  /** Périodes des affectations au projet : on ne saisit pas en dehors (RG-33). */
+  periodes: { du: string; au: string }[];
 }
 
 /** Les durées saisies, rangées par case : la clé est « projetId|jour ». */
@@ -316,7 +315,7 @@ export class FeuillesDeTempsApi {
 }
 ```
 
-- **`defaultValue: []`** : pour ces listes d'appoint, « pas encore chargé » et « vide » se traitent de la même façon, et `value()` n'est jamais `undefined`.
+- **`defaultValue: []`** : pour ces listes d'appoint, « pas encore chargé » et « vide » se traitent de la même façon, et `value()` n'est jamais `undefined`. Mais **`value()` lève une erreur quand la ressource est en erreur**, valeur par défaut ou non (`ResourceValueError`) : dans un `computed`, lisez toujours `hasValue() ? value() : []`. Sinon, une seule requête en échec — une liste de projets refusée par un `403`, par exemple — fait tomber tout l'écran.
 - **Les projets proposés viennent des affectations** (RG-33). Mais `AffectationDto` ne porte que `projetId` : pour afficher un libellé, on lit aussi les projets (le type `Projet` de l'exercice 2 du module 16), et l'écran fera le rapprochement. La limite de 100 projets est une facilité, à discuter en séance.
 - **`enregistrer` envoie `{ saisies }`**, la forme de `RemplacerSaisiesRequete`.
 
@@ -358,7 +357,9 @@ export class GrilleDeSaisie {
 
   protected estSaisissable(ligne: LigneDeSaisie, jour: string): boolean {
     return (
-      !this.lectureSeule() && !this.joursFermes().has(jour) && ligne.du <= jour && jour <= ligne.au
+      !this.lectureSeule() &&
+      !this.joursFermes().has(jour) &&
+      ligne.periodes.some((periode) => periode.du <= jour && jour <= periode.au)
     );
   }
 
@@ -370,7 +371,7 @@ export class GrilleDeSaisie {
 
 - **`grille` est un `model()`** : une entrée que le composant a le droit de modifier, et que le parent lie par `[(grille)]`.
 - **`saisir` crée un nouvel objet** (`{ ...grille, … }`) au lieu de modifier l'ancien : c'est le changement de référence qui prévient les `computed`.
-- **`ligne.du <= jour`** : la comparaison directe des dates ISO.
+- **`periode.du <= jour`** : la comparaison directe des dates ISO. Une case n'est ouverte que si le jour est couvert par au moins une affectation du projet.
 
 Le template est un vrai tableau : une `<caption>`, une ligne d'en-têtes `<th scope="col">` (« Projet », un jour par colonne avec `libelleJour(jour)`, « Total »), puis le corps et le pied :
 
@@ -432,7 +433,7 @@ Dans `grille-de-saisie.scss`, grisez la classe `ferme` et colorez `depassement` 
 npx ng generate component feuilles-de-temps/feuille-de-temps-hebdo
 ```
 
-Faites pointer la route `/feuille-de-temps` sur `FeuilleDeTempsHebdo`, à la place du composant provisoire. Dans la classe :
+Faites pointer la route `/feuille-de-temps` sur `FeuilleDeTempsHebdo`, à la place du composant provisoire, puis supprimez le dossier `feuilles-de-temps/feuille-de-temps-provisoire/`. Dans la classe :
 
 ```ts
 private readonly api = inject(FeuillesDeTempsApi);
@@ -458,20 +459,22 @@ protected readonly lignes = computed<LigneDeSaisie[]>(() => {
   const dimanche = jours[6];
   const projets = this.projets.hasValue() ? this.projets.value().elements : [];
 
-  return this.affectations
-    .value()
+  const affectations = this.affectations.hasValue() ? this.affectations.value() : [];
+
+  return affectations
     .filter((a) => a.dateDebut <= dimanche && a.dateFin >= lundi)
     .map((a) => ({
       projetId: a.projetId,
       libelle: projets.find((p) => p.id === a.projetId)?.libelle ?? `Projet n° ${a.projetId}`,
-      du: a.dateDebut,
-      au: a.dateFin,
+      periodes: [{ du: a.dateDebut, au: a.dateFin }],
     }));
 });
 
 /** RG-32 : week-ends et jours fériés. */
 protected readonly joursFermes = computed(() => {
-  const feries = new Set(this.joursFeries.value().map((jour) => jour.date));
+  const feries = new Set(
+    (this.joursFeries.hasValue() ? this.joursFeries.value() : []).map((jour) => jour.date),
+  );
   return new Set(this.selection.jours().filter((jour) => estWeekEnd(jour) || feries.has(jour)));
 });
 
@@ -491,11 +494,15 @@ protected readonly peutEnvoyer = computed(
 );
 ```
 
+Un projet peut avoir deux affectations dans la même semaine (un changement de taux, une surcharge ponctuelle) : `lignes` donnerait alors deux lignes au même `projetId`, et le `track ligne.projetId` de la grille échouerait. Fusionnez-les en une seule ligne, qui garde les périodes de chacune : ne les réunissez pas en une seule période « du plus tôt au plus tard », qui ouvrirait les jours entre deux affectations disjointes, que l'API refuse (RG-33). Une fonction `lignesDeLaSemaine(affectations, projets, jours)` dans `feuille-de-temps.ts` se teste sans Angular.
+
 Lisez ce code comme une feuille de calcul. Trois sources : la semaine, les réponses de l'API, la grille en cours de saisie. Tout le reste en découle, et se recalcule seul. Quand `selection.semaine` change, la feuille est redemandée, la grille repart de la nouvelle feuille, les lignes et les jours fermés suivent — sans une ligne de code pour orchestrer. Les affectations, les projets et les jours fériés, eux, ne dépendent pas de la semaine : ils ne sont pas rechargés.
 
 Le template compose le tout :
 
 ```html
+<h2>Feuille de temps</h2>
+
 <nav aria-label="Semaine affichée">
   <button matButton type="button" (click)="selection.decaler(-1)">Semaine précédente</button>
   <strong>Semaine du {{ libelleJour(selection.semaine()) }}</strong>
@@ -505,6 +512,8 @@ Le template compose le tout :
 <!-- chargement et erreur : comme au module 16 -->
 
 @if (feuille.hasValue()) {
+  <p>État : {{ libelleStatut() }}</p>
+
   @if (feuille.value().motifRejet; as motif) {
     <p role="status">Feuille rejetée : {{ motif }}</p>
   }
@@ -537,7 +546,7 @@ Le template compose le tout :
 }
 ```
 
-Affichez aussi l'état de la feuille, par un `computed` `libelleStatut` qui traduit `'Validee'` en « Validée » : l'identifiant de l'API n'est pas un texte pour l'utilisateur.
+L'état de la feuille s'affiche par un `computed` `libelleStatut` qui traduit `'Validee'` en « Validée » : l'identifiant de l'API n'est pas un texte pour l'utilisateur. Écrivez-le, à partir d'une table `LIBELLES_STATUT` rangée dans `feuille-de-temps.ts`.
 
 Ouvrez `/feuille-de-temps` : la semaine en cours, vos projets en lignes, le week-end grisé. Choisissez 0,75 et 0,5 le même jour : le total passe à 1,25, l'alerte apparaît, les boutons se ferment.
 
@@ -574,7 +583,43 @@ private envoyer(requete: Observable<unknown>): void {
 - **`finalize`** s'exécute dans les deux cas, succès ou échec : le bouton ne reste jamais bloqué.
 - **En cas de refus** (un `422` pour RG-32, par exemple), l'intercepteur du module 16 affiche le message de l'API, et rien n'est rechargé : l'utilisateur garde sa saisie et peut la corriger.
 
-Soumettez : après le rechargement, l'état devient « Soumise », toutes les cases sont fermées, les boutons ont disparu (RG-35). Changez de semaine et revenez : la feuille est toujours soumise — c'est l'API qui le dit, pas l'écran.
+Soumettez : après le rechargement, l'état devient « Soumise », toutes les cases sont fermées, les boutons ont disparu (RG-35). Changez de semaine et revenez : la feuille est toujours soumise — c'est l'API qui le dit, pas l'écran. Après un rejet, la feuille revient en brouillon avec son motif ; à la soumission suivante, l'API efface le motif, et l'écran ne l'affiche plus.
+
+**Compléter le contrat de l'API.** Comptez, dans la base, les feuilles de temps du collaborateur courant : il y en a une par semaine que vous avez affichée, même sans rien saisir. C'est le contrat du module 10 : `GET /api/feuilles-de-temps` crée la feuille absente, en brouillon et vide. Ce premier client en montre le prix :
+
+- **La navigation laisse des données.** Vingt clics sur « Semaine précédente », vingt feuilles vides. Un manager qui consulte la semaine d'un membre de son équipe crée la feuille de celui-ci, et la trace d'audit (`CreePar`) porte le nom du manager, pas celui du collaborateur.
+- **RG-05 en est faussée.** `DELETE /api/collaborateurs/{id}` archive tout collaborateur qui a une feuille, même vide : il suffit d'avoir ouvert sa feuille de temps une fois pour ne plus pouvoir être supprimé.
+
+La décision : on garde la lecture qui crée, et RG-05 ne compte plus une feuille vide. L'autre conception — un `GET` qui renvoie une feuille « virtuelle », sans identifiant, que le premier enregistrement crée — serait plus orthodoxe, mais elle change le contrat de bout en bout : un `id` qui peut manquer, une écriture adressée par collaborateur et semaine au lieu de l'identifiant, des tests d'intégration à reprendre, et un écran qui doit savoir si la feuille existe déjà. Pour un seul défaut, c'est trop cher.
+
+Une feuille est **vide** quand elle est en brouillon, sans saisie et sans motif de rejet : elle n'a rien enregistré que la lecture n'ait créé. Dans `Chronos.Api`, `Collaborateurs/CollaborateursEndpoints.cs`, méthode `Supprimer`, la dernière condition de `aDesDonneesLiees` devient :
+
+```csharp
+|| await db.FeuillesDeTemps.AnyAsync(
+    f => f.CollaborateurId == id
+        && (f.Statut != StatutFeuilleDeTemps.Brouillon || f.MotifRejet != null || f.Saisies.Any()),
+    cancellationToken);
+```
+
+et la branche de la suppression physique supprime d'abord ses feuilles, toutes vides à ce stade — la clé étrangère est en `Restrict` :
+
+```csharp
+else
+{
+    // Les feuilles vides, créées par la seule lecture d'une semaine, partent avec le collaborateur.
+    var feuillesVides = await db.FeuillesDeTemps
+        .Where(f => f.CollaborateurId == id)
+        .ToListAsync(cancellationToken);
+    db.FeuillesDeTemps.RemoveRange(feuillesVides);
+    db.Collaborateurs.Remove(collaborateur);
+}
+```
+
+Les deux suppressions partent dans le même `SaveChangesAsync`, donc dans une seule transaction ; EF Core les ordonne d'après la relation, les feuilles avant le collaborateur.
+
+Ajoutez les tests d'intégration : un collaborateur dont les feuilles n'ont été que lues (`GET /api/feuilles-de-temps`) est réellement supprimé — `204`, et sa ligne n'existe plus, même en ignorant le filtre d'archivage ; un collaborateur qui a une saisie, une feuille soumise, ou une feuille rejetée revenue en brouillon avec son motif est archivé.
+
+Aucune migration : le modèle de données ne change pas. Relancez l'API.
 
 ### 9. Le plan de charge
 
@@ -599,13 +644,15 @@ export function niveauDeCharge(charge: Charge): NiveauDeCharge {
 }
 
 export const LIBELLES_NIVEAU: Record<NiveauDeCharge, string> = {
-  indisponible: 'Absent',
+  indisponible: 'Indisponible',
   intercontrat: 'Intercontrat',
   'sous-charge': 'Sous-charge',
   normale: 'Charge normale',
   surcharge: 'Surcharge',
 };
 ```
+
+Une capacité nulle ne veut pas toujours dire « absent » : elle l'est aussi avant la date d'entrée ou après la date de sortie, et le plan de charge ne dit pas laquelle des deux. D'où « Indisponible », qui ne prétend pas en savoir plus que l'API.
 
 Le seuil de 80 % pour la sous-charge est un choix d'affichage : le cahier des charges demande de la signaler sans la définir. Posez la question à qui de droit ; le jour où elle aura une réponse, sa place sera dans l'API.
 
@@ -682,7 +729,8 @@ Le dialogue, `plan-de-charge/confirmation-de-surcharge/confirmation-de-surcharge
 ```ts
 export interface DonneesDeConfirmation {
   collaborateur: string;
-  semaine: string;
+  /** Ce que la période désigne pour l'utilisateur : « semaine du lun. 4 mai ». */
+  periode: string;
   tauxDeCharge: number;
 }
 
@@ -694,7 +742,7 @@ export interface DonneesDeConfirmation {
     <h2 mat-dialog-title>Confirmer la surcharge</h2>
     <mat-dialog-content>
       {{ donnees.collaborateur }} est planifié à {{ donnees.tauxDeCharge | percent }} de sa capacité
-      la semaine du {{ donnees.semaine }}. Confirmez-vous cette surcharge ?
+      ({{ donnees.periode }}). Confirmez-vous cette surcharge ?
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton type="button" [mat-dialog-close]="false">Annuler</button>
@@ -716,7 +764,7 @@ private readonly confirmees = signal(new Set<string>());
 protected confirmer(ligne: LigneDePlanDeCharge, charge: Charge): void {
   const data: DonneesDeConfirmation = {
     collaborateur: `${ligne.prenom} ${ligne.nom}`,
-    semaine: libelleJour(charge.debut),
+    periode: `semaine du ${libelleJour(charge.debut)}`,
     tauxDeCharge: charge.tauxDeCharge ?? 0,
   };
 
@@ -749,24 +797,25 @@ npm run build
 
 ## À vous
 
-1. **Les absences (RG-32).** Lisez `/api/absences?collaborateurId=` et fermez les jours d'absence **approuvée**. Une absence qui débute l'après-midi ou finit le matin ne ferme qu'une demi-journée : que devient la liste des durées proposées ce jour-là ? Où placez-vous ce calcul — dans l'écran, dans la grille, dans une fonction de `feuille-de-temps.ts` ? Testez-le.
+1. **Les absences (RG-32).** Lisez `/api/absences?collaborateurId=` et fermez les jours d'absence **approuvée**. Une absence qui débute l'après-midi ou finit le matin ne ferme qu'une demi-journée : que devient la liste des durées proposées ce jour-là ? Et le total que l'écran admet ce jour-là, sur l'ensemble des projets (l'API refuse par un `422` `RG-32` 0,5 + 0,5 un jour d'absence l'après-midi) ? Où placez-vous ce calcul — dans l'écran, dans la grille, dans une fonction de `feuille-de-temps.ts` ? Testez-le. La solution de référence calcule `disponible(absences, jour)` (1 moins la part absente), compare le total du jour à ce disponible au lieu de 1 dans `joursEnDepassement`, et la grille écrit « Plus d'une demi-journée » au lieu de « Plus d'un jour » quand c'est ce seuil qui est franchi.
 
 2. **Confirmer avant de supprimer.** Le module 16 a laissé la suppression d'un collaborateur sans garde-fou. Écrivez dans `commun/` un dialogue de confirmation générique (titre, message, libellé du bouton) et utilisez-le. `ConfirmationDeSurcharge` doit-il en devenir un cas particulier ?
 
-3. **Le manager relit.** Sur un écran `/feuilles-a-valider`, affichez la feuille soumise d'un collaborateur avec `GrilleDeSaisie` en lecture seule, et deux actions : valider, rejeter. Le rejet demande un motif : un dialogue qui contient un Signal Form. Qu'avez-vous dû modifier dans la grille pour la réutiliser ?
+3. **Le manager relit.** Sur un écran `/feuilles-a-valider`, affichez la feuille soumise d'un collaborateur avec `GrilleDeSaisie` en lecture seule, et deux actions : valider, rejeter. Le rejet demande un motif : un dialogue qui contient un Signal Form, avec les deux règles de `RejeterFeuilleRequete` (obligatoire, 500 caractères au plus) — sinon le `400` arrive après la fermeture du dialogue. Qu'avez-vous dû modifier dans la grille pour la réutiliser ? La liste vient de `GET /api/feuilles-de-temps/soumises` (exercice 1 du module 10) ; ouvrez l'écran avec le compte d'une manager : pour un simple collaborateur, l'API répond `403`, et elle ne propose jamais à quelqu'un sa propre feuille.
 
-4. **Une confirmation qui compte.** Si votre API a fait l'exercice 3 du module 09, créez une affectation depuis le plan de charge : sur un `422` portant `"regle": "RG-24"`, ouvrez le dialogue, puis renvoyez la requête avec `"surchargeConfirmee": true`. Où attrapez-vous ce `422` ? Que devient la notification de l'intercepteur ?
+4. **Une confirmation qui compte.** Si votre API a fait l'exercice 3 du module 09, créez une affectation depuis le plan de charge : sur un `422` portant `"regle": "RG-24"`, ouvrez le dialogue, puis renvoyez la requête avec `"surchargeConfirmee": true`. Où attrapez-vous ce `422` ? Que devient la notification de l'intercepteur ? Ce `422` ne dit ni le taux atteint ni la semaine en cause : le dialogue ne peut pas reprendre le texte de `ConfirmationDeSurcharge`.
 
-5. **Par mois.** Ajoutez au plan de charge un choix « semaine / mois » (`pas=mois`). Qu'est-ce qui change dans les en-têtes de colonnes ? Le choix doit-il rejoindre `SelectionSemaine`, rester dans l'écran, ou aller dans l'URL ?
+5. **Par mois.** Ajoutez au plan de charge un choix « semaine / mois » (`pas=mois`). Qu'est-ce qui change dans les en-têtes de colonnes ? Faites partir la vue du 1er du mois de la semaine sélectionnée : à partir du lundi, la première colonne « décembre 2026 » ne couvrirait que du 14 au 31. (Un `mat-button-toggle-group` à choix unique expose ses boutons avec le rôle `radio` : c'est ce rôle qu'un test recherche.) Le choix doit-il rejoindre `SelectionSemaine`, rester dans l'écran, ou aller dans l'URL ?
 
 6. **La semaine dans l'URL.** Sur une branche, remplacez `SelectionSemaine` par un paramètre `?semaine=2026-05-04` sur les deux routes. Comparez : rechargement de la page, lien envoyé à un collègue, bouton « Précédent » du navigateur, quantité de code. Laquelle des deux solutions gardez-vous ?
 
 ## Critères de réussite
 
-- `/feuille-de-temps` affiche la semaine en cours, une ligne par affectation de la semaine, les week-ends et les jours fériés grisés et fermés.
-- Les totaux par jour et par ligne suivent chaque saisie ; un total supérieur à 1 est signalé par un texte et bloque l'enregistrement.
+- `/feuille-de-temps` affiche la semaine en cours, une ligne par projet affecté pendant la semaine, les week-ends et les jours fériés grisés et fermés ; une case n'est ouverte que les jours couverts par une affectation du projet.
+- Les totaux par jour et par ligne suivent chaque saisie ; un total supérieur à 1 — à 0,5 un jour de demi-journée d'absence approuvée (exercice 1) — est signalé par un texte et bloque l'enregistrement.
 - « Enregistrer le brouillon » envoie un `PUT …/saisies` sans case vide ; « Soumettre » envoie le `PUT` puis le `POST …/soumission` ; la feuille soumise est en lecture seule.
-- Un refus de l'API (essayez une saisie un jour d'absence) affiche son message et laisse la saisie à l'écran.
+- Un refus de l'API (essayez une saisie un jour d'absence, avant l'exercice 1) affiche son message et laisse la saisie à l'écran.
+- L'API ajustée : un collaborateur dont les feuilles n'ont été que lues est réellement supprimé par `DELETE /api/collaborateurs/{id}` ; avec une saisie, une feuille soumise ou rejetée, il est archivé (RG-05). Les tests d'intégration de l'API passent.
 - `/plan-de-charge` affiche quatre semaines ; chaque case porte un taux **et** un libellé ; une surcharge propose « Confirmer », qui ouvre un dialogue utilisable au clavier.
 - Changer de semaine sur un écran la change sur l'autre.
 - Aucun `Date` n'apparaît hors de `commun/dates.ts` ; `COLLABORATEUR_COURANT_ID` n'est défini qu'à un endroit.
@@ -789,6 +838,9 @@ npm run build
 | Un service d'état pour chaque écran, ou NgRx « parce qu'il en faut un » | De la cérémonie sans état partagé à gérer. | L'état local dans le composant ; un service quand il y a partage. |
 | `taux > 1` dans le template | Duplique RG-24, sans les tests de l'API. | Afficher `surcharge`. |
 | La case rouge, sans texte | Invisible pour une partie des utilisateurs. | Libellé, et la couleur en renfort. |
+| `affectations.value()` dans un `computed`, protégé par `defaultValue` | `value()` lève quand la ressource est en erreur : tout l'écran tombe. | `hasValue() ? value() : []`. |
+| Une ligne de grille « du premier début à la dernière fin » de deux affectations | Ouvre les jours entre deux affectations disjointes, que l'API refuse (RG-33). | Garder les périodes de chaque affectation. |
+| Compter toute feuille de temps comme donnée liée (RG-05) | La simple lecture d'une semaine empêche ensuite de supprimer le collaborateur. | Ne compter que les feuilles non vides ; supprimer les vides avec lui. |
 | Un `<div>` positionné à la main en guise de fenêtre modale | Ni piège à focus, ni `Échap`, ni retour du focus. | `MatDialog`. |
 
 La liste générale est dans le [référentiel Angular](../docs/references/angular-22.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
@@ -799,6 +851,7 @@ La liste générale est dans le [référentiel Angular](../docs/references/angul
 - La semaine sélectionnée vit dans un service. Qu'est-ce qui aurait justifié de la mettre dans l'URL ? Dans le composant ? Quel critère appliquez-vous ?
 - L'interface vérifie RG-31 avant d'envoyer, l'API la vérifie en recevant. Est-ce une duplication ? Qu'est-ce qui distingue ce cas du `taux > 1` que le module déconseille ?
 - Pour afficher le libellé d'un projet, l'écran lit les affectations **et** les cent premiers projets. Quelles autres conceptions voyez-vous, côté API comme côté interface, et que coûtent-elles ?
+- La lecture d'une semaine crée sa feuille, et l'on a corrigé RG-05 plutôt que le `GET`. Qu'aurait coûté la feuille « virtuelle » à l'API, aux tests et à l'écran ? Qu'est-ce qui vous ferait changer d'avis ?
 - Entre le chargement de la feuille et le clic sur « Soumettre », le manager a pu approuver une absence. Que se passe-t-il ? L'écran se comporte-t-il correctement ?
 - La confirmation de surcharge de l'étape 10 est oubliée au rechargement. Qu'est-ce qu'une démonstration à un utilisateur aurait révélé ? Qui, dans l'équipe, aurait dû poser la question, et quand ?
 

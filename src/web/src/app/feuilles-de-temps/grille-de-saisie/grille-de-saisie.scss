@@ -1,0 +1,37 @@
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+caption {
+  text-align: left;
+  padding-bottom: 8px;
+}
+
+th,
+td {
+  border: 1px solid var(--mat-sys-outline-variant);
+  padding: 4px 8px;
+  text-align: center;
+}
+
+th[scope='row'] {
+  text-align: left;
+}
+
+select {
+  font: inherit;
+}
+
+.ferme {
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.depassement {
+  color: var(--mat-sys-error);
+  font-weight: bold;
+}
+
+.alerte {
+  display: block;
+}

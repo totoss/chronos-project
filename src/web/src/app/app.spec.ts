@@ -58,6 +58,7 @@ describe('App', () => {
       '/projets',
       '/plan-de-charge',
       '/feuille-de-temps',
+      '/feuilles-a-valider',
       '/absences',
     ]);
   });

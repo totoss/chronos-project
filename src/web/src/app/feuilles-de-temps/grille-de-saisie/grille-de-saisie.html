@@ -1,0 +1,58 @@
+<table>
+  <caption>
+    Temps saisis par projet et par jour, en fractions de journée
+  </caption>
+  <thead>
+    <tr>
+      <th scope="col">Projet</th>
+      @for (jour of jours(); track jour) {
+        <th scope="col" [class.ferme]="joursFermes().has(jour)">{{ libelleJour(jour) }}</th>
+      }
+      <th scope="col">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (ligne of lignes(); track ligne.projetId; let i = $index) {
+      <tr>
+        <th scope="row">{{ ligne.libelle }}</th>
+        @for (jour of jours(); track jour) {
+          <td [class.ferme]="joursFermes().has(jour)">
+            <select
+              #choix
+              [attr.aria-label]="ligne.libelle + ', ' + libelleJour(jour)"
+              [disabled]="!estSaisissable(ligne, jour)"
+              (change)="saisir(ligne, jour, choix.value)"
+            >
+              @for (d of dureesProposees(jour); track d) {
+                <option [value]="d" [selected]="d === duree(ligne, jour)">
+                  {{ d === 0 ? '—' : (d | number: '1.0-2') }}
+                </option>
+              }
+            </select>
+          </td>
+        }
+        <td>{{ totauxParLigne()[i] | number: '1.0-2' }}</td>
+      </tr>
+    } @empty {
+      <tr>
+        <td [attr.colspan]="jours().length + 2">Aucune affectation sur cette semaine.</td>
+      </tr>
+    }
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Total du jour</th>
+      @for (jour of jours(); track jour; let j = $index) {
+        <td [class.depassement]="totauxParJour()[j] > limite(jour)">
+          {{ totauxParJour()[j] | number: '1.0-2' }}
+          @if (totauxParJour()[j] > limite(jour)) {
+            <span class="alerte">{{
+              limite(jour) === 1 ? "Plus d'un jour" : "Plus d'une demi-journée"
+            }}</span>
+          }
+        </td>
+      }
+      <td></td>
+    </tr>
+  </tfoot>
+</table>

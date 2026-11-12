@@ -198,11 +198,44 @@ describe('ListeCollaborateurs', () => {
     expect(cartes()).toBe(1);
   });
 
+  /** Le bouton du dialogue de confirmation ouvert par un clic sur « Supprimer ». */
+  async function confirmerDansLeDialogue(libelle: string): Promise<void> {
+    const bouton = await vi.waitFor(() => {
+      const trouve = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('app-dialogue-de-confirmation button'),
+      ).find((b) => b.textContent?.includes(libelle));
+      expect(trouve).toBeTruthy();
+      return trouve!;
+    });
+    bouton.click();
+  }
+
+  it('demande confirmation avant de supprimer, et ne supprime rien si on annule', async () => {
+    await ouvrir('/collaborateurs');
+
+    cliquer('Supprimer');
+    await vi.waitFor(() =>
+      expect(document.querySelector('mat-dialog-content')?.textContent).toContain(
+        'Supprimer Camille Durand ?',
+      ),
+    );
+    await confirmerDansLeDialogue('Annuler');
+    await vi.waitFor(() => expect(document.querySelector('app-dialogue-de-confirmation')).toBeNull());
+    await harness.fixture.whenStable();
+
+    http.expectNone({ method: 'DELETE', url: '/api/collaborateurs/2' });
+    expect(cartes()).toBe(1);
+  });
+
   it('recharge la liste après une suppression réussie', async () => {
     await ouvrir('/collaborateurs');
 
     cliquer('Supprimer');
-    http.expectOne({ method: 'DELETE', url: '/api/collaborateurs/2' }).flush(null, {
+    await confirmerDansLeDialogue('Supprimer');
+    const suppression = await vi.waitFor(() =>
+      http.expectOne({ method: 'DELETE', url: '/api/collaborateurs/2' }),
+    );
+    suppression.flush(null, {
       status: 204,
       statusText: 'No Content',
     });
@@ -217,9 +250,11 @@ describe('ListeCollaborateurs', () => {
     await ouvrir('/collaborateurs');
 
     cliquer('Supprimer');
-    http
-      .expectOne({ method: 'DELETE', url: '/api/collaborateurs/2' })
-      .flush({ title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+    await confirmerDansLeDialogue('Supprimer');
+    const suppression = await vi.waitFor(() =>
+      http.expectOne({ method: 'DELETE', url: '/api/collaborateurs/2' }),
+    );
+    suppression.flush({ title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
     await harness.fixture.whenStable();
 
     http.expectNone((r) => r.url === '/api/collaborateurs');

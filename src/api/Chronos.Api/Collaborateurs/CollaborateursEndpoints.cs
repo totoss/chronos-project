@@ -253,6 +253,8 @@ public static class CollaborateursEndpoints
         }
 
         // RG-05 : qui possède des données liées est archivé ; les autres sont réellement supprimés.
+        // Une feuille de temps vide (brouillon sans saisie ni motif de rejet) n'est pas une donnée liée : le GET
+        // des feuilles en crée une pour chaque semaine consultée.
         var aDesDonneesLiees =
             await db.Collaborateurs
                 .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
@@ -260,7 +262,9 @@ public static class CollaborateursEndpoints
             || await db.Projets.AnyAsync(p => p.ResponsableId == id, cancellationToken)
             || await db.Affectations.AnyAsync(a => a.CollaborateurId == id, cancellationToken)
             || await db.Absences.AnyAsync(a => a.CollaborateurId == id, cancellationToken)
-            || await db.FeuillesDeTemps.AnyAsync(f => f.CollaborateurId == id, cancellationToken);
+            || await db.FeuillesDeTemps.AnyAsync(f => f.CollaborateurId == id
+                && (f.Statut != StatutFeuilleDeTemps.Brouillon || f.MotifRejet != null || f.Saisies.Any()),
+                cancellationToken);
 
         if (aDesDonneesLiees)
         {
@@ -268,6 +272,11 @@ public static class CollaborateursEndpoints
         }
         else
         {
+            // Les feuilles qui restent sont vides : elles partent avec le collaborateur.
+            var feuillesVides = await db.FeuillesDeTemps
+                .Where(f => f.CollaborateurId == id)
+                .ToListAsync(cancellationToken);
+            db.FeuillesDeTemps.RemoveRange(feuillesVides);
             db.Collaborateurs.Remove(collaborateur);
         }
 

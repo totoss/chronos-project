@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -8,6 +9,7 @@ import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { debounceTime, Subject } from 'rxjs';
 import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
 import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
+import { demanderConfirmation } from '../../commun/dialogue-de-confirmation/dialogue-de-confirmation';
 import { CarteCollaborateur } from '../carte-collaborateur/carte-collaborateur';
 import { Collaborateur } from '../collaborateur';
 import { CollaborateursApi, TriCollaborateurs } from '../collaborateurs-api';
@@ -29,6 +31,7 @@ import { CollaborateursApi, TriCollaborateurs } from '../collaborateurs-api';
 })
 export class ListeCollaborateurs {
   private readonly api = inject(CollaborateursApi);
+  private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -92,7 +95,14 @@ export class ListeCollaborateurs {
     this.page.set(evenement.pageIndex + 1);
   }
 
-  protected supprimer(collaborateur: Collaborateur): void {
+  protected async supprimer(collaborateur: Collaborateur): Promise<void> {
+    const confirme = await demanderConfirmation(this.dialog, {
+      titre: 'Supprimer le collaborateur',
+      message: `Supprimer ${collaborateur.prenom} ${collaborateur.nom} ? Cette action est définitive.`,
+      libelleConfirmer: 'Supprimer',
+    });
+    if (!confirme) return;
+
     this.api.supprimer(collaborateur.id).subscribe({
       next: () => this.collaborateurs.reload(),
       error: () => {}, // l'intercepteur a déjà notifié l'utilisateur

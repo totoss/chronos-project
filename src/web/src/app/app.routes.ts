@@ -20,10 +20,18 @@ export const routes: Routes = [
   {
     path: 'feuille-de-temps',
     loadComponent: () =>
-      import('./feuilles-de-temps/feuille-de-temps-provisoire/feuille-de-temps-provisoire').then(
-        (m) => m.FeuilleDeTempsProvisoire,
+      import('./feuilles-de-temps/feuille-de-temps-hebdo/feuille-de-temps-hebdo').then(
+        (m) => m.FeuilleDeTempsHebdo,
       ),
     title: 'Feuille de temps — Chronos',
+  },
+  {
+    path: 'feuilles-a-valider',
+    loadComponent: () =>
+      import('./feuilles-de-temps/feuilles-a-valider/feuilles-a-valider').then(
+        (m) => m.FeuillesAValider,
+      ),
+    title: 'Feuilles à valider — Chronos',
   },
   {
     path: 'absences',

@@ -1,0 +1,30 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.taux {
+  font-weight: bold;
+}
+
+:host(.surcharge) {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+:host(.intercontrat) {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+:host(.sous-charge) {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+:host(.indisponible) {
+  background: var(--mat-sys-surface-container-highest);
+}

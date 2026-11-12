@@ -294,4 +294,115 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
             .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
             .AnyAsync(c => c.Id == id, ct));
     }
+
+    private const string Semaine = "2026-05-11";
+
+    // Un collaborateur de l'équipe de Sophie dont la feuille de la semaine contient une saisie. L'affectation qui a
+    // permis la saisie est retirée ensuite : la feuille est alors la seule donnée liée au collaborateur.
+    private async Task<(int Id, string Email)> CreerAvecUneSaisieAsync(string matricule)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var personne = await _client.CreerCollaborateurAsync(matricule, ChronosApiFactory.SophieId);
+        var affectation = await _client.PostAsJsonAsync("/api/affectations",
+            new { collaborateurId = personne.Id, projetId = 1, dateDebut = Semaine, dateFin = "2026-05-15", tauxAllocation = 0.5 }, ct);
+        Assert.Equal(HttpStatusCode.Created, affectation.StatusCode);
+
+        // Seul le propriétaire saisit : on se connecte avec le compte de la fiche.
+        using var proprietaire = await factory.ConnecterAsync(personne);
+        var feuille = await proprietaire.GetFromJsonAsync<JsonElement>($"/api/feuilles-de-temps?semaine={Semaine}", ct);
+        var saisie = await proprietaire.PutAsJsonAsync($"/api/feuilles-de-temps/{feuille.GetProperty("id").GetInt32()}/saisies",
+            new { saisies = new[] { new { projetId = 1, jour = "2026-05-12", duree = 0.5 } } }, ct);
+        Assert.Equal(HttpStatusCode.OK, saisie.StatusCode);
+
+        var idAffectation = (await affectation.LireAsync()).GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/affectations/{idAffectation}", ct)).StatusCode);
+        return personne;
+    }
+
+    private async Task<bool> ADesFeuillesEnBaseAsync(int collaborateurId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ChronosDbContext>();
+        return await db.FeuillesDeTemps.AnyAsync(f => f.CollaborateurId == collaborateurId, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<bool> EstArchiveAsync(int collaborateurId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ChronosDbContext>();
+        var ligne = await db.Collaborateurs
+            .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
+            .SingleAsync(c => c.Id == collaborateurId, TestContext.Current.CancellationToken);
+        return ligne.EstArchive;
+    }
+
+    [Fact]
+    public async Task Supprimer_un_collaborateur_dont_les_seules_traces_sont_des_feuilles_vides_le_supprime_vraiment()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var personne = await _client.CreerCollaborateurAsync("C-0030");
+        // Le gestionnaire RH lit deux semaines : le GET crée deux feuilles, jamais remplies.
+        foreach (var semaine in new[] { Semaine, "2026-05-18" })
+        {
+            var reponse = await _client.GetAsync($"/api/feuilles-de-temps?collaborateurId={personne.Id}&semaine={semaine}", ct);
+            Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
+        }
+        Assert.True(await ADesFeuillesEnBaseAsync(personne.Id));
+
+        var suppression = await _client.DeleteAsync($"/api/collaborateurs/{personne.Id}", ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, suppression.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/collaborateurs/{personne.Id}", ct)).StatusCode);
+        Assert.False(await ADesFeuillesEnBaseAsync(personne.Id));
+    }
+
+    [Fact]
+    public async Task Supprimer_un_collaborateur_qui_a_une_feuille_avec_une_saisie_l_archive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var personne = await CreerAvecUneSaisieAsync("C-0031");
+
+        var suppression = await _client.DeleteAsync($"/api/collaborateurs/{personne.Id}", ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, suppression.StatusCode);
+        Assert.True(await EstArchiveAsync(personne.Id));
+        Assert.True(await ADesFeuillesEnBaseAsync(personne.Id));
+    }
+
+    [Fact]
+    public async Task Supprimer_un_collaborateur_qui_a_une_feuille_soumise_l_archive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var personne = await _client.CreerCollaborateurAsync("C-0032");
+        using var proprietaire = await factory.ConnecterAsync(personne);
+        var feuille = await proprietaire.GetFromJsonAsync<JsonElement>($"/api/feuilles-de-temps?semaine={Semaine}", ct);
+        var soumission = await proprietaire.PostAsync(
+            $"/api/feuilles-de-temps/{feuille.GetProperty("id").GetInt32()}/soumission", null, ct);
+        Assert.Equal(HttpStatusCode.OK, soumission.StatusCode);
+
+        var suppression = await _client.DeleteAsync($"/api/collaborateurs/{personne.Id}", ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, suppression.StatusCode);
+        Assert.True(await EstArchiveAsync(personne.Id));
+    }
+
+    [Fact]
+    public async Task Supprimer_un_collaborateur_qui_a_une_feuille_rejetee_l_archive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var personne = await _client.CreerCollaborateurAsync("C-0033", ChronosApiFactory.SophieId);
+        using var proprietaire = await factory.ConnecterAsync(personne);
+        var feuille = await proprietaire.GetFromJsonAsync<JsonElement>($"/api/feuilles-de-temps?semaine={Semaine}", ct);
+        var id = feuille.GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.OK, (await proprietaire.PostAsync($"/api/feuilles-de-temps/{id}/soumission", null, ct)).StatusCode);
+        // La feuille revient au statut brouillon, avec son motif : elle n'est plus vide.
+        using var sophie = await factory.ClientSophieAsync();
+        var rejet = await sophie.PostAsJsonAsync($"/api/feuilles-de-temps/{id}/rejet", new { motif = "Semaine incomplète." }, ct);
+        Assert.Equal(HttpStatusCode.OK, rejet.StatusCode);
+
+        var suppression = await _client.DeleteAsync($"/api/collaborateurs/{personne.Id}", ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, suppression.StatusCode);
+        Assert.True(await EstArchiveAsync(personne.Id));
+    }
 }

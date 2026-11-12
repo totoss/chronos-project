@@ -35,6 +35,7 @@ export class App {
     { chemin: '/projets', libelle: 'Projets', icone: 'folder' },
     { chemin: '/plan-de-charge', libelle: 'Plan de charge', icone: 'bar_chart' },
     { chemin: '/feuille-de-temps', libelle: 'Feuille de temps', icone: 'schedule' },
+    { chemin: '/feuilles-a-valider', libelle: 'Feuilles à valider', icone: 'fact_check' },
     { chemin: '/absences', libelle: 'Absences', icone: 'event_busy' },
   ];
 }

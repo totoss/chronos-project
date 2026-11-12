@@ -1,0 +1,29 @@
+.outils {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+nav {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid var(--mat-sys-outline-variant);
+  padding: 4px 8px;
+  text-align: center;
+}
+
+th[scope='row'] {
+  text-align: left;
+}

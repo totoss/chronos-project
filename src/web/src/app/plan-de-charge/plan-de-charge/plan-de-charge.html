@@ -1,2 +1,66 @@
 <h2>Plan de charge</h2>
-<p>Cet écran sera construit au module 18.</p>
+
+<div class="outils">
+  <nav aria-label="Semaine affichée">
+    <button matButton type="button" (click)="selection.decaler(-1)">Semaine précédente</button>
+    <strong>À partir du {{ libelleJour(selection.semaine()) }}</strong>
+    <button matButton type="button" (click)="selection.decaler(1)">Semaine suivante</button>
+  </nav>
+
+  <mat-button-toggle-group
+    aria-label="Découpage du plan"
+    [value]="pas()"
+    (change)="pas.set($event.value)"
+  >
+    <mat-button-toggle value="semaine">Par semaine</mat-button-toggle>
+    <mat-button-toggle value="mois">Par mois</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <button matButton="filled" type="button" (click)="creerUneAffectation()">
+    Nouvelle affectation
+  </button>
+</div>
+
+@if (plan.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement du plan de charge" />
+}
+
+@if (plan.error()) {
+  <p role="alert">
+    Le plan de charge n'a pas pu être chargé.
+    <button matButton type="button" (click)="plan.reload()">Réessayer</button>
+  </p>
+} @else if (plan.hasValue()) {
+  @let lignes = plan.value().lignes;
+
+  @if (lignes.length === 0) {
+    <p>Aucun collaborateur à afficher.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Collaborateur</th>
+          @for (periode of periodes(); track periode.debut) {
+            <th scope="col">{{ libelleDePeriode(periode) }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (ligne of lignes; track ligne.collaborateurId) {
+          <tr>
+            <th scope="row">{{ ligne.prenom }} {{ ligne.nom }}</th>
+            @for (charge of ligne.periodes; track charge.debut) {
+              <td>
+                <app-indicateur-charge
+                  [charge]="charge"
+                  [confirmee]="estConfirmee(ligne, charge)"
+                  (confirmer)="confirmer(ligne, charge)"
+                />
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}
