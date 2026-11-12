@@ -1,0 +1,30 @@
+<mat-card appearance="outlined" [class.clos]="estClos()">
+  <mat-card-header>
+    <mat-card-title>{{ projet().code }}</mat-card-title>
+    <mat-card-subtitle>{{ projet().libelle }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p>
+      @switch (projet().statut) {
+        @case ('EnPreparation') {
+          En préparation
+        }
+        @case ('EnCours') {
+          En cours
+        }
+        @case ('Termine') {
+          Terminé
+        }
+        @case ('Annule') {
+          Annulé
+        }
+      }
+    </p>
+    @if (projet().client !== null) {
+      <p>Client : {{ projet().client }}</p>
+    } @else {
+      <p>Projet interne</p>
+    }
+  </mat-card-content>
+</mat-card>

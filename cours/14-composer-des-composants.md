@@ -1,7 +1,7 @@
 # Module 14 — Composer des composants
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, Angular CLI 22.2.7, Angular 22.2.6, Angular Material et CDK 22.2.7, TypeScript 6.0.3, Vitest 5.1.0. `ng add @angular/material`, `ng build` et `ng test` y réussissent ; le rendu (thème, icônes, cartes) a été contrôlé dans un navigateur. **Non exécuté** : les commandes sous Windows / PowerShell. Les exercices n'ont pas de solution rédigée ; seuls leurs points techniques délicats (comportement de `linkedSignal`, `mat-table` alimenté par un signal, `effect` vers `localStorage`) ont été essayés. Signalez au mentor tout écart constaté.
+> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, Angular CLI 22.2.7, Angular 22.2.6, Angular Material et CDK 22.2.7, TypeScript 6.0.3, Vitest 5.1.0. `ng add @angular/material`, `ng build` et `ng test` y réussissent ; le rendu (thème, icônes, cartes) a été contrôlé dans un navigateur. **Non exécuté** : les commandes sous Windows / PowerShell. Les exercices n'ont pas de solution rédigée ; seuls leurs points techniques délicats (comportement de `linkedSignal`, `mat-table` alimenté par un signal, `effect` vers `localStorage`) ont été essayés. **Rejoué le 12 novembre 2026 sur la solution de référence** (suite des modules 13 et 14 sur un même code, conteneur `node:24`, Node.js 24.22, mêmes versions d'Angular et de Material) : pas à pas, exercices 1 et 5, `ng build` (seul l'avertissement de budget) et `ng test` (8 fichiers, 16 tests) réussis. Signalez au mentor tout écart constaté.
 
 À la fin du module 13, tout l'écran des collaborateurs tient dans un composant : le champ de filtre, la liste, la mise en forme d'une ligne. Cela suffit pour cinq lignes de texte. Mais Chronos doit aussi afficher la fiche d'un collaborateur, et les projets auront bientôt leur propre liste, avec leur propre champ de recherche. Ce module découpe l'écran en composants qui se parlent, puis l'habille avec Angular Material. Les données restent en dur.
 
@@ -181,8 +181,8 @@ git status --short
 | Fichier | Modification |
 | --- | --- |
 | `package.json`, `package-lock.json` | `@angular/material` et `@angular/cdk` ajoutés aux dépendances. |
-| `src/index.html` | Liens vers les polices Roboto et Material Symbols (Google Fonts). |
-| `src/styles.scss` | Le thème. |
+| `src/index.html` | Liens vers les polices Roboto et Material Symbols (Google Fonts) ; le fichier est aussi réindenté. |
+| `src/styles.scss` | Le thème, avec des commentaires en anglais (omis ci-dessous). |
 
 Rien d'autre : ni `app.config.ts` ni `angular.json` ne sont touchés, et **`@angular/animations` n'est pas installé**. Ce paquet est déprécié ; Angular Material 22 anime ses composants en CSS. Un tutoriel qui vous fait ajouter `provideAnimations()` ou `BrowserAnimationsModule` date d'avant.
 
@@ -550,6 +550,8 @@ Le template complet de `liste-collaborateurs.html` :
 </div>
 ```
 
+Si vous avez fait les exercices 3 et 4 du module 13, gardez la ligne de répartition sous le compteur, et le bouton de tri dans la `<div class="outils">`, avec `matButton="outlined"` lui aussi.
+
 Les `imports` du composant deviennent `[BarreDeRecherche, CarteCollaborateur, FicheCollaborateur, MatButtonModule]`. Remplacez le contenu de `liste-collaborateurs.scss` (la classe `.sorti` a déménagé dans la carte) :
 
 ```scss
@@ -590,7 +592,7 @@ La compilation réussit, avec un avertissement nouveau :
 ▲ [WARNING] bundle initial exceeded maximum budget. Budget 500.00 kB was not met by 14.67 kB with a total of 514.67 kB.
 ```
 
-`angular.json` fixe des **budgets** de taille : un avertissement au-delà de 500 kB pour le chargement initial, une erreur au-delà de 1 Mo. Angular Material vient de faire franchir le premier seuil. Ne modifiez rien pour l'instant : le [module 15](15-routage.md) sortira une partie du code du chargement initial, et vous déciderez alors quoi faire de ce seuil.
+Les chiffres varient avec ce que vous avez ajouté : environ 520 kB avec les exercices de la solution de référence. `angular.json` fixe des **budgets** de taille : un avertissement au-delà de 500 kB pour le chargement initial, une erreur au-delà de 1 Mo. Angular Material vient de faire franchir le premier seuil. Ne modifiez rien pour l'instant : le [module 15](15-routage.md) sortira une partie du code du chargement initial, et vous déciderez alors quoi faire de ce seuil.
 
 Documentation : [budgets de taille](https://angular.dev/tools/cli/build#configuring-size-budgets)
 
@@ -600,9 +602,9 @@ Documentation : [budgets de taille](https://angular.dev/tools/cli/build#configur
 
 2. **Prédire `linkedSignal`.** Affichez les collaborateurs sortis, ouvrez la fiche de Sarah Petit, puis masquez les sortis. Prédisez *avant de cliquer* ce que devient la fiche. Remplacez ensuite le `linkedSignal` par un `signal` ordinaire et refaites l'essai : quel défaut apparaît ?
 
-3. **Une vue en tableau.** Créez `TableauCollaborateurs`, qui reçoit la liste filtrée et émet la même sortie `selection` que la carte, mais affiche un `<table mat-table>` (nom, prénom, poste, date d'entrée, quotité). Ajoutez à `ListeCollaborateurs` un bouton qui bascule entre cartes et tableau. Indices : `MatTableModule`, la [documentation du tableau](https://material.angular.dev/components/table/overview). Vous y rencontrerez `*matCellDef` : la syntaxe `*` n'a pas disparu d'Angular, seuls `*ngIf` et `*ngFor` sont dépréciés.
+3. **Une vue en tableau.** Créez `TableauCollaborateurs`, qui reçoit la liste filtrée et émet la même sortie `selection` que la carte, mais affiche un `<table mat-table>` (nom, prénom, poste, date d'entrée, quotité). Ajoutez à `ListeCollaborateurs` un bouton qui bascule entre cartes et tableau. Indices : `MatTableModule`, la [documentation du tableau](https://material.angular.dev/components/table/overview). Vous y rencontrerez `*matCellDef` : la syntaxe `*` n'a pas disparu d'Angular, seuls `*ngIf` et `*ngFor` sont dépréciés. Exercice d'exploration : le [module 15](15-routage.md) remplace la sortie `selection` par un lien et le module 16 réécrit la liste ; la solution de référence ne garde pas ce tableau.
 
-4. **Mémoriser un réglage.** Faites en sorte que le choix « afficher les sortis » survive au rechargement de la page, en l'écrivant dans `localStorage` avec un `effect`. Pourquoi est-ce un bon usage d'`effect`, alors que filtrer la liste dans un `effect` en serait un mauvais ?
+4. **Mémoriser un réglage.** Faites en sorte que le choix « afficher les sortis » survive au rechargement de la page, en l'écrivant dans `localStorage` avec un `effect`. Pourquoi est-ce un bon usage d'`effect`, alors que filtrer la liste dans un `effect` en serait un mauvais ? Retirez ensuite ce code : le [module 15](15-routage.md) mettra ce réglage dans l'adresse, et le module 19 vérifiera que l'application n'écrit rien dans `localStorage`.
 
 5. **Les projets.** Reprenez la liste de projets de l'exercice 5 du module 13 : réutilisez `BarreDeRecherche` telle quelle, et créez `CarteProjet`. Un projet facturable affiche son client, un projet interne n'en a pas (RG-11) ; un projet terminé ou annulé doit se distinguer visuellement (RG-13 interdira d'y affecter quelqu'un). Qu'avez-vous dû modifier dans `commun/` ? Si la réponse n'est pas « rien », le composant n'était pas assez générique — ou l'était trop peu pour deux usages : discutez-le.
 

@@ -1,0 +1,12 @@
+:host {
+  display: block;
+}
+
+.active {
+  border-color: var(--mat-sys-primary);
+  background-color: var(--mat-sys-primary-container);
+}
+
+.sorti {
+  color: var(--mat-sys-error);
+}

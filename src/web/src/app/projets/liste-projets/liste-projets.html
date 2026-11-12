@@ -1,39 +1,26 @@
 <h2>Projets</h2>
 
-<label for="statut">Statut</label>
-<select id="statut" #choix (change)="statutFiltre.set(choix.value)">
-  <option value="">Tous</option>
-  <option value="EnPreparation">En préparation</option>
-  <option value="EnCours">En cours</option>
-  <option value="Termine">Terminé</option>
-  <option value="Annule">Annulé</option>
-</select>
+<div class="outils">
+  <app-barre-de-recherche libelle="Filtrer par code, libellé ou client" [(recherche)]="recherche" />
 
-<ul>
-  @for (p of projetsFiltres(); track p.code) {
-    <li [class.clos]="p.statut === 'Termine' || p.statut === 'Annule'">
-      <strong>{{ p.code }}</strong> {{ p.libelle }} —
-      @switch (p.statut) {
-        @case ('EnPreparation') {
-          en préparation
-        }
-        @case ('EnCours') {
-          en cours
-        }
-        @case ('Termine') {
-          terminé
-        }
-        @case ('Annule') {
-          annulé
-        }
-      }
-      @if (p.client !== null) {
-        ({{ p.client }})
-      } @else {
-        (projet interne)
-      }
-    </li>
+  <label for="statut">Statut</label>
+  <select id="statut" #choix (change)="statutFiltre.set(choix.value)">
+    <option value="">Tous</option>
+    <option value="EnPreparation">En préparation</option>
+    <option value="EnCours">En cours</option>
+    <option value="Termine">Terminé</option>
+    <option value="Annule">Annulé</option>
+  </select>
+</div>
+
+@let resultats = projetsFiltres();
+
+<app-compteur-de-resultats nom="projet" [nombre]="resultats.length" [total]="projets().length" />
+
+<div class="cartes">
+  @for (p of resultats; track p.code) {
+    <app-carte-projet [projet]="p" />
   } @empty {
-    <li>Aucun projet ne correspond à ce statut.</li>
+    <p>Aucun projet ne correspond à ces critères.</p>
   }
-</ul>
+</div>

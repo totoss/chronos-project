@@ -8,4 +8,5 @@ export interface Collaborateur {
   poste: string;
   dateEntree: string;
   dateSortie: string | null;
+  quotite: number;
 }

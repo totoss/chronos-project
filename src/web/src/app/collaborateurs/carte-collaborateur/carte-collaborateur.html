@@ -1,0 +1,23 @@
+<mat-card appearance="outlined" [class.active]="active()">
+  <mat-card-header>
+    <mat-card-title>{{ nomComplet() }}</mat-card-title>
+    <mat-card-subtitle>{{ collaborateur().poste }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p>
+      {{ collaborateur().matricule }} — entrée le
+      {{ collaborateur().dateEntree | date: 'dd/MM/yyyy' }}
+    </p>
+    @if (estSorti()) {
+      <p class="sorti">Sortie le {{ collaborateur().dateSortie | date: 'dd/MM/yyyy' }}</p>
+    }
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button matButton type="button" (click)="selection.emit(collaborateur())">
+      <mat-icon>visibility</mat-icon>
+      Voir la fiche
+    </button>
+  </mat-card-actions>
+</mat-card>

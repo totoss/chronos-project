@@ -1,8 +1,12 @@
 import { Component, computed, signal } from '@angular/core';
+import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
+import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
+import { contientSansAccents } from '../../commun/contient-sans-accents';
+import { CarteProjet } from '../carte-projet/carte-projet';
 import { Projet } from '../projet';
 
 @Component({
-  imports: [],
+  imports: [BarreDeRecherche, CarteProjet, CompteurDeResultats],
   selector: 'app-liste-projets',
   styleUrl: './liste-projets.scss',
   templateUrl: './liste-projets.html',
@@ -16,11 +20,20 @@ export class ListeProjets {
     { code: 'INT-OUTILS', libelle: 'Outillage de la société', nature: 'Interne', statut: 'Annule', client: null },
   ]);
 
+  protected readonly recherche = signal('');
+
   protected readonly statutFiltre = signal('');
 
   protected readonly projetsFiltres = computed(() => {
+    const texte = this.recherche().trim();
     const statut = this.statutFiltre();
 
-    return this.projets().filter((p) => statut === '' || p.statut === statut);
+    return this.projets().filter(
+      (p) =>
+        (statut === '' || p.statut === statut) &&
+        (contientSansAccents(p.code, texte) ||
+          contientSansAccents(p.libelle, texte) ||
+          contientSansAccents(p.client ?? '', texte)),
+    );
   });
 }

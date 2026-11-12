@@ -1,34 +1,45 @@
 <h2>Collaborateurs</h2>
 
-<label for="filtre">Filtrer par nom</label>
-<input id="filtre" type="search" #champ [value]="filtre()" (input)="filtre.set(champ.value)" />
-<button type="button" [disabled]="filtre() === ''" (click)="effacerFiltre()">Effacer</button>
-<button type="button" (click)="basculerSortis()">
-  @if (afficherSortis()) {
-    Masquer les collaborateurs sortis
-  } @else {
-    Afficher les collaborateurs sortis
-  }
-</button>
-<button type="button" (click)="basculerTri()">
-  @if (tri() === 'nom') {
-    Trier par date d'entrée
-  } @else {
-    Trier par nom
-  }
-</button>
+<div class="outils">
+  <app-barre-de-recherche libelle="Filtrer par nom" [(recherche)]="recherche" />
+
+  <button matButton="outlined" type="button" (click)="basculerSortis()">
+    @if (afficherSortis()) {
+      Masquer les collaborateurs sortis
+    } @else {
+      Afficher les collaborateurs sortis
+    }
+  </button>
+  <button matButton="outlined" type="button" (click)="basculerTri()">
+    @if (tri() === 'nom') {
+      Trier par date d'entrée
+    } @else {
+      Trier par nom
+    }
+  </button>
+</div>
 
 @let resultats = collaborateursFiltres();
 
-<p>{{ resultats.length }} collaborateur(s) sur {{ collaborateurs().length }}</p>
+<app-compteur-de-resultats [nombre]="resultats.length" [total]="collaborateurs().length" />
 <p>{{ repartition() }}</p>
 
-<ul>
-  @for (c of resultats; track c.id) {
-    <li [class.sorti]="c.dateSortie !== null">
-      <strong>{{ c.nom }}</strong> {{ c.prenom }} — {{ c.poste }} ({{ c.matricule }})
-    </li>
-  } @empty {
-    <li>Aucun collaborateur ne correspond à « {{ filtre() }} ».</li>
+<div class="contenu">
+  <div class="cartes">
+    @for (c of resultats; track c.id) {
+      <app-carte-collaborateur
+        [collaborateur]="c"
+        [active]="c.id === selection()?.id"
+        (selection)="selection.set($event)"
+      />
+    } @empty {
+      <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+    }
+  </div>
+
+  @if (selection(); as choisi) {
+    <app-fiche-collaborateur [collaborateur]="choisi">
+      <button matButton type="button" (click)="selection.set(null)">Fermer</button>
+    </app-fiche-collaborateur>
   }
-</ul>
+</div>

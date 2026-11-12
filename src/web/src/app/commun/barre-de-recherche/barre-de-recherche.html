@@ -1,0 +1,16 @@
+<mat-form-field appearance="outline" subscriptSizing="dynamic">
+  <mat-label>{{ libelle() }}</mat-label>
+  <mat-icon matPrefix>search</mat-icon>
+  <input matInput type="search" #champ [value]="recherche()" (input)="recherche.set(champ.value)" />
+  @if (recherche() !== '') {
+    <button
+      matIconButton
+      matSuffix
+      type="button"
+      aria-label="Effacer la recherche"
+      (click)="recherche.set('')"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+</mat-form-field>
