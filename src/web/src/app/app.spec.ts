@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { App } from './app';
@@ -7,7 +9,11 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(routes, withComponentInputBinding())],
+      providers: [
+        provideRouter(routes, withComponentInputBinding()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     }).compileComponents();
   });
 
@@ -27,6 +33,10 @@ describe('App', () => {
   it('marque le lien de l\'écran courant avec aria-current', async () => {
     const fixture = TestBed.createComponent(App);
     await TestBed.inject(Router).navigateByUrl('/projets');
+    TestBed.tick();
+    TestBed.inject(HttpTestingController)
+      .expectOne((r) => r.url === '/api/projets')
+      .flush({ elements: [], page: 1, taille: 20, total: 0 });
     await fixture.whenStable();
 
     const courants = (fixture.nativeElement as HTMLElement).querySelectorAll('a[aria-current="page"]');

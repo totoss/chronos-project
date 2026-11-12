@@ -21,8 +21,8 @@
         }
       }
     </p>
-    @if (projet().client !== null) {
-      <p>Client : {{ projet().client }}</p>
+    @if (projet().clientNom; as clientNom) {
+      <p>Client : {{ clientNom }}</p>
     } @else {
       <p>Projet interne</p>
     }

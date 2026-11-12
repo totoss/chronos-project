@@ -16,7 +16,7 @@
   </button>
   <button matButton="outlined" type="button" (click)="basculerTri()">
     @if (tri() === 'nom') {
-      Trier par date d'entrée
+      Trier par matricule
     } @else {
       Trier par nom
     }
@@ -27,15 +27,40 @@
   </a>
 </div>
 
-@let resultats = collaborateursFiltres();
+@if (collaborateurs.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement des collaborateurs" />
+}
 
-<app-compteur-de-resultats [nombre]="resultats.length" [total]="collaborateurs().length" />
-<p>{{ repartition() }}</p>
+@if (collaborateurs.error()) {
+  <p role="alert">
+    La liste n'a pas pu être chargée.
+    <button matButton type="button" (click)="collaborateurs.reload()">Réessayer</button>
+  </p>
+} @else if (collaborateurs.hasValue()) {
+  @let elements = collaborateurs.value().elements;
 
-<div class="cartes">
-  @for (c of resultats; track c.id) {
-    <app-carte-collaborateur [collaborateur]="c" />
-  } @empty {
-    <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+  @if (total() > 0) {
+    <app-compteur-de-resultats [nombre]="elements.length" [total]="total()" />
   }
-</div>
+
+  <div class="cartes">
+    @for (c of elements; track c.id) {
+      <app-carte-collaborateur [collaborateur]="c" (supprimer)="supprimer(c)" />
+    } @empty {
+      @if (recherche()) {
+        <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+      } @else {
+        <p>Aucun collaborateur à afficher.</p>
+      }
+    }
+  </div>
+}
+
+<mat-paginator
+  aria-label="Pagination des collaborateurs"
+  [length]="total()"
+  [pageIndex]="page() - 1"
+  [pageSize]="taille()"
+  [pageSizeOptions]="[10, 20, 50]"
+  (page)="changerDePage($event)"
+/>

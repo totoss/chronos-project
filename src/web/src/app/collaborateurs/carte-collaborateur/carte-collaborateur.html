@@ -5,16 +5,17 @@
   </mat-card-header>
 
   <mat-card-content>
-    <p>
-      {{ collaborateur().matricule }} — entrée le
-      {{ collaborateur().dateEntree | date: 'dd/MM/yyyy' }}
-    </p>
-    @if (estSorti()) {
-      <p class="sorti">Sortie le {{ collaborateur().dateSortie | date: 'dd/MM/yyyy' }}</p>
+    <p>{{ collaborateur().matricule }}</p>
+    @if (collaborateur().estSorti) {
+      <p class="sorti">A quitté la société</p>
     }
   </mat-card-content>
 
   <mat-card-actions align="end">
+    <button matButton type="button" (click)="supprimer.emit()">
+      <mat-icon>delete</mat-icon>
+      Supprimer
+    </button>
     <a matButton [routerLink]="['/collaborateurs', collaborateur().id]">
       <mat-icon>visibility</mat-icon>
       Voir la fiche

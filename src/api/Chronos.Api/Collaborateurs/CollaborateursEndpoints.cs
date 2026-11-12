@@ -26,13 +26,15 @@ public static class CollaborateursEndpoints
         return groupe;
     }
 
-    private static readonly Expression<Func<Collaborateur, CollaborateurDto>> VersDto = c => new CollaborateurDto(
+    // EstSorti suit la règle du filtre statut=sorti : sortie renseignée et strictement antérieure à aujourd'hui.
+    private static Expression<Func<Collaborateur, CollaborateurDto>> VersDto(DateOnly aujourdhui) => c => new CollaborateurDto(
         c.Id, c.Matricule, c.Nom, c.Prenom, c.Email,
         c.Categorie, c.Poste,
         c.ManagerId, c.Manager == null ? null : c.Manager.Prenom + " " + c.Manager.Nom,
+        c.DateSortie < aujourdhui,
         c.Version);
 
-    private static readonly Expression<Func<Collaborateur, CollaborateurRhDto>> VersDtoRh = c => new CollaborateurRhDto(
+    private static Expression<Func<Collaborateur, CollaborateurRhDto>> VersDtoRh(DateOnly aujourdhui) => c => new CollaborateurRhDto(
         c.Id, c.Matricule, c.Nom, c.Prenom, c.Email,
         c.Categorie, c.Poste,
         c.ManagerId, c.Manager == null ? null : c.Manager.Prenom + " " + c.Manager.Nom,
@@ -41,6 +43,7 @@ public static class CollaborateursEndpoints
             .Where(k => k.DateFin == null)
             .Select(k => k.Quotite)
             .FirstOrDefault(),
+        c.DateSortie < aujourdhui,
         c.Version);
 
     private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProblem>> Lister(
@@ -103,7 +106,7 @@ public static class CollaborateursEndpoints
             .ThenBy(c => c.Id)
             .Skip((filtre.Page - 1) * filtre.Taille)
             .Take(filtre.Taille)
-            .Select(VersDto)
+            .Select(VersDto(aujourdhui))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new PageDto<CollaborateurDto>(elements, filtre.Page, filtre.Taille, total));
@@ -112,18 +115,21 @@ public static class CollaborateursEndpoints
     // Hors périmètre, la fiche « n'existe pas » : 404, comme pour un identifiant inconnu. La version complète va au
     // gestionnaire RH et à l'intéressé ; les autres reçoivent la version réduite.
     private static async Task<Results<Ok<CollaborateurRhDto>, Ok<CollaborateurDto>, NotFound>> Obtenir(
-        int id, ChronosDbContext db, PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
+        int id, ChronosDbContext db, TimeProvider horloge, PerimetreUtilisateur perimetre,
+        CancellationToken cancellationToken)
     {
         if (!await perimetre.PeutVoirAsync(id, cancellationToken))
         {
             return TypedResults.NotFound();
         }
 
+        var aujourdhui = horloge.Aujourdhui();
+
         if (perimetre.VoitTout || perimetre.EstMoi(id))
         {
             var complet = await db.Collaborateurs
                 .Where(c => c.Id == id)
-                .Select(VersDtoRh)
+                .Select(VersDtoRh(aujourdhui))
                 .FirstOrDefaultAsync(cancellationToken);
 
             return complet is null ? TypedResults.NotFound() : TypedResults.Ok(complet);
@@ -131,14 +137,15 @@ public static class CollaborateursEndpoints
 
         var reduit = await db.Collaborateurs
             .Where(c => c.Id == id)
-            .Select(VersDto)
+            .Select(VersDto(aujourdhui))
             .FirstOrDefaultAsync(cancellationToken);
 
         return reduit is null ? TypedResults.NotFound() : TypedResults.Ok(reduit);
     }
 
     private static async Task<Results<Created<CollaborateurRhDto>, ProblemHttpResult, ValidationProblem>> Creer(
-        CreerCollaborateurRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+        CreerCollaborateurRequete requete, ChronosDbContext db, TimeProvider horloge,
+        CancellationToken cancellationToken)
     {
         if (!await ManagerExiste(db, requete.ManagerId, cancellationToken))
         {
@@ -164,12 +171,13 @@ public static class CollaborateursEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         var dto = await db.Collaborateurs
-            .Where(c => c.Id == collaborateur.Id).Select(VersDtoRh).SingleAsync(cancellationToken);
+            .Where(c => c.Id == collaborateur.Id).Select(VersDtoRh(horloge.Aujourdhui())).SingleAsync(cancellationToken);
         return TypedResults.Created($"/api/collaborateurs/{dto.Id}", dto);
     }
 
     private static async Task<Results<Ok<CollaborateurRhDto>, NotFound, ProblemHttpResult, ValidationProblem>> Modifier(
-        int id, ModifierCollaborateurRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+        int id, ModifierCollaborateurRequete requete, ChronosDbContext db, TimeProvider horloge,
+        CancellationToken cancellationToken)
     {
         var collaborateur = await db.Collaborateurs.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (collaborateur is null)
@@ -203,7 +211,7 @@ public static class CollaborateursEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(await db.Collaborateurs
-            .Where(c => c.Id == id).Select(VersDtoRh).SingleAsync(cancellationToken));
+            .Where(c => c.Id == id).Select(VersDtoRh(horloge.Aujourdhui())).SingleAsync(cancellationToken));
     }
 
     // Un manager archivé existe toujours : la clé étrangère l'accepte, la vérification aussi.

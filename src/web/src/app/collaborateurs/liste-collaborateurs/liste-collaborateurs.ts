@@ -1,12 +1,16 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
+import { debounceTime, Subject } from 'rxjs';
 import { BarreDeRecherche } from '../../commun/barre-de-recherche/barre-de-recherche';
 import { CompteurDeResultats } from '../../commun/compteur-de-resultats/compteur-de-resultats';
-import { contientSansAccents } from '../../commun/contient-sans-accents';
 import { CarteCollaborateur } from '../carte-collaborateur/carte-collaborateur';
-import { COLLABORATEURS_EN_DUR } from '../collaborateurs-en-dur';
+import { Collaborateur } from '../collaborateur';
+import { CollaborateursApi, TriCollaborateurs } from '../collaborateurs-api';
 
 @Component({
   imports: [
@@ -15,6 +19,8 @@ import { COLLABORATEURS_EN_DUR } from '../collaborateurs-en-dur';
     CompteurDeResultats,
     MatButtonModule,
     MatIconModule,
+    MatPaginatorModule,
+    MatProgressBarModule,
     RouterLink,
   ],
   selector: 'app-liste-collaborateurs',
@@ -22,6 +28,7 @@ import { COLLABORATEURS_EN_DUR } from '../collaborateurs-en-dur';
   templateUrl: './liste-collaborateurs.html',
 })
 export class ListeCollaborateurs {
+  private readonly api = inject(CollaborateursApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -30,43 +37,46 @@ export class ListeCollaborateurs {
   /** `?statut=tous` affiche aussi les collaborateurs sortis ; sinon, seuls les actifs. */
   readonly statut = input('', { transform: (valeur: string | undefined) => valeur ?? '' });
 
-  protected readonly collaborateurs = signal(COLLABORATEURS_EN_DUR);
-
   protected readonly afficherSortis = computed(() => this.statut() === 'tous');
 
-  protected readonly tri = signal<'nom' | 'dateEntree'>('nom');
+  protected readonly tri = signal<TriCollaborateurs>('nom');
+  protected readonly taille = signal(20);
 
-  protected readonly collaborateursFiltres = computed(() => {
-    const texte = this.recherche().trim();
-    const avecSortis = this.afficherSortis();
-    const critere = this.tri();
-
-    // `filter` renvoie un nouveau tableau : `sort` ne modifie pas celui du signal.
-    return this.collaborateurs()
-      .filter(
-        (c) =>
-          (avecSortis || c.dateSortie === null) &&
-          (contientSansAccents(c.nom, texte) ||
-            contientSansAccents(c.prenom, texte) ||
-            contientSansAccents(c.matricule, texte)),
-      )
-      .sort((a, b) =>
-        critere === 'nom'
-          ? a.nom.localeCompare(b.nom, 'fr')
-          : a.dateEntree.localeCompare(b.dateEntree),
-      );
+  /** Revient à la première page dès que la recherche, le filtre ou le tri change. */
+  protected readonly page = linkedSignal({
+    source: () => ({
+      recherche: this.recherche(),
+      avecSortis: this.afficherSortis(),
+      tri: this.tri(),
+    }),
+    computation: () => 1,
   });
 
-  protected readonly repartition = computed(() => {
-    const liste = this.collaborateursFiltres();
-    const consultants = liste.filter((c) => c.categorie === 'Consultant').length;
-    const internes = liste.length - consultants;
+  protected readonly collaborateurs = this.api.liste(() => ({
+    page: this.page(),
+    taille: this.taille(),
+    recherche: this.recherche(),
+    avecSortis: this.afficherSortis(),
+    tri: this.tri(),
+  }));
 
-    return `${consultants} ${consultants > 1 ? 'consultants' : 'consultant'}, ${internes} ${internes > 1 ? 'internes' : 'interne'}`;
+  /** Garde le dernier total connu pendant qu'une autre page se charge. */
+  protected readonly total = linkedSignal<number | undefined, number>({
+    source: () => (this.collaborateurs.hasValue() ? this.collaborateurs.value().total : undefined),
+    computation: (total, precedent) => total ?? precedent?.value ?? 0,
   });
+
+  /** Les frappes de l'utilisateur : un flux d'événements, temporisé avant d'agir. */
+  private readonly saisies = new Subject<string>();
+
+  constructor() {
+    this.saisies
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe((texte) => this.afficherRecherche(texte));
+  }
 
   protected rechercher(texte: string): void {
-    this.changerParametres({ recherche: texte === '' ? null : texte });
+    this.saisies.next(texte);
   }
 
   protected basculerSortis(): void {
@@ -74,7 +84,23 @@ export class ListeCollaborateurs {
   }
 
   protected basculerTri(): void {
-    this.tri.update((valeur) => (valeur === 'nom' ? 'dateEntree' : 'nom'));
+    this.tri.update((valeur) => (valeur === 'nom' ? 'matricule' : 'nom'));
+  }
+
+  protected changerDePage(evenement: PageEvent): void {
+    this.taille.set(evenement.pageSize);
+    this.page.set(evenement.pageIndex + 1);
+  }
+
+  protected supprimer(collaborateur: Collaborateur): void {
+    this.api.supprimer(collaborateur.id).subscribe({
+      next: () => this.collaborateurs.reload(),
+      error: () => {}, // l'intercepteur a déjà notifié l'utilisateur
+    });
+  }
+
+  private afficherRecherche(texte: string): void {
+    this.changerParametres({ recherche: texte === '' ? null : texte });
   }
 
   /** Ne change que les paramètres donnés (`null` retire un paramètre) et garde les autres. */

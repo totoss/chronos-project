@@ -97,6 +97,7 @@ public class PerimetreTests(ChronosApiFactory factory) : IClassFixture<ChronosAp
 
         Assert.Equal(_prefixe + "C", vueDuManager.GetProperty("matricule").GetString());
         Assert.True(vueDuManager.TryGetProperty("version", out _));
+        Assert.False(vueDuManager.GetProperty("estSorti").GetBoolean());
         Assert.False(vueDuManager.TryGetProperty("dateEntree", out _));
         Assert.False(vueDuManager.TryGetProperty("dateSortie", out _));
         Assert.False(vueDuManager.TryGetProperty("quotite", out _));

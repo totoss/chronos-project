@@ -680,6 +680,8 @@ public record CollaborateurRhDto(
 
 Les deux gardent `Version` : le jeton de concurrence du module 08 n'est pas une information contractuelle, et l'interface en a besoin pour toute modification.
 
+Retenez ce que la liste réduite ne sait plus dire : qui a quitté la société. Elle sait encore filtrer les sortis, mais plus les désigner. Le manque n'apparaîtra qu'avec le premier écran qui s'en sert : le [module 16](16-dialoguer-avec-l-api.md) y reviendra, et complétera ces deux DTO d'un indicateur sans date.
+
 La lecture d'une fiche renvoie `Results<Ok<CollaborateurRhDto>, Ok<CollaborateurDto>, NotFound>` : la version complète pour le gestionnaire RH et pour l'intéressé lui-même (`id == utilisateur.CollaborateurId`), la version réduite pour les autres. La liste renvoie toujours la version réduite. **Les champs absents ne sont pas masqués par l'interface : ils ne quittent pas le serveur.**
 
 La même discipline vaut ailleurs : une absence porte un type (`MAL`), jamais un motif médical — il n'y a pas de champ pour cela, et il ne faut pas en ajouter. Et les journaux citent des identifiants (`Feuille {FeuilleId} validée par {UtilisateurId}`), pas des noms ni des adresses : un fichier de journal est copié, archivé et lu par bien plus de monde que la base.

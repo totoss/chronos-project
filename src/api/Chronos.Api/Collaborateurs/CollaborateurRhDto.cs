@@ -17,4 +17,5 @@ public record CollaborateurRhDto(
     DateOnly DateEntree,
     DateOnly? DateSortie,
     decimal Quotite,
+    bool EstSorti,
     Guid Version);

@@ -1,4 +1,6 @@
 import { Location } from '@angular/common';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Title } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
@@ -10,7 +12,11 @@ describe('Routes de l’application', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes, withComponentInputBinding())],
+      providers: [
+        provideRouter(routes, withComponentInputBinding()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     });
     harness = await RouterTestingHarness.create();
   });
@@ -30,10 +36,14 @@ describe('Routes de l’application', () => {
     expect(titre).toBe('Collaborateurs — Chronos');
   });
 
-  it('affiche la fiche de Camille Martin à /collaborateurs/1', async () => {
-    const { page, titre } = await ouvrir('/collaborateurs/1');
+  it('affiche la fiche de Camille Durand à /collaborateurs/2', async () => {
+    const { page, titre } = await ouvrir('/collaborateurs/2');
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/collaborateurs/2')
+      .flush({ id: 2, matricule: 'M0002', nom: 'Durand', prenom: 'Camille', poste: 'Développeuse' });
+    await harness.fixture.whenStable();
 
-    expect(page.textContent).toContain('Camille Martin');
+    expect(page.textContent).toContain('Camille Durand');
     expect(titre).toBe('Fiche collaborateur — Chronos');
   });
 

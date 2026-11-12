@@ -1,12 +1,25 @@
+export type CategorieCollaborateur = 'Consultant' | 'Interne';
+
+/** Miroir de CollaborateurDto et de CollaborateurRhDto (modules 08 et 12). */
 export interface Collaborateur {
   id: number;
   matricule: string;
   nom: string;
   prenom: string;
   email: string;
-  categorie: 'Consultant' | 'Interne';
+  categorie: CategorieCollaborateur;
   poste: string;
-  dateEntree: string;
-  dateSortie: string | null;
-  quotite: number;
+  managerId: number | null;
+  managerNom: string | null;
+  /**
+   * Informations contractuelles (RG-52), réservées au gestionnaire RH et à l'intéressé.
+   * Dates au format ISO ('2026-05-04') ; quotité du contrat en cours, en fraction : 0.8 pour 80 %.
+   */
+  dateEntree?: string;
+  dateSortie?: string | null;
+  quotite?: number;
+  /** Vrai quand la date de sortie est strictement passée ; présent dans la liste comme dans la fiche. */
+  estSorti: boolean;
+  /** Jeton de concurrence, à renvoyer tel quel dans une modification. */
+  version: string;
 }

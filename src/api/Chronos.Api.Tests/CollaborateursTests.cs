@@ -122,6 +122,80 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
             c => c.GetProperty("matricule").GetString() == "C-0004");
     }
 
+    // Crée un collaborateur de l'équipe de Sophie, avec la date de sortie donnée (null : aucune), et renvoie son id.
+    // La création n'accepte pas de date de sortie : on la renseigne par une modification.
+    private async Task<int> CreerAvecSortieAsync(string matricule, int decalageDeLaSortieEnJours, bool avecSortie)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var creation = await _client.PostAsJsonAsync("/api/collaborateurs",
+            new { matricule, nom = "Martin", prenom = "Camille", email = $"{matricule.ToLowerInvariant()}@chronos.example",
+                categorie = "Consultant", poste = "Développeuse", dateEntree = "2024-09-02",
+                typeContrat = "Cdi", quotite = 1, managerId = ChronosApiFactory.SophieId }, ct);
+        var cree = await creation.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var id = cree.GetProperty("id").GetInt32();
+
+        if (avecSortie)
+        {
+            var aujourdhui = DateOnly.FromDateTime(factory.Horloge.GetLocalNow().DateTime);
+            var sortie = aujourdhui.AddDays(decalageDeLaSortieEnJours);
+            var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{id}",
+                new { nom = "Martin", prenom = "Camille", email = $"{matricule.ToLowerInvariant()}@chronos.example",
+                    poste = "Développeuse", managerId = ChronosApiFactory.SophieId,
+                    dateSortie = sortie.ToString("yyyy-MM-dd"), version = cree.GetProperty("version").GetGuid() }, ct);
+            Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
+        }
+
+        return id;
+    }
+
+    [Fact]
+    public async Task Un_collaborateur_dont_la_sortie_est_passee_est_marque_sorti_dans_la_liste_et_dans_la_fiche()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var id = await CreerAvecSortieAsync("C-0007", -10, avecSortie: true);
+
+        var liste = await _client.GetFromJsonAsync<JsonElement>("/api/collaborateurs?statut=sorti&recherche=C-0007", ct);
+        var fiche = await _client.GetFromJsonAsync<JsonElement>($"/api/collaborateurs/{id}", ct);
+
+        var element = Assert.Single(liste.GetProperty("elements").EnumerateArray());
+        Assert.True(element.GetProperty("estSorti").GetBoolean());
+        Assert.True(fiche.GetProperty("estSorti").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(true, 10)]
+    public async Task Sans_sortie_ou_avec_une_sortie_aujourd_hui_ou_a_venir_le_collaborateur_n_est_pas_sorti(
+        bool avecSortie, int decalageEnJours)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var matricule = $"C-08{(avecSortie ? 1 : 0)}{decalageEnJours:00}";
+        var id = await CreerAvecSortieAsync(matricule, decalageEnJours, avecSortie);
+
+        var liste = await _client.GetFromJsonAsync<JsonElement>($"/api/collaborateurs?recherche={matricule}", ct);
+        var fiche = await _client.GetFromJsonAsync<JsonElement>($"/api/collaborateurs/{id}", ct);
+
+        var element = Assert.Single(liste.GetProperty("elements").EnumerateArray());
+        Assert.False(element.GetProperty("estSorti").GetBoolean());
+        Assert.False(fiche.GetProperty("estSorti").GetBoolean());
+    }
+
+    [Fact]
+    public async Task La_fiche_reduite_d_un_collaborateur_sorti_porte_estSorti_sans_aucune_date()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var id = await CreerAvecSortieAsync("C-0009", -10, avecSortie: true);
+        using var sophie = await factory.ClientSophieAsync();
+
+        var fiche = await sophie.GetFromJsonAsync<JsonElement>($"/api/collaborateurs/{id}", ct);
+
+        Assert.True(fiche.GetProperty("estSorti").GetBoolean());
+        Assert.False(fiche.TryGetProperty("dateEntree", out _));
+        Assert.False(fiche.TryGetProperty("dateSortie", out _));
+        Assert.False(fiche.TryGetProperty("quotite", out _));
+    }
+
     [Fact]
     public async Task Supprimer_un_collaborateur_qui_a_une_affectation_l_archive()
     {
