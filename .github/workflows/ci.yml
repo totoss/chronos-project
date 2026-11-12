@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7.0.1
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v6.1.0
+        with:
+          global-json-file: src/api/global.json
+          cache: true
+          cache-dependency-path: src/api/**/packages.lock.json
+
+      - name: Restaurer les paquets
+        run: dotnet restore --locked-mode
+
+      - name: Compiler
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Tester
+        run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults
+
+      - name: Conserver les résultats des tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: resultats-tests-api
+          path: src/api/TestResults/
+          if-no-files-found: ignore

@@ -82,7 +82,7 @@ Conséquence pratique : on fait tourner l'intégration continue sur Linux, sauf 
 | --- | --- | --- |
 | SDK | `actions/setup-dotnet` avec `global-json-file` : la version vient du dépôt, pas du workflow. | [setup-dotnet](https://github.com/actions/setup-dotnet) |
 | Enchaînement | `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build`. | [tutoriel .NET](https://docs.github.com/en/actions/tutorials/build-and-test-code/net) |
-| Cache NuGet | `cache: true`, qui **exige** un fichier `packages.lock.json` ; restauration en `--locked-mode`. | [setup-dotnet](https://github.com/actions/setup-dotnet) |
+| Cache NuGet | `cache: true`, qui **exige** un fichier `packages.lock.json` ; restauration en `--locked-mode`. Constaté sur la solution de référence : si le fichier d'un projet **manque**, `--locked-mode` le recrée sans erreur — seul un fichier en désaccord avec le projet fait échouer (`NU1004`). Un `packages.lock.json` oublié au commit n'est donc pas signalé. `--force-evaluate` annule le mode verrouillé. | [setup-dotnet](https://github.com/actions/setup-dotnet) |
 | Résultats des tests | Rapport TRX produit par `dotnet test --report-xunit-trx --results-directory TestResults`, envoyé comme artefact. | [xUnit et MTP](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform) |
 | Formatage | `dotnet format --verify-no-changes`. | [dotnet format](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format) |
 | Tests contre une vraie base | Testcontainers : rien à configurer, Docker est présent sur les machines Ubuntu. | [Testcontainers en CI](https://dotnet.testcontainers.org/cicd/) |

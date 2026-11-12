@@ -1,7 +1,8 @@
 # Module 05 — GitHub Actions : l'intégration continue
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
-> Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). L'étape 8 (verrouillage des actions) l'a été aussi, avec l'extension `gh-actions-lock` 0.4.1. Restent vérifiés dans la documentation mais **non exécutés** : Dependabot (étape 8) et le *ruleset* (étape 9). Signalez au mentor tout écart constaté.
+> Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). L'étape 8 (verrouillage des actions) l'a été aussi, avec l'extension `gh-actions-lock` 0.4.1. Restent vérifiés dans la documentation mais **non exécutés** : Dependabot (étape 8) et le *ruleset* (étape 9).
+> Rejoué le 12 novembre 2026 **localement** sur la solution de référence (SDK 10.0.404, conteneur Linux) : `dotnet restore --locked-mode`, compilation `Release` sans avertissement, `dotnet test --report-xunit-trx` (73 tests, rapport TRX produit) ; `gh actions-lock` 0.4.1 et `gh actions-lock --verify`. Le workflow de la solution de référence n'a **pas** été exécuté sur GitHub. Signalez au mentor tout écart constaté.
 
 Au module 04, vous avez écrit vos premiers tests. Ils passent sur votre poste, à condition que vous pensiez à les lancer. L'**intégration continue** supprime cette condition : à chaque envoi de code, une machine neutre récupère le dépôt, le compile et exécute les tests. Si quelque chose casse, on le sait dans les minutes qui suivent, et non le jour de la livraison.
 
@@ -213,11 +214,14 @@ Documentation : [`GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/sec
 
 Chaque exécution retélécharge tous les paquets NuGet. `setup-dotnet` sait les mettre en cache, à une condition : que le projet ait un **fichier de verrouillage**, `packages.lock.json`, qui liste la version exacte de chaque paquet, dépendances indirectes comprises.
 
-Activez-le pour toute la solution, dans `src/api/Directory.Build.props` :
+Activez-le pour toute la solution : dans le `src/api/Directory.Build.props` du module 04, ajoutez la dernière ligne du `PropertyGroup` :
 
 ```xml
 <Project>
   <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 </Project>
@@ -240,7 +244,7 @@ Puis, dans le workflow :
 ```
 
 - **`cache: true`** conserve les paquets d'une exécution à l'autre. La clé du cache est calculée à partir des fichiers de verrouillage : tant qu'ils ne changent pas, le cache est réutilisé.
-- **`--locked-mode`** fait échouer la restauration si les paquets à installer ne correspondent pas au fichier de verrouillage. L'intégration continue compile donc exactement les versions que vous avez testées.
+- **`--locked-mode`** fait échouer la restauration si les paquets à installer ne correspondent pas au fichier de verrouillage. L'intégration continue compile donc exactement les versions que vous avez testées. Mais si le fichier de verrouillage d'un projet **manque**, la restauration n'échoue pas : elle le crée, avec les versions du jour. Un `packages.lock.json` oublié au commit passe donc inaperçu ; vérifiez avec `git status` qu'il n'en reste aucun non versionné.
 
 Le fichier de verrouillage a un intérêt qui dépasse la vitesse : sans lui, deux restaurations à quelques jours d'écart peuvent installer des versions différentes d'une dépendance indirecte.
 
