@@ -1,8 +1,6 @@
+using Chronos.Domain;
+
 namespace Chronos.Api.Projets;
-
-public enum NatureProjet { Facturable, Interne }
-
-public enum StatutProjet { EnPreparation, EnCours, Termine, Annule }
 
 public record ProjetDto(
     int Id,

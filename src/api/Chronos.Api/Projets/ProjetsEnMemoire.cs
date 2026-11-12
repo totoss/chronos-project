@@ -1,3 +1,5 @@
+using Chronos.Domain;
+
 namespace Chronos.Api.Projets;
 
 public class ProjetsEnMemoire
