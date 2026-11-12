@@ -26,12 +26,18 @@ public static class ProjetsEndpoints
         return groupe;
     }
 
-    private static readonly Expression<Func<Projet, ProjetDto>> VersDto = p => new ProjetDto(
+    // Les jours validés sont additionnés par la base, dans la projection : pas de requête par projet.
+    private static Expression<Func<Projet, ProjetDto>> VersDto(ChronosDbContext db) => p => new ProjetDto(
         p.Id, p.Code, p.Libelle, p.Nature,
         p.ClientId, p.Client!.Nom,
         p.DateDebut, p.DateFin, p.BudgetJours,
         p.ResponsableId, p.Responsable!.Prenom + " " + p.Responsable.Nom, p.Statut,
-        p.Version);
+        p.Version,
+        db.FeuillesDeTemps
+            .Where(f => f.Statut == StatutFeuilleDeTemps.Validee)
+            .SelectMany(f => f.Saisies)
+            .Where(s => s.ProjetId == p.Id)
+            .Sum(s => (decimal?)s.Duree) ?? 0m);
 
     private static async Task<Results<Ok<PageDto<ProjetDto>>, ValidationProblem>> Lister(
         [AsParameters] FiltreProjets filtre, ChronosDbContext db, CancellationToken cancellationToken)
@@ -87,7 +93,7 @@ public static class ProjetsEndpoints
             .ThenBy(p => p.Id)
             .Skip((filtre.Page - 1) * filtre.Taille)
             .Take(filtre.Taille)
-            .Select(VersDto)
+            .Select(VersDto(db))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new PageDto<ProjetDto>(elements, filtre.Page, filtre.Taille, total));
@@ -227,7 +233,7 @@ public static class ProjetsEndpoints
         db.Projets
             .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
             .Where(p => p.Id == id)
-            .Select(VersDto)
+            .Select(VersDto(db))
             .FirstOrDefaultAsync(cancellationToken);
 
     // Un client ou un responsable inconnu est une erreur du client : 400, et non la 500 de la clé étrangère.

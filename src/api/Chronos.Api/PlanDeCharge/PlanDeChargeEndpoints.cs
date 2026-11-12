@@ -78,8 +78,16 @@ public static class PlanDeChargeEndpoints
             .Select(j => j.Date)
             .ToListAsync(cancellationToken);
 
+        // Requête 4 : leurs absences approuvées qui touchent la période (RG-22).
+        var absences = await db.Absences
+            .AsNoTracking()
+            .Where(a => ids.Contains(a.CollaborateurId) && a.Statut == StatutAbsence.Approuvee
+                && a.DateDebut <= fin && a.DateFin >= debut)
+            .ToListAsync(cancellationToken);
+
         var calculateur = new CalculateurDeCharge(new CalendrierDeTravail(joursFeries));
         var affectationsParCollaborateur = affectations.ToLookup(a => a.CollaborateurId);
+        var absencesParCollaborateur = absences.ToLookup(a => a.CollaborateurId);
 
         var lignes = collaborateurs.Select(c =>
         {
@@ -91,7 +99,7 @@ public static class PlanDeChargeEndpoints
                 Affectations: [.. affectationsParCollaborateur[c.Id].Select(a =>
                     new AffectationPlanifiee(a.ProjetId, new Periode(a.DateDebut, a.DateFin), a.TauxAllocation,
                         a.Nature == NatureProjet.Facturable))],
-                Absences: new Dictionary<DateOnly, decimal>());
+                Absences: Absence.PartsAbsentes(absencesParCollaborateur[c.Id], periode));
 
             return new LignePlanDeChargeDto(c.Id, c.Nom, c.Prenom,
                 [.. tranches.Select(t => VersDto(calculateur.Calculer(dossier, t)))]);

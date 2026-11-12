@@ -117,7 +117,6 @@ public static class AffectationsEndpoints
 
     // RG-24 : une surcharge est autorisée, mais elle doit être confirmée. Le calcul est celui du plan de charge,
     // appliqué à un seul collaborateur, sur la période de l'affectation, affectation candidate comprise.
-    // Les absences n'existent pas encore (module 10) : le dossier n'en contient pas.
     private static async Task VerifierSurcharge(
         ChronosDbContext db, Collaborateur collaborateur, Projet projet, Affectation affectation,
         bool surchargeConfirmee, CancellationToken cancellationToken)
@@ -146,6 +145,13 @@ public static class AffectationsEndpoints
             .Select(j => j.Date)
             .ToListAsync(cancellationToken);
 
+        // Les absences approuvées réduisent la capacité (RG-22) : une absence peut mettre en surcharge.
+        var absences = await db.Absences
+            .AsNoTracking()
+            .Where(a => a.CollaborateurId == collaborateur.Id && a.Statut == StatutAbsence.Approuvee
+                && a.DateDebut <= periode.Fin && a.DateFin >= periode.Debut)
+            .ToListAsync(cancellationToken);
+
         var dossier = new DossierDeCharge(
             Presence: new Periode(collaborateur.DateEntree, collaborateur.DateSortie ?? DateOnly.MaxValue),
             EstConsultant: collaborateur.Categorie == CategorieCollaborateur.Consultant,
@@ -154,7 +160,7 @@ public static class AffectationsEndpoints
             Affectations: [.. autres.Select(a =>
                 new AffectationPlanifiee(a.ProjetId, new Periode(a.DateDebut, a.DateFin), a.TauxAllocation,
                     a.Nature == NatureProjet.Facturable))],
-            Absences: new Dictionary<DateOnly, decimal>());
+            Absences: Absence.PartsAbsentes(absences, periode));
 
         var candidate = new AffectationPlanifiee(
             projet.Id, periode, affectation.TauxAllocation, projet.Nature == NatureProjet.Facturable);

@@ -1,12 +1,15 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
+using Chronos.Api.Absences;
 using Chronos.Api.Affectations;
 using Chronos.Api.Clients;
 using Chronos.Api.Collaborateurs;
 using Chronos.Api.Erreurs;
+using Chronos.Api.FeuillesDeTemps;
 using Chronos.Api.JoursFeries;
 using Chronos.Api.PlanDeCharge;
 using Chronos.Api.Projets;
+using Chronos.Api.TypesAbsence;
 using Chronos.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -35,11 +38,13 @@ builder.Services.AddDbContext<ChronosDbContext>(options =>
 {
     _ = fournisseur switch
     {
-        "PostgreSql" => options.UseNpgsql(chaineDeConnexion,
-            npgsql => npgsql.MigrationsAssembly("Chronos.Migrations.PostgreSql")),
+        "PostgreSql" => options.UseNpgsql(chaineDeConnexion, npgsql => npgsql
+            .MigrationsAssembly("Chronos.Migrations.PostgreSql")
+            .EnableRetryOnFailure()),
 
-        "SqlServer" => options.UseSqlServer(chaineDeConnexion,
-            sqlServer => sqlServer.MigrationsAssembly("Chronos.Migrations.SqlServer")),
+        "SqlServer" => options.UseSqlServer(chaineDeConnexion, sqlServer => sqlServer
+            .MigrationsAssembly("Chronos.Migrations.SqlServer")
+            .EnableRetryOnFailure()),
 
         _ => throw new UnreachableException()
     };
@@ -75,5 +80,8 @@ app.MapCollaborateurs();
 app.MapAffectations();
 app.MapJoursFeries();
 app.MapPlanDeCharge();
+app.MapFeuillesDeTemps();
+app.MapAbsences();
+app.MapTypesAbsence();
 
 app.Run();

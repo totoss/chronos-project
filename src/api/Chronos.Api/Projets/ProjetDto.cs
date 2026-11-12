@@ -15,4 +15,5 @@ public record ProjetDto(
     int ResponsableId,
     string ResponsableNom,
     StatutProjet Statut,
-    Guid Version);
+    Guid Version,
+    decimal JoursValides);

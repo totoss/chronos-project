@@ -22,6 +22,50 @@ namespace Chronos.Migrations.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Chronos.Domain.Absence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CollaborateurId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("DateDebut")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("DateFin")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("DebuteApresMidi")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("FinitLeMatin")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Statut")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("TypeAbsenceId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TypeAbsenceId");
+
+                    b.HasIndex("CollaborateurId", "DateDebut");
+
+                    b.ToTable("Absences");
+                });
+
             modelBuilder.Entity("Chronos.Domain.Affectation", b =>
                 {
                     b.Property<int>("Id")
@@ -175,6 +219,41 @@ namespace Chronos.Migrations.SqlServer.Migrations
                     b.ToTable("Contrats");
                 });
 
+            modelBuilder.Entity("Chronos.Domain.FeuilleDeTemps", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CollaborateurId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MotifRejet")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("Semaine")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Statut")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollaborateurId", "Semaine")
+                        .IsUnique();
+
+                    b.ToTable("FeuillesDeTemps", (string)null);
+                });
+
             modelBuilder.Entity("Chronos.Domain.JourFerie", b =>
                 {
                     b.Property<DateOnly>("Date")
@@ -249,6 +328,78 @@ namespace Chronos.Migrations.SqlServer.Migrations
                     b.ToTable("Projets");
                 });
 
+            modelBuilder.Entity("Chronos.Domain.SaisieDeTemps", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Duree")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<int>("FeuilleDeTempsId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("Jour")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ProjetId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjetId");
+
+                    b.HasIndex("FeuilleDeTempsId", "ProjetId", "Jour")
+                        .IsUnique();
+
+                    b.ToTable("SaisiesDeTemps", (string)null);
+                });
+
+            modelBuilder.Entity("Chronos.Domain.TypeAbsence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Libelle")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("TypesAbsence");
+                });
+
+            modelBuilder.Entity("Chronos.Domain.Absence", b =>
+                {
+                    b.HasOne("Chronos.Domain.Collaborateur", null)
+                        .WithMany()
+                        .HasForeignKey("CollaborateurId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Chronos.Domain.TypeAbsence", null)
+                        .WithMany()
+                        .HasForeignKey("TypeAbsenceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Chronos.Domain.Affectation", b =>
                 {
                     b.HasOne("Chronos.Domain.Collaborateur", null)
@@ -285,6 +436,15 @@ namespace Chronos.Migrations.SqlServer.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Chronos.Domain.FeuilleDeTemps", b =>
+                {
+                    b.HasOne("Chronos.Domain.Collaborateur", null)
+                        .WithMany()
+                        .HasForeignKey("CollaborateurId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Chronos.Domain.Projet", b =>
                 {
                     b.HasOne("Chronos.Domain.Client", "Client")
@@ -303,9 +463,29 @@ namespace Chronos.Migrations.SqlServer.Migrations
                     b.Navigation("Responsable");
                 });
 
+            modelBuilder.Entity("Chronos.Domain.SaisieDeTemps", b =>
+                {
+                    b.HasOne("Chronos.Domain.FeuilleDeTemps", null)
+                        .WithMany("Saisies")
+                        .HasForeignKey("FeuilleDeTempsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Chronos.Domain.Projet", null)
+                        .WithMany()
+                        .HasForeignKey("ProjetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Chronos.Domain.Collaborateur", b =>
                 {
                     b.Navigation("Contrats");
+                });
+
+            modelBuilder.Entity("Chronos.Domain.FeuilleDeTemps", b =>
+                {
+                    b.Navigation("Saisies");
                 });
 #pragma warning restore 612, 618
         }

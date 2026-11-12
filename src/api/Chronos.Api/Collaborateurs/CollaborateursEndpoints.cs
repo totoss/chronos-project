@@ -218,7 +218,9 @@ public static class CollaborateursEndpoints
                 .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
                 .AnyAsync(c => c.ManagerId == id, cancellationToken)
             || await db.Projets.AnyAsync(p => p.ResponsableId == id, cancellationToken)
-            || await db.Affectations.AnyAsync(a => a.CollaborateurId == id, cancellationToken);
+            || await db.Affectations.AnyAsync(a => a.CollaborateurId == id, cancellationToken)
+            || await db.Absences.AnyAsync(a => a.CollaborateurId == id, cancellationToken)
+            || await db.FeuillesDeTemps.AnyAsync(f => f.CollaborateurId == id, cancellationToken);
 
         if (aDesDonneesLiees)
         {

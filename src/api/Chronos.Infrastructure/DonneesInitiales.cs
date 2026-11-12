@@ -7,34 +7,42 @@ public static class DonneesInitiales
 {
     public static void Alimenter(DbContext context)
     {
-        if (context.Set<Collaborateur>().Any())
+        if (!context.Set<Collaborateur>().Any())
         {
-            return;
+            var (responsable, client) = AjouterReferentiel(context);
+            context.SaveChanges();
+
+            context.AddRange(CreerProjets(responsable.Id, client.Id));
+            context.Add(CreerCamille(responsable.Id));
+            context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
+            context.SaveChanges();
         }
 
-        var (responsable, client) = AjouterReferentiel(context);
-        context.SaveChanges();
-
-        context.AddRange(CreerProjets(responsable.Id, client.Id));
-        context.Add(CreerCamille(responsable.Id));
-        context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
-        context.SaveChanges();
+        if (!context.Set<TypeAbsence>().Any())
+        {
+            context.AddRange(CreerTypesAbsence());
+            context.SaveChanges();
+        }
     }
 
     public static async Task AlimenterAsync(DbContext context, CancellationToken cancellationToken)
     {
-        if (await context.Set<Collaborateur>().AnyAsync(cancellationToken))
+        if (!await context.Set<Collaborateur>().AnyAsync(cancellationToken))
         {
-            return;
+            var (responsable, client) = AjouterReferentiel(context);
+            await context.SaveChangesAsync(cancellationToken);
+
+            context.AddRange(CreerProjets(responsable.Id, client.Id));
+            context.Add(CreerCamille(responsable.Id));
+            context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
+            await context.SaveChangesAsync(cancellationToken);
         }
 
-        var (responsable, client) = AjouterReferentiel(context);
-        await context.SaveChangesAsync(cancellationToken);
-
-        context.AddRange(CreerProjets(responsable.Id, client.Id));
-        context.Add(CreerCamille(responsable.Id));
-        context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
-        await context.SaveChangesAsync(cancellationToken);
+        if (!await context.Set<TypeAbsence>().AnyAsync(cancellationToken))
+        {
+            context.AddRange(CreerTypesAbsence());
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static (Collaborateur Responsable, Client Client) AjouterReferentiel(DbContext context)
@@ -64,5 +72,12 @@ public static class DonneesInitiales
             new DateOnly(2026, 3, 2), new DateOnly(2026, 12, 18), 240, responsableId),
         new("INT-FORMATION", "Formation interne", NatureProjet.Interne, null,
             new DateOnly(2026, 1, 5), null, 60, responsableId),
+    ];
+
+    private static TypeAbsence[] CreerTypesAbsence() =>
+    [
+        new("CP", "Congés payés"),
+        new("RTT", "Réduction du temps de travail"),
+        new("MAL", "Maladie"),
     ];
 }
