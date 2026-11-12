@@ -47,8 +47,11 @@ jobs:
       - name: Vérifier que les migrations SQL Server couvrent le modèle
         run: dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.SqlServer --startup-project Chronos.Api --no-build --configuration Release -- --Chronos:Fournisseur SqlServer
 
-      - name: Tester
-        run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults
+      - name: Tests unitaires
+        run: dotnet test --no-build --configuration Release --project Chronos.Domain.Tests --report-xunit-trx --results-directory TestResults
+
+      - name: Tests d'intégration
+        run: dotnet test --no-build --configuration Release --project Chronos.Api.Tests --report-xunit-trx --results-directory TestResults
 
       - name: Conserver les résultats des tests
         if: ${{ !cancelled() }}

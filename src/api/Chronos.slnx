@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Chronos.Api.Tests/Chronos.Api.Tests.csproj" />
   <Project Path="Chronos.Api/Chronos.Api.csproj" />
   <Project Path="Chronos.Domain.Tests/Chronos.Domain.Tests.csproj" />
   <Project Path="Chronos.Domain/Chronos.Domain.csproj" />
