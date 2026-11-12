@@ -1,0 +1,39 @@
+name: chronos
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: chronos
+      POSTGRES_DB: chronos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant, voir .env.example}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-donnees:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD manquant, voir .env.example}
+    ports:
+      - "127.0.0.1:1433:1433"
+    volumes:
+      - sqlserver-donnees:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\" -b"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres-donnees:
+  sqlserver-donnees:

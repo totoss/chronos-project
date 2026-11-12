@@ -1,0 +1,30 @@
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+
+# Node.js et Angular
+node_modules/
+dist/
+.angular/
+coverage/
+
+# Système
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Éditeurs
+.idea/
+*.swp
+
+# Journaux et fichiers temporaires
+*.log
+*.tmp
