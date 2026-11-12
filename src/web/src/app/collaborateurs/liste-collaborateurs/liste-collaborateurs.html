@@ -1,4 +1,4 @@
-<h2>Collaborateurs</h2>
+<h2 tabindex="-1">Collaborateurs</h2>
 
 <div class="outils">
   <app-barre-de-recherche
@@ -48,9 +48,17 @@
       <app-carte-collaborateur [collaborateur]="c" (supprimer)="supprimer(c)" />
     } @empty {
       @if (recherche()) {
-        <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+        <p>
+          Aucun collaborateur ne correspond à « {{ recherche() }} ». Modifiez ou effacez la
+          recherche.
+        </p>
       } @else {
-        <p>Aucun collaborateur à afficher.</p>
+        <p>
+          Aucun collaborateur à afficher.
+          @if (!afficherSortis()) {
+            Les collaborateurs sortis sont masqués.
+          }
+        </p>
       }
     }
   </div>

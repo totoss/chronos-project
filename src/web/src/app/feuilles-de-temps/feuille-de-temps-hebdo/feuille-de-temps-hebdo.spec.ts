@@ -1,3 +1,4 @@
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -61,6 +62,7 @@ const projets = {
 describe('FeuilleDeTempsHebdo', () => {
   /** La fiche de l’utilisateur connecté : 2 est Camille ; `null` serait un compte sans fiche. */
   const collaborateurId = signal<number | null>(2);
+  const announce = vi.fn<LiveAnnouncer['announce']>();
   let fixture: ComponentFixture<FeuilleDeTempsHebdo>;
   let http: HttpTestingController;
   let ecran: HTMLElement;
@@ -102,11 +104,13 @@ describe('FeuilleDeTempsHebdo', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 6, 10, 0));
     collaborateurId.set(2);
+    announce.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([erreursInterceptor])),
         provideHttpClientTesting(),
         { provide: Session, useValue: { collaborateurId } },
+        { provide: LiveAnnouncer, useValue: { announce } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -156,9 +160,9 @@ describe('FeuilleDeTempsHebdo', () => {
   it('ferme le week-end et le jour férié (RG-32)', async () => {
     await ouvrir();
 
-    expect(liste('Formation interne, sam. 9 mai').disabled).toBe(true);
-    expect(liste('Formation interne, ven. 8 mai').disabled).toBe(true);
-    expect(liste('Formation interne, jeu. 7 mai').disabled).toBe(false);
+    expect(liste('Formation interne, sam. 9 mai')).toBeNull();
+    expect(liste('Formation interne, ven. 8 mai')).toBeNull();
+    expect(liste('Formation interne, jeu. 7 mai')).not.toBeNull();
   });
 
   it('ferme les jours d’une absence approuvée, et seulement ceux-là (RG-32)', async () => {
@@ -176,8 +180,8 @@ describe('FeuilleDeTempsHebdo', () => {
       absences: [absence(1, 'Approuvee', '2026-05-05'), absence(2, 'Demandee', '2026-05-06')],
     });
 
-    expect(liste('Formation interne, mar. 5 mai').disabled).toBe(true);
-    expect(liste('Formation interne, mer. 6 mai').disabled).toBe(false);
+    expect(liste('Formation interne, mar. 5 mai')).toBeNull();
+    expect(liste('Formation interne, mer. 6 mai')).not.toBeNull();
   });
 
   it('affiche l’état de la feuille et le motif d’un rejet (RG-34)', async () => {
@@ -199,8 +203,8 @@ describe('FeuilleDeTempsHebdo', () => {
     expect(ecran.querySelector('[role="alert"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
       'Le total dépasse une journée : lun. 4 mai.',
     );
-    expect(bouton('Enregistrer le brouillon')!.disabled).toBe(true);
-    expect(bouton('Soumettre')!.disabled).toBe(true);
+    expect(bouton('Enregistrer le brouillon')!.getAttribute('aria-disabled')).toBe('true');
+    expect(bouton('Soumettre')!.getAttribute('aria-disabled')).toBe('true');
   });
 
   describe('un jour d’absence l’après-midi (RG-32)', () => {
@@ -223,7 +227,7 @@ describe('FeuilleDeTempsHebdo', () => {
       await fixture.whenStable();
 
       expect(ecran.querySelector('[role="alert"]')).toBeNull();
-      expect(bouton('Enregistrer le brouillon')!.disabled).toBe(false);
+      expect(bouton('Enregistrer le brouillon')!.getAttribute('aria-disabled')).not.toBe('true');
     });
 
     it('bloque l’enregistrement au-delà de 0,5 au total', async () => {
@@ -235,8 +239,8 @@ describe('FeuilleDeTempsHebdo', () => {
 
       expect(ecran.querySelector('[role="alert"]')).toBeTruthy();
       expect(ecran.querySelector('.alerte')?.textContent).toContain("Plus d'une demi-journée");
-      expect(bouton('Enregistrer le brouillon')!.disabled).toBe(true);
-      expect(bouton('Soumettre')!.disabled).toBe(true);
+      expect(bouton('Enregistrer le brouillon')!.getAttribute('aria-disabled')).toBe('true');
+      expect(bouton('Soumettre')!.getAttribute('aria-disabled')).toBe('true');
     });
   });
 
@@ -259,7 +263,8 @@ describe('FeuilleDeTempsHebdo', () => {
       http.expectOne((r) => r.url === '/api/feuilles-de-temps').flush(feuille()),
     );
     await fixture.whenStable();
-    expect(bouton('Enregistrer le brouillon')!.disabled).toBe(false);
+    expect(bouton('Enregistrer le brouillon')!.getAttribute('aria-disabled')).not.toBe('true');
+    expect(announce).toHaveBeenCalledWith('Brouillon enregistré.', 'polite');
   });
 
   it('soumet en enregistrant d’abord, puis passe en lecture seule (RG-35)', async () => {
@@ -282,7 +287,10 @@ describe('FeuilleDeTempsHebdo', () => {
 
     expect(ecran.textContent).toContain('État : Soumise');
     expect(bouton('Soumettre')).toBeUndefined();
-    expect(Array.from(ecran.querySelectorAll('select')).every((l) => l.disabled)).toBe(true);
+    expect(ecran.querySelectorAll('select')).toHaveLength(0);
+    // Les boutons ont disparu avec le brouillon : l'annonce dit ce qui s'est passé, le focus ne s'est pas perdu.
+    expect(announce).toHaveBeenCalledWith('Feuille de temps soumise.', 'polite');
+    expect(document.activeElement).toBe(ecran.querySelector('h2'));
   });
 
   it('ne soumet pas quand l’enregistrement est refusé, et garde la saisie à l’écran', async () => {
@@ -301,7 +309,7 @@ describe('FeuilleDeTempsHebdo', () => {
 
     http.expectNone({ method: 'POST', url: '/api/feuilles-de-temps/42/soumission' });
     expect(liste('Formation interne, jeu. 7 mai').value).toBe('1');
-    expect(bouton('Soumettre')!.disabled).toBe(false);
+    expect(bouton('Soumettre')!.getAttribute('aria-disabled')).not.toBe('true');
   });
 
   it('change de semaine, et redemande la feuille', async () => {

@@ -1,4 +1,4 @@
-<h2>Feuille de temps</h2>
+<h2 #titre tabindex="-1">Feuille de temps</h2>
 
 @if (collaborateurId() === null) {
   <p role="status">
@@ -49,13 +49,20 @@
       <div class="actions">
         <button
           matButton="outlined"
+          disabledInteractive
           type="button"
           [disabled]="!peutEnvoyer()"
           (click)="enregistrer()"
         >
           Enregistrer le brouillon
         </button>
-        <button matButton="filled" type="button" [disabled]="!peutEnvoyer()" (click)="soumettre()">
+        <button
+          matButton="filled"
+          type="button"
+          disabledInteractive
+          [disabled]="!peutEnvoyer()"
+          (click)="soumettre()"
+        >
           Soumettre
         </button>
       </div>

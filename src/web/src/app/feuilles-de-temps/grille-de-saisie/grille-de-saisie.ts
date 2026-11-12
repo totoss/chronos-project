@@ -1,3 +1,4 @@
+import { Grid, GridCell, GridCellWidget, GridRow } from '@angular/aria/grid';
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, input, model } from '@angular/core';
 import { libelleJour } from '../../commun/dates';
@@ -14,7 +15,7 @@ import {
 
 /** Composant de présentation : il affiche et modifie une grille, il ne connaît pas l'API. */
 @Component({
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, Grid, GridCell, GridCellWidget, GridRow],
   selector: 'app-grille-de-saisie',
   styleUrl: './grille-de-saisie.scss',
   templateUrl: './grille-de-saisie.html',

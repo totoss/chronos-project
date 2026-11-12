@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { Component, computed, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -25,6 +26,8 @@ import { GrilleDeSaisie } from '../grille-de-saisie/grille-de-saisie';
 export class FeuillesAValider {
   private readonly api = inject(FeuillesDeTempsApi);
   private readonly dialog = inject(MatDialog);
+  private readonly annonceur = inject(LiveAnnouncer);
+  private readonly titre = viewChild.required<ElementRef<HTMLElement>>('titre');
 
   protected readonly libelleJour = libelleJour;
   protected readonly libelleStatut = LIBELLES_STATUT;
@@ -87,7 +90,7 @@ export class FeuillesAValider {
   }
 
   protected valider(feuille: FeuilleDeTemps): void {
-    this.envoyer(this.api.valider(feuille.id));
+    this.envoyer(this.api.valider(feuille.id), 'Feuille de temps validée.');
   }
 
   protected rejeter(feuille: FeuilleDeTemps): void {
@@ -95,18 +98,23 @@ export class FeuillesAValider {
       .open<DialogueDeRejet, void, string>(DialogueDeRejet)
       .afterClosed()
       .subscribe((motif) => {
-        if (motif) this.envoyer(this.api.rejeter(feuille.id, motif));
+        if (motif) this.envoyer(this.api.rejeter(feuille.id, motif), 'Feuille de temps rejetée.');
       });
   }
 
-  /** Valider ou rejeter retire la feuille de la liste des feuilles à valider : on la redemande. */
-  private envoyer(requete: Observable<unknown>): void {
+  /**
+   * Valider ou rejeter retire la feuille de la liste des feuilles à valider : on la redemande.
+   * Les boutons disparaissent avec la feuille : le focus revient au titre, et l'annonce dit ce qui s'est passé.
+   */
+  private envoyer(requete: Observable<unknown>, annonce: string): void {
     this.envoiEnCours.set(true);
     requete.subscribe({
       next: () => {
         this.feuilleChoisie.set(null);
         this.envoiEnCours.set(false);
         this.soumises.reload();
+        void this.annonceur.announce(annonce, 'polite');
+        this.titre().nativeElement.focus();
       },
       error: () => this.envoiEnCours.set(false), // déjà notifiée par l'intercepteur
     });

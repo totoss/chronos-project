@@ -54,4 +54,20 @@ describe('DialogueDeRejet', () => {
     expect(fermer).not.toHaveBeenCalled();
     expect(ecran.textContent).toContain('Le motif du rejet est obligatoire.');
   });
+
+  it('relie le message d’erreur au champ du motif, pour les lecteurs d’écran', async () => {
+    const champ = ecran.querySelector('textarea')!;
+    expect(champ.getAttribute('aria-required')).toBe('true');
+    expect(champ.getAttribute('aria-invalid')).not.toBe('true');
+    expect(champ.hasAttribute('aria-describedby')).toBe(false);
+
+    ecrire('   ');
+    ecran.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    const message = ecran.querySelector('[role="alert"]')!;
+    expect(champ.getAttribute('aria-invalid')).toBe('true');
+    expect(champ.getAttribute('aria-describedby')).toBe(message.id);
+    expect(message.textContent).toContain('Le motif du rejet est obligatoire.');
+  });
 });

@@ -1,10 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, Injector, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { distinctUntilChanged, filter, map, skip } from 'rxjs';
 import { Session } from './compte/session';
 import { Role } from './compte/utilisateur';
 
@@ -35,6 +37,7 @@ export class App {
   protected readonly titre = signal('Chronos');
   protected readonly session = inject(Session);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   private readonly liens: LienDeNavigation[] = [
     { chemin: '/collaborateurs', libelle: 'Collaborateurs', icone: 'group' },
@@ -57,11 +60,40 @@ export class App {
 
   /** Ne garde que les liens permis : le menu suit la session, à la connexion comme à la déconnexion. */
   protected readonly liensVisibles = computed(() =>
-    this.liens.filter((lien) => !lien.roles || this.session.aLeRole(...lien.roles)),
+    this.session.estConnecte()
+      ? this.liens.filter((lien) => !lien.roles || this.session.aLeRole(...lien.roles))
+      : [],
   );
+
+  constructor() {
+    // Dans une application à page unique, changer d'écran ne déplace pas le focus : on l'envoie sur
+    // le titre du nouvel écran. Seul un changement de chemin compte : écrire la recherche ou un filtre
+    // dans l'adresse ne doit pas arracher le focus à l'utilisateur qui est en train de taper.
+    this.router.events
+      .pipe(
+        filter((evenement) => evenement instanceof NavigationEnd),
+        map((evenement) => evenement.urlAfterRedirects.split(/[?#]/)[0]),
+        distinctUntilChanged(),
+        skip(1), // la première navigation : le navigateur a déjà placé le focus
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        afterNextRender(() => this.donnerLeFocusAuTitre(), { injector: this.injector });
+      });
+  }
+
+  /** Le lien d'évitement : il mène au titre de l'écran, sans passer par la barre ni par le menu. */
+  protected allerAuContenu(evenement: Event): void {
+    evenement.preventDefault();
+    this.donnerLeFocusAuTitre();
+  }
 
   protected async seDeconnecter(): Promise<void> {
     await this.session.deconnecter();
     await this.router.navigateByUrl('/connexion');
+  }
+
+  private donnerLeFocusAuTitre(): void {
+    document.querySelector<HTMLElement>('[role=main] h2')?.focus();
   }
 }

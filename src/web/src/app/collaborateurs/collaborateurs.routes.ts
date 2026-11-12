@@ -1,4 +1,6 @@
+import { MatPaginatorIntl } from '@angular/material/paginator';
 import { Routes } from '@angular/router';
+import { paginatorFrancais } from '../commun/paginator-francais';
 import { roleGuardAvecRepli } from '../compte/role-guard';
 import { ListeCollaborateurs } from './liste-collaborateurs/liste-collaborateurs';
 
@@ -6,6 +8,8 @@ export const collaborateursRoutes: Routes = [
   {
     path: '',
     component: ListeCollaborateurs,
+    // Les libellés du paginateur sont en anglais dans Material ; fournis ici, pour ne pas charger le paginateur au démarrage.
+    providers: [{ provide: MatPaginatorIntl, useFactory: paginatorFrancais }],
     title: 'Collaborateurs — Chronos',
   },
   {

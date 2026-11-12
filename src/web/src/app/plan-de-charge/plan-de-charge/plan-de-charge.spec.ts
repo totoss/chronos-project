@@ -101,6 +101,15 @@ describe('PlanDeCharge', () => {
     ).toEqual(['Collaborateur', 'lun. 4 mai', 'lun. 11 mai', 'lun. 18 mai', 'lun. 25 mai']);
   });
 
+  it('nomme le tableau et dit quelle surcharge chaque bouton confirme', async () => {
+    await ouvrir();
+
+    expect(ecran.querySelector('caption')?.textContent).toContain('par semaine');
+    expect(ecran.querySelector('tbody button')?.getAttribute('aria-label')).toBe(
+      'Confirmer la surcharge de Camille Durand, semaine du lun. 11 mai',
+    );
+  });
+
   it('écrit un libellé pour chaque niveau de charge, jamais la couleur seule', async () => {
     await ouvrir();
 
@@ -123,7 +132,7 @@ describe('PlanDeCharge', () => {
     TestBed.tick();
     const dialogue = document.querySelector('app-confirmation-de-surcharge')!;
     expect(dialogue.textContent).toContain('Camille Durand');
-    expect(dialogue.textContent).toContain('133');
+    expect(dialogue.textContent).toContain('133\u00a0%');
     expect(dialogue.textContent).toContain('semaine du lun. 11 mai');
 
     bouton('Confirmer', dialogue).click();

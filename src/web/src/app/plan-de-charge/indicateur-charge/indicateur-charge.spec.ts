@@ -46,7 +46,7 @@ describe('IndicateurCharge', () => {
   it('écrit « Surcharge » en toutes lettres, en plus de la couleur (RG-24)', async () => {
     await afficher(surcharge);
 
-    expect(ecran.querySelector('.taux')?.textContent).toContain('133');
+    expect(ecran.querySelector('.taux')?.textContent).toContain('133\u00a0%');
     expect(ecran.textContent).toContain('Surcharge');
     expect(ecran.classList.contains('surcharge')).toBe(true);
   });
@@ -59,6 +59,17 @@ describe('IndicateurCharge', () => {
     ecran.querySelector('button')!.click();
 
     expect(confirmer).toHaveBeenCalledTimes(1);
+  });
+
+  it('dit quelle surcharge le bouton confirme, en commençant par son texte visible', async () => {
+    fixture.componentRef.setInput('contexte', 'Camille Durand, semaine du lun. 4 mai');
+    await afficher(surcharge);
+
+    const bouton = ecran.querySelector('button')!;
+    expect(bouton.textContent).toContain('Confirmer');
+    expect(bouton.getAttribute('aria-label')).toBe(
+      'Confirmer la surcharge de Camille Durand, semaine du lun. 4 mai',
+    );
   });
 
   it('remplace le bouton par « confirmée » une fois la surcharge confirmée', async () => {

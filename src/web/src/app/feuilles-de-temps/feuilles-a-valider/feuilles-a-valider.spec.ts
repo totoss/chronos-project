@@ -1,3 +1,4 @@
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -21,6 +22,7 @@ describe('FeuillesAValider', () => {
   let fixture: ComponentFixture<FeuillesAValider>;
   let http: HttpTestingController;
   let ecran: HTMLElement;
+  const announce = vi.fn<LiveAnnouncer['announce']>();
 
   function bouton(libelle: string, racine: ParentNode = ecran): HTMLButtonElement {
     return Array.from(racine.querySelectorAll('button')).find((b) =>
@@ -60,10 +62,12 @@ describe('FeuillesAValider', () => {
   }
 
   beforeEach(() => {
+    announce.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([erreursInterceptor])),
         provideHttpClientTesting(),
+        { provide: LiveAnnouncer, useValue: { announce } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -87,14 +91,11 @@ describe('FeuillesAValider', () => {
   it('relit la feuille choisie dans la grille, en lecture seule', async () => {
     await ouvrirLaFeuille();
 
-    const listes = Array.from(ecran.querySelectorAll('select'));
-    expect(listes).toHaveLength(7);
-    expect(listes.every((l) => l.disabled)).toBe(true);
-    expect(
-      ecran.querySelector<HTMLSelectElement>(
-        'select[aria-label="Refonte du portail client, lun. 4 mai"]',
-      )!.value,
-    ).toBe('0.5');
+    expect(ecran.querySelectorAll('select')).toHaveLength(0);
+    const cellules = Array.from(ecran.querySelectorAll('tbody tr:first-child td')).map((td) =>
+      td.textContent?.trim(),
+    );
+    expect(cellules.slice(0, 2)).toEqual(['0,5', '1']);
     expect(ecran.textContent).toContain('État : Soumise');
   });
 
@@ -111,6 +112,9 @@ describe('FeuillesAValider', () => {
 
     expect(ecran.querySelector('app-grille-de-saisie')).toBeNull();
     expect(ecran.textContent).toContain("Aucune feuille de temps n'attend votre validation.");
+    // Les boutons ont disparu avec la feuille : l'annonce dit ce qui s'est passé, le focus revient au titre.
+    expect(announce).toHaveBeenCalledWith('Feuille de temps validée.', 'polite');
+    expect(document.activeElement).toBe(ecran.querySelector('h2'));
   });
 
   it('rejette la feuille avec le motif saisi dans le dialogue', async () => {
@@ -131,6 +135,7 @@ describe('FeuillesAValider', () => {
     expect(post.request.body).toEqual({ motif: 'Il manque le projet Alpha.' });
     post.flush({ ...soumise, statut: 'Brouillon', motifRejet: 'Il manque le projet Alpha.' });
     await vi.waitFor(() => http.expectOne('/api/feuilles-de-temps/soumises').flush([]));
+    expect(announce).toHaveBeenCalledWith('Feuille de temps rejetée.', 'polite');
   });
 
   it('ne rejette rien quand on annule le dialogue', async () => {

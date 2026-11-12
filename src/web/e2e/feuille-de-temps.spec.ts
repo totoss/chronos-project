@@ -15,7 +15,9 @@ test('se connecter, saisir sa feuille de temps et la soumettre', async ({ page }
   await expect(page.getByText('Semaine du lun. 4 mai')).toBeVisible();
   await page.getByLabel('Refonte du portail client, lun. 4 mai').selectOption('0.5');
   await page.getByLabel('Refonte du portail client, mar. 5 mai').selectOption('1');
-  await expect(page.getByLabel('Refonte du portail client, ven. 8 mai')).toBeDisabled();
+  // Le jour férié n'est pas saisissable : une valeur en texte, pas une liste.
+  await expect(page.getByLabel('Refonte du portail client, ven. 8 mai')).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'ven. 8 mai (jour fermé)' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click();
   await expect.poll(() => api.saisies).toHaveLength(2);

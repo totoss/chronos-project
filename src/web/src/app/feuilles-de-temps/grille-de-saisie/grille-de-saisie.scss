@@ -35,3 +35,19 @@ select {
 .alerte {
   display: block;
 }
+
+table :focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// Un texte lu par les lecteurs d'écran, invisible à l'écran.
+.masque {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

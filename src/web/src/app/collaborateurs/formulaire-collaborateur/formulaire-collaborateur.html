@@ -1,11 +1,14 @@
 @let modification = collaborateur() !== undefined;
 
-<h2>{{ modification ? 'Modifier la fiche' : 'Nouveau collaborateur' }}</h2>
+<h2 #titre tabindex="-1">{{ modification ? 'Modifier la fiche' : 'Nouveau collaborateur' }}</h2>
 
 <form [formRoot]="formulaire">
   <mat-form-field>
     <mat-label>Matricule</mat-label>
     <input matInput [formField]="formulaire.matricule" />
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
     @for (erreur of formulaire.matricule().errors(); track $index) {
       <mat-error>{{ erreur.message }}</mat-error>
     }
@@ -41,6 +44,9 @@
       <mat-option value="Consultant">Consultant</mat-option>
       <mat-option value="Interne">Interne</mat-option>
     </mat-select>
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
   </mat-form-field>
 
   <mat-form-field>
@@ -67,6 +73,9 @@
   <mat-form-field>
     <mat-label>Date d'entrée</mat-label>
     <input matInput type="date" [formField]="formulaire.dateEntree" />
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
     @for (erreur of formulaire.dateEntree().errors(); track $index) {
       <mat-error>{{ erreur.message }}</mat-error>
     }
@@ -98,6 +107,9 @@
     <mat-label>Quotité</mat-label>
     <input matInput type="number" [formField]="formulaire.quotite" />
     <span matTextSuffix>%</span>
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
     @for (erreur of formulaire.quotite().errors(); track $index) {
       <mat-error>{{ erreur.message }}</mat-error>
     }

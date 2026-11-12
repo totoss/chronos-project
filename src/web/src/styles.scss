@@ -37,3 +37,21 @@ body {
   height: 100%;
 }
 /* You can add global styles to this file, and also import other style files */
+
+// Les icônes de Material sont des mots (« menu », « group ») que la police Material Symbols dessine.
+// Google Fonts fournissait cette classe avec la police ; la police auto-hébergée ne la fournit pas.
+.material-symbols-outlined {
+  direction: ltr;
+  display: inline-block;
+  font-family: 'Material Symbols Outlined';
+  font-feature-settings: 'liga';
+  font-size: 24px;
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  -webkit-font-smoothing: antialiased;
+}

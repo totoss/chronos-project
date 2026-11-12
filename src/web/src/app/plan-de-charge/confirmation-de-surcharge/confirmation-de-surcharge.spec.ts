@@ -18,7 +18,7 @@ describe('ConfirmationDeSurcharge', () => {
 
     const texte = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(texte).toContain('Camille Durand');
-    expect(texte).toContain('133');
+    expect(texte).toContain('133\u00a0%');
     expect(texte).toContain('semaine du lun. 4 mai');
   });
 });

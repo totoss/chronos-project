@@ -1,4 +1,14 @@
-import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  linkedSignal,
+  output,
+  viewChild,
+} from '@angular/core';
 import {
   disabled,
   email,
@@ -78,6 +88,16 @@ export class FormulaireCollaborateur {
   readonly annule = output<void>();
   /** Demande au parent de recharger la fiche après un conflit (409). */
   readonly recharger = output<void>();
+
+  private readonly titre = viewChild.required<ElementRef<HTMLElement>>('titre');
+
+  constructor() {
+    // En modification, le formulaire remplace la fiche : le bouton « Modifier » a disparu, le focus va au titre.
+    // En création, c'est le routeur qui place le focus sur le titre de l'écran.
+    afterNextRender(() => {
+      if (this.collaborateur()) this.titre().nativeElement.focus();
+    });
+  }
 
   /** Les managers possibles : les collaborateurs en activité (100 au plus, le maximum de l'API). */
   protected readonly managers = this.api.liste(() => ({

@@ -1,4 +1,13 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import {
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { concatMap, finalize, Observable } from 'rxjs';
@@ -27,6 +36,8 @@ import { GrilleDeSaisie } from '../grille-de-saisie/grille-de-saisie';
 })
 export class FeuilleDeTempsHebdo {
   private readonly api = inject(FeuillesDeTempsApi);
+  private readonly annonceur = inject(LiveAnnouncer);
+  private readonly titre = viewChild.required<ElementRef<HTMLElement>>('titre');
   protected readonly selection = inject(SelectionSemaine);
   protected readonly libelleJour = libelleJour;
 
@@ -95,19 +106,21 @@ export class FeuilleDeTempsHebdo {
   );
 
   protected enregistrer(): void {
-    if (!this.feuille.hasValue()) return;
+    if (!this.peutEnvoyer() || !this.feuille.hasValue()) return;
     const id = this.feuille.value().id;
-    this.envoyer(this.api.enregistrer(id, versSaisies(this.grille())));
+    this.envoyer(this.api.enregistrer(id, versSaisies(this.grille())), 'Brouillon enregistré.');
   }
 
   /** Enregistre d'abord, soumet ensuite : la feuille soumise est celle qu'on a sous les yeux. */
   protected soumettre(): void {
-    if (!this.feuille.hasValue()) return;
+    if (!this.peutEnvoyer() || !this.feuille.hasValue()) return;
     const id = this.feuille.value().id;
     this.envoyer(
       this.api
         .enregistrer(id, versSaisies(this.grille()))
         .pipe(concatMap(() => this.api.soumettre(id))),
+      'Feuille de temps soumise.',
+      true,
     );
   }
 
@@ -115,10 +128,18 @@ export class FeuilleDeTempsHebdo {
     return this.absences.hasValue() ? this.absences.value() : [];
   }
 
-  private envoyer(requete: Observable<unknown>): void {
+  /**
+   * `annonce` est lue par les lecteurs d'écran : l'écran change peu, et ils ne le voient pas.
+   * `focusSurLeTitre` : la feuille soumise perd ses boutons, le focus revient au titre plutôt que de se perdre.
+   */
+  private envoyer(requete: Observable<unknown>, annonce: string, focusSurLeTitre = false): void {
     this.envoiEnCours.set(true);
     requete.pipe(finalize(() => this.envoiEnCours.set(false))).subscribe({
-      next: () => this.feuille.reload(),
+      next: () => {
+        this.feuille.reload();
+        void this.annonceur.announce(annonce, 'polite');
+        if (focusSurLeTitre) this.titre().nativeElement.focus();
+      },
       error: () => {}, // déjà notifiée par l'intercepteur ; la saisie reste à l'écran
     });
   }

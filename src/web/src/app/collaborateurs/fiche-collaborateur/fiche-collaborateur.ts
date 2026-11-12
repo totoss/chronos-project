@@ -1,5 +1,16 @@
 import { DatePipe, PercentPipe } from '@angular/common';
-import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  numberAttribute,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,6 +42,9 @@ import { FormulaireCollaborateur } from '../formulaire-collaborateur/formulaire-
 export class FicheCollaborateur {
   private readonly api = inject(CollaborateursApi);
   protected readonly session = inject(Session);
+  private readonly injector = inject(Injector);
+
+  private readonly titre = viewChild.required<ElementRef<HTMLElement>>('titre');
 
   readonly id = input.required({ transform: numberAttribute });
 
@@ -51,6 +65,12 @@ export class FicheCollaborateur {
   protected terminer(enregistre: Collaborateur): void {
     // L'API a renvoyé la fiche à jour, avec sa nouvelle version : inutile de la redemander.
     this.collaborateur.set(enregistre);
+    this.quitterLEdition();
+  }
+
+  /** Le bouton qui a ouvert le formulaire disparaît avec lui : le focus revient au titre de la fiche. */
+  protected quitterLEdition(): void {
     this.enEdition.set(false);
+    afterNextRender(() => this.titre().nativeElement.focus(), { injector: this.injector });
   }
 }

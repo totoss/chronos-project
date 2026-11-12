@@ -64,13 +64,17 @@ export class PlanDeCharge {
     return this.pas() === 'semaine' ? libelleJour(charge.debut) : libelleMois(charge.debut);
   }
 
+  /** Ce que la période désigne pour l'utilisateur : « semaine du lun. 4 mai », « mai 2026 ». */
+  protected descriptionDeLaPeriode(charge: Charge): string {
+    return this.pas() === 'semaine'
+      ? `semaine du ${libelleJour(charge.debut)}`
+      : libelleMois(charge.debut);
+  }
+
   protected confirmer(ligne: LigneDePlanDeCharge, charge: Charge): void {
     const data: DonneesDeConfirmation = {
       collaborateur: `${ligne.prenom} ${ligne.nom}`,
-      periode:
-        this.pas() === 'semaine'
-          ? `semaine du ${libelleJour(charge.debut)}`
-          : libelleMois(charge.debut),
+      periode: this.descriptionDeLaPeriode(charge),
       tauxDeCharge: charge.tauxDeCharge ?? 0,
     };
 

@@ -15,11 +15,20 @@ const MOTIF_MAX = 500;
     <form [formRoot]="formulaire">
       <mat-dialog-content>
         <label for="motif">Motif du rejet</label>
-        <textarea id="motif" rows="4" [formField]="formulaire.motif"></textarea>
-        @if (formulaire.motif().touched() && formulaire.motif().invalid()) {
-          @for (erreur of formulaire.motif().errors(); track $index) {
-            <p class="erreur">{{ erreur.message }}</p>
-          }
+        <textarea
+          id="motif"
+          rows="4"
+          aria-required="true"
+          [formField]="formulaire.motif"
+          [aria-invalid]="enErreur()"
+          [aria-describedby]="enErreur() ? 'motif-erreur' : null"
+        ></textarea>
+        @if (enErreur()) {
+          <div id="motif-erreur" role="alert">
+            @for (erreur of formulaire.motif().errors(); track $index) {
+              <p class="erreur">{{ erreur.message }}</p>
+            }
+          </div>
         }
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -46,6 +55,9 @@ export class DialogueDeRejet {
   private readonly dialogRef = inject<MatDialogRef<DialogueDeRejet, string>>(MatDialogRef);
 
   protected readonly modele = signal({ motif: '' });
+
+  protected readonly enErreur = () =>
+    this.formulaire.motif().touched() && this.formulaire.motif().invalid();
 
   protected readonly formulaire = form(
     this.modele,

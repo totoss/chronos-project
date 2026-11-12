@@ -1,42 +1,55 @@
-<mat-toolbar>
-  <button
-    matIconButton
-    type="button"
-    aria-label="Afficher ou masquer le menu"
-    (click)="menu.toggle()"
-  >
-    <mat-icon>menu</mat-icon>
-  </button>
-  <h1>{{ titre() }}</h1>
+<a class="evitement" href="#contenu" (click)="allerAuContenu($event)">Aller au contenu</a>
 
-  @if (session.utilisateur(); as utilisateur) {
-    <span class="utilisateur"
-      >{{ utilisateur.prenom ?? utilisateur.email }} {{ utilisateur.nom }}</span
-    >
-    <button matButton type="button" (click)="seDeconnecter()">Se déconnecter</button>
-  }
-</mat-toolbar>
+<header>
+  <mat-toolbar>
+    @if (liensVisibles().length > 0) {
+      <button
+        matIconButton
+        type="button"
+        aria-label="Afficher ou masquer le menu"
+        [attr.aria-expanded]="menu.opened"
+        (click)="menu.toggle()"
+      >
+        <mat-icon>menu</mat-icon>
+      </button>
+    }
+    <h1>{{ titre() }}</h1>
+
+    @if (session.utilisateur(); as utilisateur) {
+      <span class="utilisateur"
+        >{{ utilisateur.prenom ?? utilisateur.email }} {{ utilisateur.nom }}</span
+      >
+      <button matButton type="button" (click)="seDeconnecter()">Se déconnecter</button>
+    }
+  </mat-toolbar>
+</header>
 
 <mat-sidenav-container>
-  <mat-sidenav #menu mode="side" opened>
-    <mat-nav-list aria-label="Menu principal">
-      @for (lien of liensVisibles(); track lien.chemin) {
-        <a
-          mat-list-item
-          [routerLink]="lien.chemin"
-          routerLinkActive
-          #etat="routerLinkActive"
-          [activated]="etat.isActive"
-          ariaCurrentWhenActive="page"
-        >
-          <mat-icon matListItemIcon>{{ lien.icone }}</mat-icon>
-          <span matListItemTitle>{{ lien.libelle }}</span>
-        </a>
-      }
-    </mat-nav-list>
+  <mat-sidenav #menu mode="side" [opened]="liensVisibles().length > 0">
+    @if (liensVisibles().length > 0) {
+      <mat-nav-list aria-label="Menu principal">
+        <ul>
+          @for (lien of liensVisibles(); track lien.chemin) {
+            <li>
+              <a
+                mat-list-item
+                [routerLink]="lien.chemin"
+                routerLinkActive
+                #etat="routerLinkActive"
+                [activated]="etat.isActive"
+                ariaCurrentWhenActive="page"
+              >
+                <mat-icon matListItemIcon>{{ lien.icone }}</mat-icon>
+                <span matListItemTitle>{{ lien.libelle }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </mat-nav-list>
+    }
   </mat-sidenav>
 
-  <mat-sidenav-content role="main">
+  <mat-sidenav-content id="contenu" role="main">
     <router-outlet />
   </mat-sidenav-content>
 </mat-sidenav-container>

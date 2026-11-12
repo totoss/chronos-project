@@ -1,4 +1,4 @@
-<h2>Projets</h2>
+<h2 tabindex="-1">Projets</h2>
 
 <div class="outils">
   <app-barre-de-recherche
@@ -42,7 +42,7 @@
     @for (p of elements; track p.id) {
       <app-carte-projet [projet]="p" />
     } @empty {
-      <p>Aucun projet ne correspond à ces critères.</p>
+      <p>Aucun projet ne correspond à ces critères. Modifiez la recherche ou le statut.</p>
     }
   </div>
 }

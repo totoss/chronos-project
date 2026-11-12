@@ -79,10 +79,72 @@ describe('App', () => {
     expect(courants[0].textContent).toContain('Projets');
   });
 
+  it('présente le menu comme une liste, pour que le lecteur d’écran annonce le nombre d’éléments', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const elements = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'mat-nav-list ul > li > a',
+    );
+    expect(elements).toHaveLength(4);
+  });
+
+  describe('le focus', () => {
+    function titreEnCours(): string | undefined {
+      const actif = document.activeElement;
+      return actif?.tagName === 'H2' ? actif.textContent?.trim() : undefined;
+    }
+
+    it('va sur le titre du nouvel écran après un changement d’écran', async () => {
+      const fixture = TestBed.createComponent(App);
+      const routeur = TestBed.inject(Router);
+      await routeur.navigateByUrl('/absences'); // la première navigation : le navigateur s'en charge
+      await fixture.whenStable();
+      expect(titreEnCours()).toBeUndefined();
+
+      await routeur.navigateByUrl('/une-adresse-inconnue');
+
+      await vi.waitFor(() => expect(titreEnCours()).toBe('Page introuvable'));
+    });
+
+    it('reste où il est quand seul un paramètre de l’adresse change', async () => {
+      const fixture = TestBed.createComponent(App);
+      const routeur = TestBed.inject(Router);
+      await routeur.navigateByUrl('/absences');
+      await fixture.whenStable();
+      const bouton = (fixture.nativeElement as HTMLElement).querySelector('header button')!;
+      (bouton as HTMLElement).focus();
+
+      await routeur.navigateByUrl('/absences?recherche=dur');
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(bouton);
+    });
+
+    it('va sur le titre quand on suit le lien d’évitement, sans changer d’adresse', async () => {
+      const fixture = TestBed.createComponent(App);
+      const routeur = TestBed.inject(Router);
+      await routeur.navigateByUrl('/absences');
+      await fixture.whenStable();
+
+      (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLAnchorElement>('.evitement')!
+        .click();
+
+      expect(titreEnCours()).toBe('Absences');
+      expect(routeur.url).toBe('/absences');
+    });
+  });
+
   it('ne propose à un collaborateur sans autre rôle ni le plan de charge ni les feuilles à valider', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('mat-sidenav')
+        ?.classList.contains('mat-drawer-opened'),
+    ).toBe(true);
     expect(liens(fixture)).toEqual([
       '/collaborateurs',
       '/projets',
@@ -108,12 +170,20 @@ describe('App', () => {
     utilisateur.set(null);
     await fixture.whenStable();
 
-    expect(liens(fixture)).toEqual([
-      '/collaborateurs',
-      '/projets',
-      '/feuille-de-temps',
-      '/absences',
-    ]);
+    expect(liens(fixture)).toEqual([]);
+  });
+
+  it('ne propose aucune navigation à qui n’est pas connecté : ni menu, ni bouton du menu', async () => {
+    utilisateur.set(null);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const racine = fixture.nativeElement as HTMLElement;
+
+    expect(racine.querySelector('mat-nav-list')).toBeNull();
+    expect(racine.querySelector('header button')).toBeNull();
+    expect(racine.querySelector('mat-sidenav')?.classList.contains('mat-drawer-opened')).toBe(
+      false,
+    );
   });
 
   it("affiche l'adresse d'un compte sans fiche, et se déconnecte puis revient à la connexion", async () => {

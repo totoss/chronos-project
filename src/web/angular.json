@@ -14,6 +14,9 @@
           "style": "scss"
         }
       },
+      "i18n": {
+        "sourceLocale": "fr"
+      },
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -30,15 +33,27 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": [
+              "@fontsource/roboto/latin-300.css",
+              "@fontsource/roboto/latin-400.css",
+              "@fontsource/roboto/latin-500.css",
+              "@fontsource/material-symbols-outlined/latin-400.css",
+              "src/styles.scss"
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "700kB",
+                  "maximumError": "850kB"
+                },
+                {
+                  "type": "bundle",
+                  "name": "plan-de-charge",
+                  "maximumWarning": "45kB",
+                  "maximumError": "60kB"
                 },
                 {
                   "type": "anyComponentStyle",

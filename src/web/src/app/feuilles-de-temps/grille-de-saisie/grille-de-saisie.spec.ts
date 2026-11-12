@@ -37,12 +37,32 @@ describe('GrilleDeSaisie', () => {
     ecran = fixture.nativeElement;
   });
 
-  it('affiche une ligne par projet et une liste déroulante par jour', async () => {
+  it('affiche une ligne par projet et une liste déroulante par jour saisissable', async () => {
     await afficher();
 
     expect(ecran.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(ecran.querySelectorAll('select')).toHaveLength(14);
+    // 7 jours pour le premier projet ; le second n'est affecté qu'à partir du mercredi.
+    expect(ecran.querySelectorAll('select')).toHaveLength(12);
     expect(liste('Refonte du portail client, lun. 4 mai')).toBeTruthy();
+  });
+
+  it('est une grille au sens d’Angular Aria, dont les en-têtes gardent leur rôle', async () => {
+    await afficher();
+
+    expect(ecran.querySelector('table')?.getAttribute('role')).toBe('grid');
+    expect(ecran.querySelectorAll('thead th[role="columnheader"]')).toHaveLength(9);
+    expect(ecran.querySelectorAll('tbody th[role="rowheader"]')).toHaveLength(2);
+    expect(ecran.querySelector('caption')?.textContent).toContain('Temps saisis par projet');
+  });
+
+  it('affiche un texte, pas une liste, pour un jour fermé, et dit que le jour est fermé', async () => {
+    fixture.componentRef.setInput('joursFermes', new Set(['2026-05-08']));
+    await afficher();
+
+    expect(liste('Refonte du portail client, ven. 8 mai')).toBeNull();
+    expect(liste('Refonte du portail client, jeu. 7 mai')).not.toBeNull();
+    const entetes = Array.from(ecran.querySelectorAll('thead th')).map((th) => th.textContent);
+    expect(entetes.filter((texte) => texte?.includes('jour fermé'))).toHaveLength(1);
   });
 
   it('ne propose que des quarts de journée (RG-30)', async () => {
@@ -64,10 +84,10 @@ describe('GrilleDeSaisie', () => {
     const totauxDuJour = Array.from(ecran.querySelectorAll('tfoot td')).map((td) =>
       td.textContent?.trim(),
     );
-    expect(totauxDuJour[2]).toBe('0.75');
+    expect(totauxDuJour[2]).toBe('0,75');
     expect(totauxDuJour[3]).toBe('1');
     const totalLigne1 = ecran.querySelector('tbody tr:first-child td:last-child');
-    expect(totalLigne1?.textContent?.trim()).toBe('1.5');
+    expect(totalLigne1?.textContent?.trim()).toBe('1,5');
   });
 
   it('signale par un texte, et pas seulement par la couleur, un total supérieur à 1 (RG-31)', async () => {
@@ -100,11 +120,11 @@ describe('GrilleDeSaisie', () => {
     );
     await afficher();
 
-    expect(liste('Refonte du portail client, ven. 8 mai').disabled).toBe(true);
-    expect(liste('Refonte du portail client, mar. 5 mai').disabled).toBe(false);
+    expect(liste('Refonte du portail client, ven. 8 mai')).toBeNull();
+    expect(liste('Refonte du portail client, mar. 5 mai')).not.toBeNull();
     // L'affectation à « Formation interne » ne commence que le mercredi.
-    expect(liste('Formation interne, mar. 5 mai').disabled).toBe(true);
-    expect(liste('Formation interne, mer. 6 mai').disabled).toBe(false);
+    expect(liste('Formation interne, mar. 5 mai')).toBeNull();
+    expect(liste('Formation interne, mer. 6 mai')).not.toBeNull();
   });
 
   it('ne propose qu’une demi-journée au plus un jour d’absence partielle', async () => {
@@ -117,12 +137,13 @@ describe('GrilleDeSaisie', () => {
     expect(valeurs).toEqual(['0', '0.25', '0.5']);
   });
 
-  it('ferme toutes les listes en lecture seule (RG-35)', async () => {
+  it('remplace toutes les listes par leur valeur en lecture seule (RG-35)', async () => {
     fixture.componentRef.setInput('lectureSeule', true);
-    await afficher();
+    await afficher({ [cle(1, '2026-05-06')]: 0.5 });
 
-    const listes = Array.from(ecran.querySelectorAll('select'));
-    expect(listes.every((l) => l.disabled)).toBe(true);
+    expect(ecran.querySelectorAll('select')).toHaveLength(0);
+    const cellule = ecran.querySelector('tbody tr:first-child td:nth-child(4)');
+    expect(cellule?.textContent?.trim()).toBe('0,5');
   });
 
   it('met à jour la grille quand on choisit une durée, sans modifier l’ancienne', async () => {

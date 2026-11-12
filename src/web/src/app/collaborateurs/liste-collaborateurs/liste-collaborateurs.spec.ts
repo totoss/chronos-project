@@ -215,7 +215,7 @@ describe('ListeCollaborateurs', () => {
     requeteListe().flush({ title: 'Internal Server Error' }, { status: 500, statusText: 'Erreur' });
     await harness.fixture.whenStable();
 
-    expect(ecran.textContent).toContain('La liste n\'a pas pu être chargée');
+    expect(ecran.textContent).toContain("La liste n'a pas pu être chargée");
 
     cliquer('Réessayer');
     const requete = requeteApresAction();
@@ -247,7 +247,9 @@ describe('ListeCollaborateurs', () => {
       ),
     );
     await confirmerDansLeDialogue('Annuler');
-    await vi.waitFor(() => expect(document.querySelector('app-dialogue-de-confirmation')).toBeNull());
+    await vi.waitFor(() =>
+      expect(document.querySelector('app-dialogue-de-confirmation')).toBeNull(),
+    );
     await harness.fixture.whenStable();
 
     http.expectNone({ method: 'DELETE', url: '/api/collaborateurs/2' });

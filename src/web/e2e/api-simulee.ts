@@ -1,4 +1,6 @@
 import type { Page, Route } from '@playwright/test';
+import type { Client } from '../src/app/clients/client';
+import type { Collaborateur } from '../src/app/collaborateurs/collaborateur';
 import type { Page as PageApi } from '../src/app/commun/page';
 import type { Utilisateur } from '../src/app/compte/utilisateur';
 import type {
@@ -17,6 +19,8 @@ export interface EtatApi {
   roles: Utilisateur['roles'];
   statut: StatutFeuilleDeTemps;
   saisies: SaisieDeTemps[];
+  /** Le motif donné par le manager à son dernier rejet. */
+  motifRejet: string | null;
   /** Le jeton reçu dans l'en-tête `X-XSRF-TOKEN` de la dernière écriture. */
   jetonRecu?: string;
   /** Le paramètre `pas` de chaque demande de plan de charge, dans l'ordre. */
@@ -96,6 +100,53 @@ const projets: PageApi<Projet> = {
 };
 
 const joursFeries: JourFerie[] = [{ date: '2026-05-08', libelle: 'Victoire 1945' }];
+
+const clients: Client[] = [{ id: 1, nom: 'Banque du Littoral', projetsEnCours: 1 }];
+
+const collaborateurs: Collaborateur[] = [
+  {
+    id: 1,
+    matricule: 'M0001',
+    nom: 'Martin',
+    prenom: 'Sophie',
+    email: 'sophie.martin@chronos.example',
+    categorie: 'Interne',
+    poste: 'Directrice de projets',
+    managerId: null,
+    managerNom: null,
+    estSorti: false,
+    version: 'a5a3d2ae-7a43-4a0e-9a35-8c1f2f6a9d01',
+  },
+  {
+    id: 2,
+    matricule: 'M0002',
+    nom: 'Durand',
+    prenom: 'Camille',
+    email: 'camille.durand@chronos.example',
+    categorie: 'Consultant',
+    poste: 'Développeuse',
+    managerId: 1,
+    managerNom: 'Sophie Martin',
+    dateEntree: '2021-09-01',
+    dateSortie: null,
+    quotite: 0.8,
+    estSorti: false,
+    version: '908c8844-d1fa-4bd9-a0c1-30c94062b887',
+  },
+  {
+    id: 3,
+    matricule: 'M0003',
+    nom: 'Bernard',
+    prenom: 'Hugo',
+    email: 'hugo.bernard@chronos.example',
+    categorie: 'Interne',
+    poste: 'Gestionnaire RH',
+    managerId: 1,
+    managerNom: 'Sophie Martin',
+    estSorti: false,
+    version: '5c1e5b0b-3f58-4d3e-8d0b-5d2a9a4a7e11',
+  },
+];
 
 const absences: Absence[] = [];
 
@@ -213,6 +264,7 @@ export async function simulerApi(page: Page, initial: Partial<EtatApi> = {}): Pr
     roles: ['Collaborateur'],
     statut: 'Brouillon',
     saisies: [],
+    motifRejet: null,
     pasDemandes: [],
     appelsNonSimules: [],
     ...initial,
@@ -222,12 +274,9 @@ export async function simulerApi(page: Page, initial: Partial<EtatApi> = {}): Pr
     collaborateurId: 2,
     semaine: '2026-05-04',
     statut: etat.statut,
-    motifRejet: null,
+    motifRejet: etat.motifRejet,
     saisies: etat.saisies,
   });
-
-  // Les polices viennent d'Internet : le parcours n'en dépend pas.
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());
 
   // Quand plusieurs routes correspondent, la dernière enregistrée passe en premier : celle-ci, la première,
   // ne reçoit donc que les appels qu'aucune des suivantes ne connaît.
@@ -270,6 +319,25 @@ export async function simulerApi(page: Page, initial: Partial<EtatApi> = {}): Pr
   });
   await repondre('POST', '/api/feuilles-de-temps/42/soumission', (route) => {
     etat.statut = 'Soumise';
+    return route.fulfill({ json: feuille() });
+  });
+  await repondre('GET', '/api/collaborateurs', (route) =>
+    route.fulfill({ json: { elements: collaborateurs, page: 1, taille: 20, total: 3 } }),
+  );
+  await repondre('GET', '/api/collaborateurs/2', (route) =>
+    route.fulfill({ json: collaborateurs[1] }),
+  );
+  await repondre('GET', '/api/clients', (route) => route.fulfill({ json: clients }));
+  await repondre('GET', '/api/feuilles-de-temps/soumises', (route) =>
+    route.fulfill({ json: etat.statut === 'Soumise' ? [feuille()] : [] }),
+  );
+  await repondre('POST', '/api/feuilles-de-temps/42/validation', (route) => {
+    etat.statut = 'Validee';
+    return route.fulfill({ json: feuille() });
+  });
+  await repondre('POST', '/api/feuilles-de-temps/42/rejet', (route) => {
+    etat.statut = 'Brouillon';
+    etat.motifRejet = route.request().postDataJSON().motif;
     return route.fulfill({ json: feuille() });
   });
   await repondre('GET', '/api/plan-de-charge', (route) => {

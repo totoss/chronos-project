@@ -77,7 +77,7 @@ describe('FicheCollaborateur', () => {
 
     expect(texte()).toContain('Camille Durand');
     expect(texte()).toContain('01/09/2021');
-    expect(texte()).toContain('80%');
+    expect(texte()).toContain('80\u00a0%');
   });
 
   it('affiche la date de sortie quand l’API l’envoie', async () => {

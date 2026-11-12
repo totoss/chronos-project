@@ -1,3 +1,5 @@
+<h2 #titre tabindex="-1">Fiche collaborateur</h2>
+
 @if (!identifiantValide()) {
   <p>Cette adresse ne désigne aucun collaborateur : l'identifiant doit être un nombre.</p>
   <a matButton routerLink="/collaborateurs">Retour à la liste</a>
@@ -17,13 +19,13 @@
     <app-formulaire-collaborateur
       [collaborateur]="c"
       (enregistre)="terminer($event)"
-      (annule)="enEdition.set(false)"
+      (annule)="quitterLEdition()"
       (recharger)="collaborateur.reload()"
     />
   } @else {
     <mat-card>
       <mat-card-header>
-        <mat-card-title>{{ c.prenom }} {{ c.nom }}</mat-card-title>
+        <h3 mat-card-title>{{ c.prenom }} {{ c.nom }}</h3>
         <mat-card-subtitle>{{ c.poste }} — {{ c.categorie }}</mat-card-subtitle>
       </mat-card-header>
 

@@ -1,49 +1,62 @@
-<table>
+<table ngGrid rowWrap="nowrap" colWrap="nowrap">
   <caption>
     Temps saisis par projet et par jour, en fractions de journée
   </caption>
   <thead>
-    <tr>
-      <th scope="col">Projet</th>
+    <tr ngGridRow>
+      <th ngGridCell role="columnheader" scope="col">Projet</th>
       @for (jour of jours(); track jour) {
-        <th scope="col" [class.ferme]="joursFermes().has(jour)">{{ libelleJour(jour) }}</th>
+        <th ngGridCell role="columnheader" scope="col" [class.ferme]="joursFermes().has(jour)">
+          {{ libelleJour(jour) }}
+          @if (joursFermes().has(jour)) {
+            <span class="masque"> (jour fermé)</span>
+          }
+        </th>
       }
-      <th scope="col">Total</th>
+      <th ngGridCell role="columnheader" scope="col">Total</th>
     </tr>
   </thead>
   <tbody>
     @for (ligne of lignes(); track ligne.projetId; let i = $index) {
-      <tr>
-        <th scope="row">{{ ligne.libelle }}</th>
+      <tr ngGridRow>
+        <th ngGridCell role="rowheader" scope="row">{{ ligne.libelle }}</th>
         @for (jour of jours(); track jour) {
-          <td [class.ferme]="joursFermes().has(jour)">
-            <select
-              #choix
-              [attr.aria-label]="ligne.libelle + ', ' + libelleJour(jour)"
-              [disabled]="!estSaisissable(ligne, jour)"
-              (change)="saisir(ligne, jour, choix.value)"
-            >
-              @for (d of dureesProposees(jour); track d) {
-                <option [value]="d" [selected]="d === duree(ligne, jour)">
-                  {{ d === 0 ? '—' : (d | number: '1.0-2') }}
-                </option>
-              }
-            </select>
+          <td ngGridCell [class.ferme]="joursFermes().has(jour)">
+            @if (estSaisissable(ligne, jour)) {
+              <select
+                ngGridCellWidget
+                widgetType="editable"
+                #choix
+                [attr.aria-label]="ligne.libelle + ', ' + libelleJour(jour)"
+                (change)="saisir(ligne, jour, choix.value)"
+              >
+                @for (d of dureesProposees(jour); track d) {
+                  <option [value]="d" [selected]="d === duree(ligne, jour)">
+                    {{ d === 0 ? '—' : (d | number: '1.0-2') }}
+                  </option>
+                }
+              </select>
+            } @else {
+              {{ duree(ligne, jour) === 0 ? '—' : (duree(ligne, jour) | number: '1.0-2') }}
+            }
           </td>
         }
-        <td>{{ totauxParLigne()[i] | number: '1.0-2' }}</td>
+        <td ngGridCell>{{ totauxParLigne()[i] | number: '1.0-2' }}</td>
       </tr>
     } @empty {
-      <tr>
-        <td [attr.colspan]="jours().length + 2">Aucune affectation sur cette semaine.</td>
+      <tr ngGridRow>
+        <td ngGridCell [colSpan]="jours().length + 2">
+          Aucune affectation sur cette semaine. Changez de semaine, ou demandez à votre manager de
+          vous affecter à un projet.
+        </td>
       </tr>
     }
   </tbody>
   <tfoot>
-    <tr>
-      <th scope="row">Total du jour</th>
+    <tr ngGridRow>
+      <th ngGridCell role="rowheader" scope="row">Total du jour</th>
       @for (jour of jours(); track jour; let j = $index) {
-        <td [class.depassement]="totauxParJour()[j] > limite(jour)">
+        <td ngGridCell [class.depassement]="totauxParJour()[j] > limite(jour)">
           {{ totauxParJour()[j] | number: '1.0-2' }}
           @if (totauxParJour()[j] > limite(jour)) {
             <span class="alerte">{{
@@ -52,7 +65,7 @@
           }
         </td>
       }
-      <td></td>
+      <td ngGridCell></td>
     </tr>
   </tfoot>
 </table>
