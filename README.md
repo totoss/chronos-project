@@ -41,6 +41,6 @@ Les référentiels consignent, à une date donnée, les pratiques retenues, cell
 
 ## État d'avancement
 
-Le cadrage est terminé : cahier des charges, référentiels techniques et plan de cours sont rédigés. Deux modules le sont aussi : [Docker : les bases](cours/01-docker-les-bases.md) et [GitHub Actions : l'intégration continue](cours/05-github-actions-integration-continue.md). Les commandes du premier et le workflow du second ont été exécutés ; ce qui ne l'a pas été est signalé en tête de chaque module.
+Le cahier des charges, les référentiels techniques, le plan de cours et les **26 modules** sont rédigés. Le code que les modules font écrire a été compilé et exécuté pendant leur rédaction, par groupes de modules, dans des conteneurs (.NET 10, Node.js 24, PostgreSQL 18, SQL Server 2025) ; ce qui ne l'a pas été — tout ce qui se passe sur GitHub après le module 05, notamment — est signalé en tête de chaque module et résumé dans le [suivi](cours/README.md#avancement-de-la-rédaction).
 
-Les autres modules et la solution de référence restent à écrire — voir le [suivi](cours/README.md#avancement-de-la-rédaction).
+La **solution de référence reste à construire**. C'est elle qui validera l'enchaînement complet des modules sur un seul et même code.

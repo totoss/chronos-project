@@ -85,7 +85,7 @@ USER $APP_UID
 ENTRYPOINT ["./Chronos.Api"]
 ```
 
-> Ce Dockerfile suppose un projet unique. Il sera ajusté à la structure réelle de la solution, construit et testé au module 23.
+> Ce Dockerfile suppose un projet unique et une restauration non verrouillée. **Essai du 12 novembre 2026 (module 23)** : avec les fichiers `packages.lock.json` du module 05 et `dotnet restore --locked-mode`, l'option `-a $TARGETARCH` fait échouer la restauration (`NU1004`). Le [module 23](../../cours/23-conteneuriser-l-application.md) contient le Dockerfile réellement construit pour la solution à plusieurs projets : publication portable, sans `-a`, et `ENTRYPOINT ["dotnet", "Chronos.Api.dll"]`. L'image `aspnet:10.0` ne contient pas `curl` : il faut l'installer, ou sonder autrement, pour un contrôle de santé.
 
 ### Conteneuriser l'interface Angular
 
@@ -134,9 +134,11 @@ ENTRYPOINT ["./Chronos.Api"]
 
 - **Contrôle de santé de SQL Server.** Microsoft n'en documente aucun. La commande utilisée par le cours (`sqlcmd ... -Q "SELECT 1"`) est une pratique de la communauté. **Elle a été validée par l'exécution** : le service passe à l'état sain dès que SQL Server accepte les connexions.
 - **SQL Server sous Docker Desktop pour Windows.** La documentation n'affirme la prise en charge que pour des « hôtes Linux x86-64 ». **L'image fonctionne** sous Docker Desktop avec WSL 2 sur un processeur x86-64 (essai du 12 novembre 2026). Sur un processeur ARM, elle n'est pas prise en charge.
-- **`MSSQL_PID`.** Les valeurs documentées pour l'édition Developer de SQL Server 2025 ne sont pas cohérentes d'une page à l'autre. Le cours **omet** la variable : l'édition obtenue par défaut est *Enterprise Developer* (constaté).
+- **`MSSQL_PID` — tranché par l'essai** (image `2025-latest`, module 07). Variable absente ou `EnterpriseDeveloper` : édition *Enterprise Developer*. `StandardDeveloper` : *Standard Developer*. `Developer` est encore accepté et donne *Enterprise Developer*, mais ne figure plus dans la [liste des valeurs de SQL Server 2025](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-configure-environment-variables?view=sql-server-ver17). Le cours **omet** la variable.
 - **Volumes anonymes.** Un conteneur lancé sans volume à partir d'une image qui en déclare un (c'est le cas de `postgres`) crée un volume anonyme, que `docker rm` ne supprime pas. `docker rm -v` le supprime avec le conteneur (constaté).
 - **Limites de Docker Hub.** 100 téléchargements d'image par tranche de 6 heures et par adresse IP sans compte, 200 avec un compte gratuit ([limites](https://docs.docker.com/docker-hub/usage/pulls/)). Derrière une adresse IP d'entreprise partagée, l'erreur 429 arrive vite : `docker login` la repousse.
-- **Tags de `nginx/nginx-unprivileged`.** Ils n'ont pas été relevés ; à vérifier avant le module 23.
+- **Tags de `nginx/nginx-unprivileged` — relevés au module 23.** `1.30` et `1.30-alpine` ; l'image tourne sous l'identifiant 101 et écoute sur 8080. Le cours utilise `1.30-alpine`.
+- **Tableau de bord Aspire autonome.** L'image actuelle est `mcr.microsoft.com/aspire/dashboard` (13.6.5 à l'essai du module 25) ; `dotnet/aspire-dashboard` est l'ancien nom.
+- **Testcontainers lancé depuis un conteneur** (essai du module 11, Docker Desktop) : monter `/var/run/docker.sock` suffit, à condition de définir `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal`. Sur le poste du mentoré et sur un runner GitHub, rien de tout cela n'est nécessaire.
 - **Tags flottants.** `postgres:18` et `2025-latest` suivent les correctifs. Pour une reproductibilité stricte, on épingle une version complète, voire une empreinte (`@sha256:...`).
-- **Ce qui a été exécuté.** Toutes les commandes du module 01 et le fichier `compose.yaml` l'ont été le 12 novembre 2026 (Docker Desktop 4.99, Engine 29.9.3, Compose 5.7.0, PostgreSQL 18.6, SQL Server 17.0.5045.3). Les Dockerfile de la section 2 ne l'ont pas été : ils le seront au module 23.
+- **Ce qui a été exécuté.** Toutes les commandes du module 01 et le fichier `compose.yaml` l'ont été le 12 novembre 2026 (Docker Desktop 4.99, Engine 29.9.3, Compose 5.7.0, PostgreSQL 18.6, SQL Server 17.0.5045.3). Les deux Dockerfile du module 23 (API à cinq projets, interface servie par nginx), le profil Compose `app`, le relais `/api` et les en-têtes transmis ont été construits et exécutés le même jour (Buildx 0.38.1, nginx 1.30.6). Le Dockerfile d'exemple de la section 2, lui, ne l'a été que pour constater son échec en mode verrouillé.

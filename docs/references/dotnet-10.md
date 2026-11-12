@@ -65,7 +65,7 @@ Le cours cible **.NET 10**. Trois conséquences pratiques :
 | --- | --- | --- |
 | Enregistrement | `AddDbContext` (durée de vie *scoped*). | [configuration](https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/) |
 | Objets valeur | Types complexes (`ComplexProperty`), de préférence aux types possédés. | [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) |
-| Archivage logique (RG-05) | Filtres de requête nommés : `HasQueryFilter("Actifs", ...)`. | [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) |
+| Archivage logique (RG-05) | Filtres de requête nommés : `HasQueryFilter("NonArchives", ...)`. | [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) |
 | Mises à jour en masse | `ExecuteUpdateAsync`, `ExecuteDeleteAsync`. | [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) |
 | Migrations en local | `dotnet ef database update`. | [appliquer les migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying) |
 | Migrations en déploiement | Bundle (`dotnet ef migrations bundle`) ou script idempotent si le SQL doit être relu. | [appliquer les migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying) |
@@ -130,7 +130,7 @@ app.Run();
 
 Ce qu'on ne voit **pas** dans cet exemple est aussi important : pas de `Startup.cs`, pas de contrôleur, pas de Swashbuckle, pas d'AutoMapper, pas de `public partial class Program {}` en fin de fichier.
 
-> Cet exemple est assemblé à partir des API documentées. Il sera compilé et testé dans la solution de référence au moment d'écrire le module correspondant.
+> Cet exemple est assemblé à partir des API documentées et n'a pas été compilé tel quel. Le code équivalent des modules 03, 06 et 08 l'a été ; en cas d'écart, ce sont les modules qui font foi (organisation en `MapGroup` par fichier, choix du fournisseur par `Chronos:Fournisseur`).
 
 ## 3. SQL Server et PostgreSQL
 
@@ -227,11 +227,14 @@ Plusieurs bibliothèques omniprésentes dans les tutoriels sont passées sous li
 - **`dotnet add package`** fonctionne toujours ; `dotnet package add` est une forme supplémentaire.
 - **`IMemoryCache` et `IDistributedCache`** ne sont pas dépréciés ; `HybridCache` les complète.
 
-## 5. Choix structurants à valider
+## 5. Choix structurants
 
-Ces choix engagent le cours. Ils sont argumentés ici pour pouvoir être discutés avant d'écrire les modules concernés.
+Ces choix engagent le cours. Ils sont argumentés ici pour pouvoir être discutés ; tous ont été mis en œuvre et exécutés lors de la rédaction des modules, le 12 novembre 2026.
 
-- **Authentification.** La documentation déconseille de fabriquer ses propres jetons et recommande les cookies pour une application dans le navigateur ([Identity pour SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0)). Le cours partirait donc sur ASP.NET Core Identity avec cookies (`AddIdentityApiEndpoints`, `MapIdentityApi`). L'alternative est un fournisseur OpenID Connect (Keycloak, Microsoft Entra ID) : plus proche d'un contexte d'entreprise, mais nettement plus lourd pour un junior.
+- **Authentification — mis en œuvre au module 12.** La documentation déconseille de fabriquer ses propres jetons et recommande les cookies pour une application dans le navigateur ([Identity pour SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0)). Le cours utilise ASP.NET Core Identity avec cookies (`AddIdentityApiEndpoints`, `MapIdentityApi` sous `/api/compte`). `MapIdentityApi` 10.0.15 expose dix routes, sans déconnexion, sans passkeys et sans option pour en retirer : le module 12 ajoute `logout` et `moi`, et neutralise les routes d'inscription. L'alternative est un fournisseur OpenID Connect (Keycloak, Microsoft Entra ID) : plus proche d'un contexte d'entreprise, mais nettement plus lourd pour un junior.
+- **Protection CSRF — mise en œuvre aux modules 12 et 19.** En .NET 10, `UseAntiforgery()` n'arrête pas un endpoint qui reçoit du JSON (constaté) ; la protection automatique arrive en .NET 11. Le module 12 pose un cookie `XSRF-TOKEN` et exige l'en-tête `X-XSRF-TOKEN` sur toute écriture : ce sont les noms par défaut d'Angular, qui les gère sans configuration.
+- **Migrations avec deux fournisseurs — tranché au module 07.** Un seul `ChronosDbContext` ; un projet de migrations par fournisseur (`Chronos.Migrations.PostgreSql`, `Chronos.Migrations.SqlServer`) désigné par `MigrationsAssembly(...)` ; le fournisseur se choisit par la clé `Chronos:Fournisseur`, passée aux outils par `-- --Chronos:Fournisseur <F>` ([migrations avec plusieurs fournisseurs](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers)). Appliqué sur PostgreSQL 18.6 et SQL Server 2025.
+- **Concurrence optimiste — mise en œuvre au module 08.** Jeton géré par l'application (`Guid Version`, `IsConcurrencyToken()`), identique sur les deux SGBD ; les jetons natifs (`rowversion`, `xmin`) sont présentés au module 07 comme l'alternative propre à chaque fournisseur.
 - **Environnement local.** Docker Compose pour démarrer les deux bases : simple, sans dépendance au SDK. [Aspire](https://aspire.dev/get-started/what-is-aspire/) orchestre l'API, la base et le front et apporte un tableau de bord d'observabilité ; il est présenté dans le dernier module plutôt que dès le départ, pour ne pas ajouter un outil de plus à l'entrée.
 - **Lanceur de tests — tranché.** Le modèle `xunit3` configure Microsoft.Testing.Platform par défaut ; le cours suit ce défaut plutôt que de revenir à VSTest (`--test-runner vstest`). L'essai du 12 novembre 2026 a confirmé que `dotnet restore --locked-mode`, `dotnet build --no-restore` et `dotnet test --no-build --report-xunit-trx` s'enchaînent sans autre réglage avec le SDK 10.0.404.
 
@@ -240,10 +243,35 @@ Ces choix engagent le cours. Ils sont argumentés ici pour pouvoir être discut�
 Ces points n'ont pas pu être tranchés par une source officielle, ou les sources officielles se contredisent. Ils sont à revérifier avant d'écrire le module concerné.
 
 - **La documentation Microsoft est elle-même en retard par endroits.** Des exemples de la documentation ASP.NET Core 10 utilisent encore `WithOpenApi()`, xUnit v2 ou la validation par filtre. Un exemple officiel n'est donc pas une garantie : on vérifie l'API dans sa page de référence.
-- **Migrations avec deux fournisseurs.** L'organisation des migrations quand un même modèle cible SQL Server et PostgreSQL (un jeu de migrations par fournisseur) n'a pas été vérifiée dans cette passe. À faire avant le module sur les deux SGBD.
 - **Base de données en test.** La documentation ASP.NET Core montre SQLite en mémoire ; celle d'EF Core recommande le vrai SGBD. Le cours suit EF Core.
 - **Fin de support de .NET 10.** 14 novembre 2028 selon la politique de support ; 10 novembre 2028 selon la documentation d'EF Core.
-- **Validation.** En .NET 10, `AddValidation()` ne valide pas les paramètres de type valeur *nullable* et n'offre pas de validation asynchrone (arrivée en .NET 11).
-- **Passkeys.** La prise en charge par `MapIdentityApi` n'a pas été confirmée.
-- **Convention de nommage PostgreSQL.** `UseSnakeCaseNamingConvention` n'apparaît pas dans la documentation officielle de Npgsql ; il vient du paquet tiers `EFCore.NamingConventions`.
-- **SQL Server en conteneur.** La valeur de `MSSQL_PID` pour l'édition Developer n'est pas cohérente dans la documentation (`Developer`, `StandardDeveloper` ou `EnterpriseDeveloper`).
+- **Passkeys — tranché.** `MapIdentityApi` n'en expose aucune ; seul le modèle Blazor Web App les propose ([passkeys](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-10.0)).
+- **Convention de nommage PostgreSQL — clos.** `UseSnakeCaseNamingConvention` vient du paquet communautaire `EFCore.NamingConventions` ; le cours ne l'utilise pas (module 07).
+- **`MSSQL_PID` — tranché par l'essai**, voir le [référentiel Docker](docker.md).
+
+### Constats des essais du 12 novembre 2026
+
+Relevés en exécutant le code des modules (SDK 10.0.404, ASP.NET Core et EF Core 10.0.15, Npgsql 10.0.3). Chacun est expliqué dans le module cité.
+
+| Constat | Module |
+| --- | --- |
+| `dotnet package add <paquet>` sans version installe la version **11.0.0** dans un projet `net10.0`, sans avertissement ; l'erreur n'apparaît qu'à la compilation. Vaut aussi pour `Microsoft.Extensions.TimeProvider.Testing` (prendre 10.11.0). | 03, 09 |
+| `dotnet new webapi` : le cours passe `--no-https`. Sans cela, `UseHttpsRedirection` émet un avertissement à chaque lancement sur le profil `http`. HTTPS est terminé par le proxy frontal (module 23). | 03 |
+| Scalar : paquet `Scalar.AspNetCore` (2.21.0 le jour de l'essai), interface sur `/scalar`. | 03 |
+| `dotnet new xunit3` dans une solution en gestion centralisée échoue en `NU1008` : le modèle écrit `Version="…"` dans le `.csproj`. Correction manuelle. | 04 |
+| `global.json` : la [documentation](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json) conseille `rollForward: disable` quand on utilise des fichiers de verrouillage de paquets. Le cours garde `latestFeature` et en fait une question de séance. | 00, 05 |
+| `dotnet new tool-manifest` crée `dotnet-tools.json` dans le dossier courant, et non dans `.config/`. `.config/dotnet-ef.json` et plusieurs options de `dotnet ef` documentées aujourd'hui sont réservées à EF Core 11. | 06 |
+| Npgsql 10.0.3 résout EF Core 10.0.4 si `Microsoft.EntityFrameworkCore.Relational` 10.0.15 n'est pas référencé explicitement. | 06 |
+| Filtre de requête nommé : le cours l'appelle `"NonArchives"`. Il fait disparaître les projets dont le responsable est archivé (jointure interne, avertissement 10622). | 06, 08 |
+| Un objet valeur sans *setter* (`Periode`) ne se mappe pas par `ComplexProperty(x => x.Periode)` seul : il faut déclarer ses propriétés dans le lambda. | 06, 09 |
+| Npgsql refuse un `DateTimeOffset` d'offset non nul ; PostgreSQL tronque les horodatages à la microseconde. PostgreSQL distingue la casse dans un index unique, SQL Server non. | 07 |
+| `AddValidation()` : les clés de `errors` sont les noms C# (`Matricule`, `Saisies[0].Duree`) et les messages sont en anglais. `[Required]` est ignoré sur un paramètre de requête `int?` absent ; un type valeur non nullable absent du corps prend sa valeur par défaut sans erreur ([dotnet/aspnetcore#67033](https://github.com/dotnet/aspnetcore/issues/67033), corrigé en .NET 11) : d'où les propriétés nullables marquées `[Required]` dans les requêtes. | 08 |
+| En environnement `Development`, un corps JSON illisible donne `500` avec `UseExceptionHandler()` seul (`400` en production). Corrigé par `StatusCodeSelector`. | 08 |
+| Une date en paramètre d'URL se lit selon la culture invariante : `du=04/05/2026` est le 5 avril. Toujours le format ISO. | 09 |
+| xUnit v3 : `TheoryData<…>` et `IEnumerable<object[]>` sont [dits dépréciés](https://xunit.net/docs/getting-started/v3/theory-data-attributes) ; on écrit `IEnumerable<TheoryDataRow<…>>`. | 09 |
+| Transactions : avec `EnableRetryOnFailure()`, `BeginTransactionAsync` direct lève `InvalidOperationException` ; il faut passer par la stratégie d'exécution. | 10 |
+| `WebApplicationFactory<Program>` fonctionne sans `public partial class Program {}` (confirmé). `FakeTimeProvider` pilote aussi l'authentification : un cookie persistant daté dans le passé est rejeté par le client de test. | 11, 12 |
+| Un `401` d'une API Identity porte `WWW-Authenticate: Bearer` et un `ProblemDetails`, sans redirection (confirmé). | 12 |
+| `ForwardedHeadersOptions.KnownNetworks` est **obsolète** en .NET 10 (`ASPDEPR005`) alors que la page sur les proxys l'emploie encore : écrire `KnownIPNetworks` ([annonce](https://github.com/aspnet/Announcements/issues/523)). | 23 |
+| Les migrations générées violent `IDE0161` et font échouer la compilation quand `EnforceCodeStyleInBuild` et `TreatWarningsAsErrors` sont actifs : les déclarer `generated_code = true`. | 22 |
+| `dotnet ef migrations bundle` et la publication de conteneur par le SDK réécrivent les `packages.lock.json` (ajout d'un identifiant de plateforme) ; `dotnet restore --force-evaluate` les rétablit. Un même bundle sert les deux SGBD : le fournisseur se choisit à l'exécution. | 23, 25 |

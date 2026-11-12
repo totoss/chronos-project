@@ -135,7 +135,7 @@ export class CollaborateurForm {
 
 Le modèle d'un Signal Form est un objet simple, entièrement initialisé : chaîne vide pour un champ texte, jamais `undefined` ([modèles](https://angular.dev/guide/forms/signals/models)).
 
-> Ces deux exemples sont assemblés à partir des API documentées. Ils seront compilés et testés dans la solution de référence au moment d'écrire les modules correspondants.
+> Ces deux exemples sont assemblés à partir des API documentées et n'ont pas été compilés tels quels. Le code équivalent des modules 16 et 17 l'a été ; en cas d'écart, ce sont les modules qui font foi.
 
 ## 4. Pièges : ce qu'on trouve encore partout et qu'on n'écrit plus
 
@@ -184,10 +184,33 @@ Le modèle d'un Signal Form est un objet simple, entièrement initialisé : cha�
 Ces points n'ont pas pu être tranchés par une source officielle, ou les sources officielles se contredisent. Ils sont à revérifier avant d'écrire le module concerné.
 
 - **Formulaires.** La page générale [angular.dev/guide/forms](https://angular.dev/guide/forms) met encore en avant les Reactive Forms, alors que les [bonnes pratiques](https://angular.dev/assets/context/best-practices.md) et la [page de comparaison](https://angular.dev/guide/forms/signals/comparison) recommandent Signal Forms pour une nouvelle application. Le cours suit ces deux dernières.
-- **Signal Forms avec Angular Material.** L'intégration avec `mat-form-field` n'a pas été confirmée dans la documentation. À vérifier par un essai réel avant le module sur les formulaires.
+- **Signal Forms avec Angular Material — tranché par l'essai** (Material 22.2.7, modules 17 et 19). `matInput`, `mat-select` et `mat-error` fonctionnent avec `[formField]` sans adaptation, et posent `aria-invalid`, `aria-describedby` et `aria-required` ; la [documentation de Material](https://material.angular.dev/components/input/overview) le confirme. Sur un champ natif, `[formField]` ne pose pas `aria-invalid`. Pour les dates, le cours retient `<input matInput type="date">` plutôt que `mat-datepicker` : avec l'adaptateur natif en `fr-FR`, « 08/05/2026 » saisi au clavier est lu comme le 5 août, et `toISOString()` décale d'un jour.
 - **`ngClass`.** Les bonnes pratiques disent de ne pas l'utiliser ; le guide des bindings le mentionne encore pour quelques cas. Le cours s'en tient à `[class]`.
 - **Node.js minimal.** La page de compatibilité (`^22.22.3`) et les notes de la CLI 22.0.0 (`22.22.0`) diffèrent légèrement. On prend la valeur la plus stricte.
 - **Billet d'annonce de la v22.** Il n'a pas pu être consulté ; rien dans ce document ne s'appuie sur lui.
+
+### Constats des essais du 12 novembre 2026
+
+Relevés en compilant et en testant le code des modules 13 à 21 (Node.js 24.22.3, CLI 22.2.7, Angular 22.2.6, Material et CDK 22.2.7, TypeScript 6.0.3, Vitest 5.1.0). Chacun est expliqué dans le module cité.
+
+| Constat | Module |
+| --- | --- |
+| La CLI se lance par `npx @angular/cli@22 …` puis `npx ng …`, sans installation globale ; angular.dev ne documente que l'installation globale. | 00, 13 |
+| `ng new` 22 n'écrit ni `engines` ni `devEngines` : le module 13 ajoute `devEngines` (Node `^24.15.0`). Il crée `.prettierrc` et installe Prettier, mais ses propres fichiers échouent à `prettier --check .`. | 13, 22 |
+| Avec TypeScript 6, `strict` vaut `true` par défaut et n'apparaît plus dans le `tsconfig.json` généré. | 13, 22 |
+| `npm install typescript@latest` (TypeScript 7) réussit avec de simples avertissements ; c'est `ng build` qui échoue ensuite. | 13 |
+| `ng add @angular/material` 22.2.7 ne pose qu'une question (la paire de palettes), n'installe pas `@angular/animations`, écrit `mat.theme(...)` dans `styles.scss` et charge Roboto et Material Symbols depuis Google Fonts. | 14 |
+| Boutons Material : attributs `matButton="filled\|tonal\|outlined\|elevated"` et `matIconButton` ; `color="primary"` est sans effet avec Material 3. | 14 |
+| Dès Material installé, `ng build` signale le dépassement du budget initial de 500 kB (512 kB en fin de module 15, 624 kB en fin de module 18). Le module 21 donne la méthode pour fixer le seuil. | 15, 21 |
+| Routeur v22 : `CanMatchFn` reçoit trois paramètres ; `paramsInheritanceStrategy` vaut `'always'` par défaut. Un `canMatch` placé devant `:id` fait tomber `/collaborateurs/nouveau` sur la fiche. | 15, 19 |
+| `debounced()` existe en v22 mais reste expérimental ([guide](https://angular.dev/guide/signals/debounced)) : le cours temporise la recherche avec RxJS (`Subject` et `debounceTime`). | 16 |
+| Signal Forms : une erreur de soumission bloque tout nouvel envoi tant que rien n'est modifié. | 17 |
+| `Temporal` est absent de Node.js 24 et de disponibilité limitée dans les navigateurs : le cours calcule les semaines sur des chaînes ISO, sans bibliothèque. | 18 |
+| Protection XSRF : l'intercepteur d'Angular est actif par défaut, y compris sans `provideHttpClient()` et avec `fetch` ; il lit le cookie `XSRF-TOKEN` et pose `X-XSRF-TOKEN` sur les écritures de même origine ([sécurité](https://angular.dev/best-practices/security#httpclient-xsrf-csrf-security)). | 19 |
+| Les tests générés échouent dès qu'un composant a un `input.required` (`NG0950`) ou utilise `RouterLink` (`NG0201`). `ng test` reste en mode surveillance dans un terminal : `--no-watch` pour une exécution unique. | 20 |
+| `ng e2e` propose `playwright-ng-schematics`, un paquet communautaire. | 20 |
+| `i18n.sourceLocale: "fr"` dans `angular.json` suffit à fixer `LOCALE_ID`, à embarquer les données de la locale et à écrire `lang="fr"`, tests compris, sans `@angular/localize`. | 21 |
+| Angular Aria est stable en v22 ([feuille de route](https://angular.dev/roadmap)). | 21 |
 
 ## 6. Garder ce référentiel à jour
 
