@@ -79,9 +79,9 @@ describe('App', () => {
     expect(courants[0].textContent).toContain('Projets');
   });
 
-  it('ne propose à un collaborateur sans autre rôle ni le plan de charge ni les feuilles à valider', () => {
+  it('ne propose à un collaborateur sans autre rôle ni le plan de charge ni les feuilles à valider', async () => {
     const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(liens(fixture)).toEqual([
       '/collaborateurs',
@@ -94,7 +94,7 @@ describe('App', () => {
   it('propose un lien de menu par écran à un manager, puis le retire à la déconnexion', async () => {
     utilisateur.set({ ...camille, roles: ['Collaborateur', 'Manager'] });
     const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(liens(fixture)).toEqual([
       '/collaborateurs',

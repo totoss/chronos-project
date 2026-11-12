@@ -60,3 +60,55 @@ jobs:
           name: resultats-tests-api
           path: src/api/TestResults/
           if-no-files-found: ignore
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7.0.1
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: src/web/package.json
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Tester
+        run: npx ng test --coverage --reporters=default --reporters=junit --output-file=resultats-tests/junit.xml
+
+      - name: Compiler
+        run: npx ng build
+
+      - name: Vérifier les types des parcours
+        run: npx tsc -p e2e/tsconfig.json --noEmit
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Tester de bout en bout
+        run: npx ng e2e
+
+      - name: Conserver les résultats des tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: resultats-tests-web
+          path: src/web/resultats-tests/
+          if-no-files-found: ignore
+
+      - name: Conserver le rapport Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rapport-playwright
+          path: src/web/playwright-report/
+          if-no-files-found: ignore

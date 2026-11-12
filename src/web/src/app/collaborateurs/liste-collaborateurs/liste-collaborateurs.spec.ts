@@ -119,6 +119,21 @@ describe('ListeCollaborateurs', () => {
     expect(ecran.textContent).toContain('1 collaborateur sur 1');
   });
 
+  it('affiche la barre de progression pendant le chargement, puis les collaborateurs', async () => {
+    await harness.navigateByUrl('/collaborateurs', ListeCollaborateurs);
+    ecran = harness.routeNativeElement as HTMLElement;
+    TestBed.tick();
+
+    expect(ecran.querySelector('mat-progress-bar')).not.toBeNull();
+    expect(cartes()).toBe(0);
+
+    requeteListe().flush(page([collaborateur(2, 'Durand')]));
+    await harness.fixture.whenStable();
+
+    expect(ecran.querySelector('mat-progress-bar')).toBeNull();
+    expect(ecran.textContent).toContain('Durand');
+  });
+
   it('affiche le total renvoyé par l’API, pas le nombre de cartes', async () => {
     await ouvrir('/collaborateurs', page([collaborateur(2, 'Durand')], 45));
 
