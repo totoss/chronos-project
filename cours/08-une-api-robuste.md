@@ -474,7 +474,7 @@ public record CollaborateurDto(
     DateOnly DateEntree, DateOnly? DateSortie, decimal Quotite, Guid Version);
 ```
 
-`Quotite` est la quotité du contrat en cours à la date du jour, en fraction (`0.8`). Puis la requête de modification :
+`Quotite` est la quotité du contrat en cours — celui qui n'a pas de date de fin —, en fraction (`0.8`) ; c'est déjà ce que calcule votre projection `VersDto` du module 06. Puis la requête de modification :
 
 ```csharp
 public record ModifierCollaborateurRequete(

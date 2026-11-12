@@ -12,7 +12,9 @@ Content-Type: application/json
   "code": "FORM-NET",
   "libelle": "Formation .NET 10",
   "nature": "Interne",
+  "clientId": null,
   "dateDebut": "2026-11-16",
   "dateFin": null,
-  "budgetJours": 15
+  "budgetJours": 15,
+  "responsableId": 1
 }

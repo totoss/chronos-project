@@ -1,5 +1,10 @@
+using System.Linq.Expressions;
+using Chronos.Api.Commun;
 using Chronos.Domain;
+using Chronos.Infrastructure;
+using Chronos.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace Chronos.Api.Projets;
 
@@ -12,27 +17,69 @@ public static class ProjetsEndpoints
         groupe.MapGet("/", Lister);
         groupe.MapGet("/{id:int}", Obtenir);
         groupe.MapPost("/", Creer);
-        groupe.MapDelete("/{id:int}", Supprimer);
 
         return groupe;
     }
 
-    private static Ok<IReadOnlyList<ProjetDto>> Lister(ProjetsEnMemoire projets, StatutProjet? statut = null) =>
-        TypedResults.Ok(projets.Lister(statut));
+    private static readonly Expression<Func<Projet, ProjetDto>> VersDto = p => new ProjetDto(
+        p.Id, p.Code, p.Libelle, p.Nature,
+        p.ClientId, p.Client!.Nom,
+        p.DateDebut, p.DateFin, p.BudgetJours,
+        p.ResponsableId, p.Responsable!.Prenom + " " + p.Responsable.Nom, p.Statut);
 
-    private static Results<Ok<ProjetDto>, NotFound> Obtenir(int id, ProjetsEnMemoire projets) =>
-        projets.Trouver(id) is { } projet
-            ? TypedResults.Ok(projet)
-            : TypedResults.NotFound();
-
-    private static Created<ProjetDto> Creer(CreerProjetRequete requete, ProjetsEnMemoire projets)
+    private static async Task<Ok<PageDto<ProjetDto>>> Lister(
+        ChronosDbContext db, CancellationToken cancellationToken,
+        int page = 1, int taille = 20, StatutProjet? statut = null)
     {
-        var projet = projets.Ajouter(requete);
-        return TypedResults.Created($"/api/projets/{projet.Id}", projet);
+        var requete = db.Projets.IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives]);
+        if (statut is not null)
+        {
+            requete = requete.Where(p => p.Statut == statut);
+        }
+
+        var total = await requete.CountAsync(cancellationToken);
+
+        var elements = await requete
+            .OrderBy(p => p.Code)
+            .Skip((page - 1) * taille)
+            .Take(taille)
+            .Select(VersDto)
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok(new PageDto<ProjetDto>(elements, page, taille, total));
     }
 
-    private static Results<NoContent, NotFound> Supprimer(int id, ProjetsEnMemoire projets) =>
-        projets.Supprimer(id)
-            ? TypedResults.NoContent()
-            : TypedResults.NotFound();
+    private static async Task<Results<Ok<ProjetDto>, NotFound>> Obtenir(
+        int id, ChronosDbContext db, CancellationToken cancellationToken)
+    {
+        var projet = await db.Projets
+            .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
+            .Where(p => p.Id == id)
+            .Select(VersDto)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return projet is null ? TypedResults.NotFound() : TypedResults.Ok(projet);
+    }
+
+    private static async Task<Results<Created<ProjetDto>, Conflict>> Creer(
+        CreerProjetRequete requete, ChronosDbContext db, CancellationToken cancellationToken)
+    {
+        if (await db.Projets.AnyAsync(p => p.Code == requete.Code, cancellationToken))
+        {
+            return TypedResults.Conflict();
+        }
+
+        var projet = new Projet(requete.Code, requete.Libelle, requete.Nature, requete.ClientId,
+            requete.DateDebut, requete.DateFin, requete.BudgetJours, requete.ResponsableId);
+
+        db.Projets.Add(projet);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var dto = await db.Projets
+            .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
+            .Where(p => p.Id == projet.Id)
+            .Select(VersDto)
+            .SingleAsync(cancellationToken);
+        return TypedResults.Created($"/api/projets/{dto.Id}", dto);
+    }
 }

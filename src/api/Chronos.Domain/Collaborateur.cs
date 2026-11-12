@@ -38,6 +38,7 @@ public class Collaborateur
     public DateOnly DateEntree { get; private set; }
     public DateOnly? DateSortie { get; private set; }
     public int? ManagerId { get; private set; }
+    public Collaborateur? Manager { get; private set; }
     public bool EstArchive { get; private set; }
     public IReadOnlyCollection<Contrat> Contrats => _contrats;
 
@@ -66,6 +67,8 @@ public class Collaborateur
     }
 
     public void RattacherA(int? managerId) => ManagerId = managerId;
+
+    public void Archiver() => EstArchive = true;
 
     public void AjouterContrat(TypeContrat type, decimal quotite, DateOnly dateDebut)
     {

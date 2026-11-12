@@ -38,6 +38,12 @@ jobs:
       - name: Compiler
         run: dotnet build --no-restore --configuration Release
 
+      - name: Restaurer les outils .NET
+        run: dotnet tool restore
+
+      - name: Vérifier que les migrations couvrent le modèle
+        run: dotnet ef migrations has-pending-model-changes --project Chronos.Infrastructure --startup-project Chronos.Api --no-build --configuration Release
+
       - name: Tester
         run: dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults
 

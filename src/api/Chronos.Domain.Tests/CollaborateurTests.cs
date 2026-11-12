@@ -111,6 +111,29 @@ public class CollaborateurTests
     }
 
     [Fact]
+    public void Archiver_un_collaborateur_le_marque_archive_sans_toucher_a_sa_fiche()
+    {
+        var collaborateur = CreerCollaborateur();
+
+        collaborateur.Archiver();
+
+        Assert.True(collaborateur.EstArchive);
+        Assert.Equal("M0002", collaborateur.Matricule);
+        Assert.Null(collaborateur.DateSortie);
+    }
+
+    [Fact]
+    public void Archiver_deux_fois_laisse_le_collaborateur_archive()
+    {
+        var collaborateur = CreerCollaborateur();
+        collaborateur.Archiver();
+
+        collaborateur.Archiver();
+
+        Assert.True(collaborateur.EstArchive);
+    }
+
+    [Fact]
     public void Un_contrat_ajoute_est_visible_dans_l_historique()
     {
         var collaborateur = CreerCollaborateur();
