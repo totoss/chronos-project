@@ -538,7 +538,7 @@ Les énumérations existent maintenant en double. L'API doit utiliser celles du 
 dotnet reference add Chronos.Domain --project Chronos.Api
 ```
 
-Dans `Chronos.Api/Projets/ProjetDto.cs`, supprimez les deux énumérations. Ajoutez `using Chronos.Domain;` en tête de `ProjetDto.cs` et de `ProjetsEnMemoire.cs`.
+Dans `Chronos.Api/Projets/ProjetDto.cs`, supprimez les deux énumérations. Ajoutez `using Chronos.Domain;` en tête de `ProjetDto.cs`, de `ProjetsEnMemoire.cs` et de `ProjetsEndpoints.cs` — ce dernier utilise `StatutProjet` depuis le filtre de l'exercice 1 du module 03.
 
 ```powershell
 dotnet build

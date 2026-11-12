@@ -1,7 +1,7 @@
 # Module 03 — Première API
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Les commandes `dotnet` et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core 10.0.15, `Microsoft.AspNetCore.OpenApi` 10.0.15, `Scalar.AspNetCore` 2.21.0) : création de la solution, compilation, exécution, appels HTTP, page Scalar ouverte dans un navigateur. Les appels `curl.exe` et `Invoke-RestMethod` ont été lancés depuis Windows PowerShell 5.1. **Non exécutés** : les commandes `dotnet` sous Windows même, et l'envoi des requêtes du fichier `.http` depuis un éditeur. Signalez au mentor tout écart constaté.
+> Les commandes `dotnet` et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core 10.0.15, `Microsoft.AspNetCore.OpenApi` 10.0.15, `Scalar.AspNetCore` 2.21.0) : création de la solution, compilation, exécution, appels HTTP, page Scalar ouverte dans un navigateur. Module **rejoué le 12 novembre 2026 sur la solution de référence** (mêmes versions), exercices 1 à 4 compris. Les appels `curl.exe` et `Invoke-RestMethod` ont été lancés depuis Windows PowerShell 5.1. **Non exécutés** : les commandes `dotnet` sous Windows même, et l'envoi des requêtes du fichier `.http` depuis un éditeur. Signalez au mentor tout écart constaté.
 
 Chronos a deux moitiés : une interface, que vous écrirez en Angular à partir du module 13, et une **API** qui détient les données et les règles. L'interface ne touche jamais la base : elle demande à l'API « donne-moi les projets », « crée ce projet », et l'API répond en JSON.
 
@@ -522,7 +522,7 @@ Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core
 
 3. **Supprimer.** Ajoutez `DELETE /api/projets/{id}`. Quel code renvoyer quand la suppression réussit, et quand le projet n'existe pas ? Écrivez le type de retour avec `Results<…>` avant d'écrire le corps.
 
-4. **Une deuxième ressource.** Créez le dossier `Clients` : un `ClientDto` (identifiant et nom), une liste en mémoire, une méthode `MapClients` avec le groupe `/api/clients`, les endpoints de liste, de lecture et de création. `Program.cs` ne doit gagner que deux lignes. Vérifiez que Scalar affiche deux groupes.
+4. **Une deuxième ressource.** Créez le dossier `Clients` : un `ClientDto` (identifiant et nom), une liste en mémoire, une méthode `MapClients` avec le groupe `/api/clients`, les endpoints de liste, de lecture et de création. `Program.cs` ne doit gagner que deux instructions (plus une directive `using`). Vérifiez que Scalar affiche deux groupes.
 
 5. **Changer d'environnement.** Lancez l'API avec `dotnet run --project Chronos.Api --no-launch-profile --urls http://localhost:5080`. Quel environnement le journal de démarrage annonce-t-il, et pourquoi ? Que répondent maintenant `/scalar` et `/openapi/v1.json` ? Envoyez un `POST` au JSON invalide dans les deux environnements et comparez les réponses : laquelle voudriez-vous montrer à un inconnu ?
 
