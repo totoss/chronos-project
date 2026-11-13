@@ -3,9 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <!-- L'application cible .NET 11 et ASP.NET Core 11. EF Core reste en 10 (LTS, pris en charge sur .NET 11) tant que le -->
-    <!-- fournisseur PostgreSQL n'a pas de version 11 stable : sa préversion exige une préversion d'EF Core. Les paquets qui -->
-    <!-- dépendent d'EF Core (Identity, contrôles de santé, outil dotnet-ef) restent donc en 10 eux aussi. -->
+    <!-- L'application cible .NET 11 et ASP.NET Core 11. EF Core reste en 10 tant que le fournisseur PostgreSQL n'a pas de -->
+    <!-- version 11 stable : sa préversion exige une préversion d'EF Core. EF Core 10 est une LTS qui cible .NET 10 ; elle -->
+    <!-- fonctionne sur .NET 11 par compatibilité ascendante, ce que les tests constatent mais que sa documentation ne -->
+    <!-- garantit pas. Les paquets qui dépendent d'EF Core (Identity, contrôles de santé, outil dotnet-ef) restent en 10. -->
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
