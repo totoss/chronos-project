@@ -1,7 +1,7 @@
 # Module 09 — Affectations et calcul de charge
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, `xunit.v3.mtp-v2` 4.0.3, `Microsoft.Extensions.TimeProvider.Testing` 10.11.0, EF Core 10.0.15) : les tests cités passent avec `dotnet test`, les deux lectures de l'exemple chiffré ont été exécutées (167 %, puis 133 %), et les endpoints ont répondu comme indiqué sur PostgreSQL 18.6 et SQL Server 2025. **Non exécutés** : les migrations, l'envoi depuis un fichier `.http`, les exercices. Les signatures de `Collaborateur` et de `Contrat` sont celles de vos exercices du module 04.
+> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, `xunit.v3.mtp-v2` 4.0.3, `Microsoft.Extensions.TimeProvider.Testing` 10.11.0, EF Core 10.0.15) : les tests cités passent avec `dotnet test`, les deux lectures de l'exemple chiffré ont été exécutées (167 %, puis 133 %), et les endpoints ont répondu comme indiqué sur PostgreSQL 18.6 et SQL Server 2025. **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-08`, mêmes versions ; PostgreSQL 18.6 et SQL Server 2025 en conteneurs) : pas à pas, migration `Affectations` dans les deux jeux et appliquée, `has-pending-model-changes` pour les deux fournisseurs, exercices 1 à 5 (144 tests verts), appels HTTP des critères de réussite sur chaque base (réponses identiques, trois requêtes SQL pour le plan de charge) ; exercice 3 vérifié par HTTP sur PostgreSQL (422 `RG-24`, puis 201 avec `surchargeConfirmee`), exercice 5 de même (400 pour `du=04/05/2026`). Corrigés à cette occasion : l'avertissement du filtre d'archivage (étape 1), le cas « sans contrat » (étape 6), `Collaborateurs.Lister` (étape 7), le jour férié sur une base existante (étape 9). **Non exécutés** : l'envoi depuis un fichier `.http`, l'exercice 6 (exploratoire).
 
 « Qui est disponible, surchargé ou sans mission ? » C'est la première question que le cahier des charges pose à Chronos, et celle pour laquelle un manager ouvrira l'application chaque lundi. La réponse est un calcul : des jours ouvrés, une quotité, des absences, des taux d'allocation.
 
@@ -144,7 +144,7 @@ public class Affectation
 
 `JourFerie` n'a pas de règle : `public class JourFerie(DateOnly date, string libelle)`, avec les propriétés `Date` et `Libelle` à *setter* privé.
 
-Côté infrastructure, ajoutez les deux `DbSet`, puis `AffectationConfiguration` (taux en `HasPrecision(3, 2)`, relations vers `Collaborateur` et `Projet` en `DeleteBehavior.Restrict`, index sur `CollaborateurId` et `DateDebut`) et `JourFerieConfiguration` (`builder.HasKey(j => j.Date)`). Créez la migration `Affectations` pour chacun des deux fournisseurs (la routine à deux jeux du [module 07](07-deux-sgbd-un-seul-code.md), étape 10) et appliquez-la. L'avertissement du module 06 sur le filtre d'archivage réapparaît pour `Affectation` : gardez-le en tête pour l'étape 9.
+Côté infrastructure, ajoutez les deux `DbSet`, puis `AffectationConfiguration` (taux en `HasPrecision(3, 2)`, relations vers `Collaborateur` et `Projet` en `DeleteBehavior.Restrict`, index sur `CollaborateurId` et `DateDebut`) et `JourFerieConfiguration` (`builder.HasKey(j => j.Date)`). Créez la migration `Affectations` pour chacun des deux fournisseurs (la routine à deux jeux du [module 07](07-deux-sgbd-un-seul-code.md), étape 10) et appliquez-la. L'avertissement du module 06 sur le filtre d'archivage ne réapparaît pas pour `Affectation` : EF Core ne le signale que pour une navigation (`Projet.Responsable`), et `Affectation` n'en a pas vers `Collaborateur` (constaté). Le problème qu'il décrit existe pourtant : une affectation peut appartenir à un collaborateur archivé, que le filtre masque. Gardez-le en tête pour l'étape 9.
 
 Écrivez les tests de RG-20, RG-21 et RG-13 sur le modèle du module 04. Pour les bornes du taux, une théorie suffit : `[InlineData(0.04, false)]`, `[InlineData(0.05, true)]`, `[InlineData(1, true)]`, `[InlineData(1.01, false)]`, avec un paramètre `decimal`.
 
@@ -435,7 +435,7 @@ Vérifiez chaque nombre attendu à la main avant de lancer les tests : c'est tou
 
 Deux cas restent à écrire en faits séparés, parce qu'ils vérifient autre chose :
 
-- **Sans capacité** (absent toute la semaine, ou sans contrat), le taux de charge n'est pas défini : `TauxDeCharge` vaut `null`, pas zéro, et il n'y a pas de division par zéro. Si des affectations existent, `Surcharge` est vrai.
+- **Sans capacité** (absent toute la semaine, ou sans contrat), le taux de charge n'est pas défini : `TauxDeCharge` vaut `null`, pas zéro, et il n'y a pas de division par zéro. Absent toute la semaine avec des affectations, `Surcharge` est vrai. Sans contrat, la quotité est nulle, la charge aussi (RG-23 précisée) : pas de surcharge.
 - **Intercontrat (RG-25)** : un consultant qui a de la capacité et aucune charge **facturable**. Un consultant affecté à une formation interne est en intercontrat ; un salarié interne ne l'est jamais.
 
 ### 7. « La semaine en cours »
@@ -491,7 +491,7 @@ public class HorlogeTests
 
 Le test choisit la date, puis fait avancer le temps d'une semaine en une ligne. Écrivez-en un second, `Aujourdhui_est_la_date_locale_et_non_la_date_UTC` : réglez l'horloge sur le dimanche 10 mai 2026 à 22 h 30 UTC, donnez-lui le fuseau de Paris par `horloge.SetLocalTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Europe/Paris"))`, et vérifiez qu'« aujourd'hui » est déjà le lundi 11. Une date métier est une date **locale** ; avec `GetUtcNow()`, le plan de charge du dimanche soir serait encore celui de la semaine passée.
 
-Dans l'API, l'horloge réelle est déjà enregistrée depuis le module 08 (`AddSingleton(TimeProvider.System)`), et un gestionnaire la reçoit en déclarant un paramètre `TimeProvider horloge`.
+Dans l'API, l'horloge réelle est déjà enregistrée depuis le module 08 (`AddSingleton(TimeProvider.System)`), et un gestionnaire la reçoit en déclarant un paramètre `TimeProvider horloge`. Dans `Collaborateurs.Lister` (module 08), remplacez `DateOnly.FromDateTime(horloge.GetLocalNow().DateTime)` par `horloge.Aujourdhui()` : la règle « aujourd'hui » s'écrit à un seul endroit.
 
 ### 8. Découper une période
 
@@ -552,11 +552,11 @@ private static async Task<Results<Ok<PlanDeChargeDto>, ValidationProblem>> Obten
 
     if (fin < debut || fin.DayNumber - debut.DayNumber > 366)
     {
-        return Invalide("au", "La période demandée va de « du » à « au », sur un an au plus.");
+        return Invalide("Au", "La période demandée va de « du » à « au », sur un an au plus.");
     }
     if (pas is not (null or "semaine" or "mois"))
     {
-        return Invalide("pas", "Valeurs acceptées : semaine, mois.");
+        return Invalide("Pas", "Valeurs acceptées : semaine, mois.");
     }
 
     var periode = new Periode(debut, fin);
@@ -622,7 +622,9 @@ private static async Task<Results<Ok<PlanDeChargeDto>, ValidationProblem>> Obten
 
 Il reste à créer des affectations. `POST /api/affectations`, dans `Chronos.Api/Affectations/`, charge le collaborateur et le projet désignés par la requête (`400` avec `errors` si l'un des deux n'existe pas), appelle `Affectation.Creer(…)`, enregistre et répond `201`. Les règles violées deviennent des `422` sans une ligne de plus, grâce au gestionnaire du module 08.
 
-Créez les deux affectations de Camille pour la semaine du 4 mai, ajoutez le 8 mai aux jours fériés (dans vos données initiales pour l'instant), puis :
+Créez les deux affectations de Camille pour la semaine du 4 mai, ajoutez le 8 mai aux jours fériés (dans vos données initiales pour l'instant).
+
+Les données initiales ne s'exécutent que sur une base vide (module 06) : sur votre base, qui contient déjà Camille, le jour férié n'apparaît pas. Repartez d'une base vide (`dotnet ef database drop --force` puis `database update`, pour chaque fournisseur, comme au module 07) — et recréez alors les deux affectations — ou, si vous avez fait l'exercice 2, envoyez `POST /api/jours-feries`. Ensuite :
 
 ```powershell
 curl.exe "http://localhost:5080/api/plan-de-charge?du=2026-05-04&au=2026-05-10"

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fourni : projet réduit au SDK (module 04, étape 1 « Créer le projet du domaine »). C'est une décision d'architecture : le domaine ne référence
+       aucun paquet et aucun autre projet (ni ASP.NET Core, ni base de données) ; il doit le rester. Aucune annotation de paquet ici. -->
+
+  <!-- TODO [module 22] Passer le niveau d'analyse de ce seul projet au plus haut (« all » du dernier jeu de règles), dans un PropertyGroup, puis appliquer la grille de décision à chaque nouvel avertissement
+       — cours/22-qualite-du-code.md, À vous, exercice 2 « Un cran plus haut pour le domaine. » -->
+
+</Project>

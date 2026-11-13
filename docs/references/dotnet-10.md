@@ -275,3 +275,26 @@ Relevés en exécutant le code des modules (SDK 10.0.404, ASP.NET Core et EF Cor
 | `ForwardedHeadersOptions.KnownNetworks` est **obsolète** en .NET 10 (`ASPDEPR005`) alors que la page sur les proxys l'emploie encore : écrire `KnownIPNetworks` ([annonce](https://github.com/aspnet/Announcements/issues/523)). | 23 |
 | Les migrations générées violent `IDE0161` et font échouer la compilation quand `EnforceCodeStyleInBuild` et `TreatWarningsAsErrors` sont actifs : les déclarer `generated_code = true`. | 22 |
 | `dotnet ef migrations bundle` et la publication de conteneur par le SDK réécrivent les `packages.lock.json` (ajout d'un identifiant de plateforme) ; `dotnet restore --force-evaluate` les rétablit. Un même bundle sert les deux SGBD : le fournisseur se choisit à l'exécution. | 23, 25 |
+
+### Constats de la construction de la solution de référence (12 et 13 novembre 2026)
+
+Relevés en enchaînant les 26 modules sur un seul code. Ils complètent le tableau précédent ; chacun est expliqué dans le module cité.
+
+| Constat | Module |
+| --- | --- |
+| Dans un record reçu par `[AsParameters]`, une annotation de validation écrite sur un paramètre du constructeur laisse la validation fonctionner mais fait échouer la génération du document OpenAPI (`500`). Écrire `[property: Range(…)]`. Un test doit lire `/openapi/v1.json`. | 08 |
+| La liaison d'un paramètre de requête de type énumération accepte les rangs (`?statut=1`), même quand le JSON les refuse. Une date en paramètre se lit en ISO strict par `DateOnly.TryParseExact`. | 08, 09 |
+| Recherche insensible à la casse : seule `ToLower().Contains(…)` est traduite en SQL par les deux fournisseurs. `Contains(…, StringComparison)` et `ToLowerInvariant()` ne le sont pas ; `EF.Functions.Like` est sensible à la casse sur PostgreSQL et pas sur SQL Server. Les règles CA1304, CA1311 et CA1862 se neutralisent donc là, par `#pragma` commenté. | 07, 22 |
+| Sans l'argument `-- --Chronos:Fournisseur <F>`, `dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.SqlServer` vérifie en réalité le jeu PostgreSQL et ne signale rien. | 07 |
+| Le bloc de configuration d'`AddDbContext` ne s'exécute qu'à la première résolution du contexte : une valeur de configuration invalide doit être contrôlée avant, pour arrêter l'application au démarrage. | 07 |
+| `DbSet<T> X => Set<T>();` est l'écriture à retenir : avec les analyseurs actifs, `dotnet format` signale `CS8618` sur `{ get; set; }` (il ignore le suppresseur d'EF Core), et sa sous-commande `analyzers` réécrit les propriétés en `DbSet<T>?`, ce qui casse la compilation. | 22 |
+| `GenerateDocumentationFile` reste requis pour que `IDE0005` s'applique à la compilation (SDK 10.0.404) ; le fichier XML est publié avec l'application. | 22 |
+| Les migrations générées violent `IDE0161` et `CA1861` et portent un BOM : `generated_code = true` dans un `.editorconfig` du dossier `Migrations/` règle les trois, et doit précéder le premier `dotnet format`. | 22 |
+| `UseSeeding` ne s'exécute ni par un script SQL, ni dans une application qui ne migre pas au démarrage. Conditionné par `IsDevelopment()`, il s'exécute aussi depuis les outils d'EF Core et les bundles, qui démarrent l'application en `Development` par défaut. Les données de référence vont dans `HasData` ; les données de démonstration sous un réglage explicite. | 24, 25 |
+| Ajouter `HasData` à une table qui contient déjà ces lignes fait échouer la migration sur les bases existantes (clé déjà présente) : en développement, on recrée la base. | 25 |
+| Un bundle fabriqué pour un projet de migrations contient les deux jeux ; le fournisseur se choisit à l'exécution. Le dossier courant compte : lancé depuis le projet, il lit `appsettings.Development.json`. | 24, 25 |
+| `MapHealthChecks` répond `401` dès qu'une politique d'autorisation de repli existe : `.AllowAnonymous()`. | 23 |
+| Clés de protection des données : un redémarrage du conteneur les conserve, une recréation (tout redéploiement) les perd et déconnecte tout le monde ; volume, et `SetApplicationName`. | 23 |
+| Identity ne revalide une session que toutes les 30 minutes par défaut (`SecurityStampValidatorOptions.ValidationInterval`) : un compte verrouillé ou rétrogradé garde sa session jusque-là. La solution retient une minute. | 25 |
+| `ILogger<T>` n'accepte pas une classe statique comme argument de type. Avec les analyseurs du module 22, un `logger.LogInformation("…")` direct ne compile pas (`CA1848`, `CA1873`, `CA2254`) : `[LoggerMessage]`. | 25 |
+| Deux écritures simultanées : sans transaction sérialisable, deux demandes concurrentes passent toutes les deux ; avec `EnableRetryOnFailure()`, la transaction s'écrit dans la stratégie d'exécution, et le traqueur de changements se vide entre deux tentatives. | 10 |

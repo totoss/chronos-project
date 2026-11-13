@@ -1,7 +1,7 @@
 # Module 12 — Sécurité et traçabilité
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code de ce module a été **compilé et exécuté le 12 novembre 2026** sur un squelette de la solution (SDK 10.0.404, ASP.NET Core Identity et EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18) : vingt tests d'intégration passent, qui couvrent la connexion, les réponses 401 et 403, la neutralisation des endpoints d'Identity, le jeton anti-CSRF, le périmètre, RG-36, RG-53, la déconnexion et les comptes de démonstration. **Non exécuté** : le dialogue avec un vrai navigateur et avec Angular (cookies et jeton n'ont été éprouvés qu'avec le `HttpClient` des tests), le passage par un serveur frontal en HTTPS (seul l'attribut `Secure` du cookie de session a été constaté, en environnement `Production`), SQL Server, la commande `dotnet user-secrets`. Le squelette n'avait qu'un jeu de migrations PostgreSQL et un `AddDbContext` sans `switch` : l'extrait de l'étape 9 placé dans le `switch` du module 07 et les deux commandes `dotnet ef` par fournisseur n'ont **pas été rejoués** sous cette forme. Signalez au mentor tout écart constaté.
+> Le module a été **rejoué le 12 novembre 2026 sur la solution de référence** (SDK 10.0.404, ASP.NET Core Identity et EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18 et SQL Server 2025) : l'extrait de l'étape 9 dans le `switch` du module 07, les deux commandes `dotnet ef migrations add`, et 110 tests d'intégration verts sur chacun des deux SGBD. Le contrat de l'étape 5 (cookies, jeton anti-CSRF, 401, 403, 404, déconnexion) et le périmètre sur trois niveaux hiérarchiques ont en outre été vérifiés par des appels `curl` sur l'API lancée. **Non exécuté** : le dialogue avec un vrai navigateur et avec Angular, le passage par un serveur frontal en HTTPS (seul l'attribut `Secure` du cookie de session a été constaté, en environnement `Production`), la commande `dotnet user-secrets` (le mot de passe de démonstration a été passé par la configuration). Signalez au mentor tout écart constaté.
 
 Jusqu'ici, n'importe qui peut appeler l'API et lire toutes les fiches. Chronos contient des données RH : le cahier des charges exige que chacun ne voie que ce qui le concerne, que les actions soient tracées, et qu'on ne collecte que le nécessaire. Ce module donne à l'API des utilisateurs, et lui apprend à leur dire non.
 
@@ -222,7 +222,14 @@ app.MapGroup("/api/compte")
     .MapIdentityApi<Utilisateur>();
 ```
 
-Le filtre d'endpoint laisse passer la connexion et répond 404 à tout le reste : inscription, mot de passe oublié, jetons, gestion du compte. `AllowAnonymous()` est nécessaire pour se connecter, et sans danger pour les neuf autres routes, puisqu'elles ne répondent plus. C'est une **liste d'autorisation** : si une version future d'Identity ajoute un endpoint, il sera neutralisé d'office.
+Le filtre d'endpoint laisse passer la connexion et répond 404 à tout le reste : inscription, mot de passe oublié, jetons, gestion du compte. `AllowAnonymous()` est nécessaire pour se connecter, et sans danger pour les neuf autres routes, puisqu'elles ne répondent plus. C'est une **liste d'autorisation** : si une version future d'Identity ajoute un endpoint, il sera neutralisé d'office. Une nuance constatée : le corps de la requête est lu **avant** les filtres, si bien qu'une requête mal formée vers une route neutralisée répond 400 au lieu de 404 ; elle n'exécute rien pour autant.
+
+La politique de repli ferme aussi le document OpenAPI et Scalar. Ils ne contiennent aucune donnée et ne sont publiés qu'en développement : rouvrez-les explicitement.
+
+```csharp
+app.MapOpenApi().AllowAnonymous();
+app.MapScalarApiReference().AllowAnonymous();
+```
 
 > **L'alternative** est de ne pas appeler `MapIdentityApi` et d'écrire sa propre connexion avec `SignInManager.PasswordSignInAsync`. C'est légitime, et c'est ce qu'il faudra faire le jour où la connexion devra se comporter autrement. Tant que l'endpoint fourni convient, on ne le réécrit pas.
 
@@ -521,14 +528,14 @@ Ajoutez à `PerimetreUtilisateur` :
 ```csharp
     public async Task<bool> PeutValiderPourAsync(int collaborateurId, CancellationToken ct = default)
     {
-        if (collaborateurId == utilisateur.CollaborateurId)
+        // Sans fiche, pas de valideur à enregistrer : la validation est refusée.
+        if (utilisateur.CollaborateurId is not { } moi || collaborateurId == moi)
         {
             return false;
         }
 
         return utilisateur.APourRole(Roles.GestionnaireRh)
-            || await db.Collaborateurs.AnyAsync(
-                c => c.Id == collaborateurId && c.ManagerId == utilisateur.CollaborateurId, ct);
+            || await db.Collaborateurs.AnyAsync(c => c.Id == collaborateurId && c.ManagerId == moi, ct);
     }
 ```
 
@@ -551,7 +558,9 @@ groupe.MapPost("/{id:int}/validation", Valider).RequireAuthorization(Politiques.
         }
 ```
 
-La politique écarte ceux qui n'ont pas la fonction (403). Le périmètre cache les feuilles des autres équipes (404). La dernière vérification refuse sa propre feuille, ou celle d'un collaborateur dont on n'est pas le manager direct (403). Le type de retour devient `Results<NoContent, NotFound, ForbidHttpResult>`.
+La politique écarte ceux qui n'ont pas la fonction (403). Le périmètre cache les feuilles des autres équipes (404). La dernière vérification refuse sa propre feuille, ou celle d'un collaborateur dont on n'est pas le manager direct (403). Le type de retour devient `Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>`.
+
+L'API sait désormais qui l'appelle : le valideur, c'est `utilisateur.CollaborateurId`. Supprimez `ValiderFeuilleRequete` (module 10), le `ValideurId` de `RejeterFeuilleRequete` et le `CollaborateurId` de `CreerAbsenceRequete` : un identifiant fourni par le client serait un moyen d'agir au nom d'un autre.
 
 ### 9. Tracer (RG-53)
 
@@ -567,7 +576,7 @@ public interface ITracable
 }
 ```
 
-Faites-la implémenter par `Collaborateur` et `FeuilleDeTemps`, avec des accesseurs `private set` : aucun code métier ne doit pouvoir réécrire la trace. Puis, dans `Chronos.Infrastructure`, `Tracabilite/TracabiliteInterceptor.cs` :
+RG-53 vise **toute** création, modification ou validation : faites-la implémenter par chaque entité que l'API écrit — `Collaborateur`, `FeuilleDeTemps`, `Absence` (son approbation est une validation), `Affectation`, `Projet`, `Client` et `JourFerie` —, avec des accesseurs `private set` : aucun code métier ne doit pouvoir réécrire la trace. `Contrat` et `SaisieDeTemps` n'en ont pas besoin : ils ne s'écrivent qu'à travers leur fiche ou leur feuille, qui renouvelle sa `Version` et porte donc la trace. Puis, dans `Chronos.Infrastructure`, `Tracabilite/TracabiliteInterceptor.cs` :
 
 ```csharp
 public sealed class TracabiliteInterceptor(TimeProvider horloge, IUtilisateurCourant utilisateur)
@@ -649,7 +658,7 @@ dotnet ef migrations add AjoutIdentiteEtTracabilite --project Chronos.Migrations
 dotnet ef migrations add AjoutIdentiteEtTracabilite --project Chronos.Migrations.SqlServer --startup-project Chronos.Api -- --Chronos:Fournisseur SqlServer
 ```
 
-Lisez-les avant de les appliquer : sept tables `AspNet…`, et quatre colonnes par entité tracée, avec les types propres à chaque SGBD. Le projet de démarrage reste l'API : c'est elle qui configure Identity.
+Lisez-les avant de les appliquer : sept tables `AspNet…`, et quatre colonnes par entité tracée, avec les types propres à chaque SGBD. Le projet de démarrage reste l'API : c'est elle qui configure Identity. Sur une base qui contient déjà des lignes, celles-ci reçoivent les valeurs par défaut de la migration (`CreePar` vide, `CreeLe` au 1er janvier de l'an 1) : en développement, supprimez la base et réappliquez les migrations, pour que les données initiales soient tracées au nom de `"systeme"`.
 
 Le test : un gestionnaire RH crée un collaborateur ; relu par `ChronosDbContext`, celui-ci porte `CreeLe` égal à `factory.Horloge.GetUtcNow()` et `CreePar` égal à l'identifiant du compte.
 
@@ -671,13 +680,17 @@ public record CollaborateurRhDto(
 
 Les deux gardent `Version` : le jeton de concurrence du module 08 n'est pas une information contractuelle, et l'interface en a besoin pour toute modification.
 
+Retenez ce que la liste réduite ne sait plus dire : qui a quitté la société. Elle sait encore filtrer les sortis, mais plus les désigner. Le manque n'apparaîtra qu'avec le premier écran qui s'en sert : le [module 16](16-dialoguer-avec-l-api.md) y reviendra, et complétera ces deux DTO d'un indicateur sans date.
+
 La lecture d'une fiche renvoie `Results<Ok<CollaborateurRhDto>, Ok<CollaborateurDto>, NotFound>` : la version complète pour le gestionnaire RH et pour l'intéressé lui-même (`id == utilisateur.CollaborateurId`), la version réduite pour les autres. La liste renvoie toujours la version réduite. **Les champs absents ne sont pas masqués par l'interface : ils ne quittent pas le serveur.**
 
 La même discipline vaut ailleurs : une absence porte un type (`MAL`), jamais un motif médical — il n'y a pas de champ pour cela, et il ne faut pas en ajouter. Et les journaux citent des identifiants (`Feuille {FeuilleId} validée par {UtilisateurId}`), pas des noms ni des adresses : un fichier de journal est copié, archivé et lu par bien plus de monde que la base.
 
 ### 11. Des comptes pour le développement
 
-Créez `Securite/ComptesDeDemonstration.cs` : une méthode `CreerAsync(IServiceProvider services, string motDePasse)` qui crée les rôles manquants, puis, pour quelques collaborateurs des données initiales, un compte relié à leur fiche par l'adresse électronique. Elle utilise les mêmes appels que la fabrique de tests (`RoleExistsAsync`, `FindByEmailAsync`, `CreateAsync`, `AddToRolesAsync`) et ne recrée pas ce qui existe. Prévoyez un compte par rôle. Appelez-la avant `app.Run()` :
+Les données initiales du module 06 n'ont pas de gestionnaire RH ; or il lui faut une fiche pour valider des feuilles et saisir les siennes. Ajoutez-en une à `DonneesInitiales` (Hugo Bernard, matricule `M0003`, `hugo.bernard@chronos.example`, avec un contrat), dans un bloc qui vérifie d'abord que le matricule n'existe pas : une base déjà alimentée la reçoit aussi.
+
+Créez `Securite/ComptesDeDemonstration.cs` : une méthode `CreerAsync(IServiceProvider services, string motDePasse)` qui crée les rôles manquants, puis, pour quelques collaborateurs des données initiales, un compte relié à leur fiche par l'adresse électronique. Elle utilise les mêmes appels que la fabrique de tests (`RoleExistsAsync`, `FindByEmailAsync`, `CreateAsync`, `AddToRolesAsync`) et ne recrée pas ce qui existe. Prévoyez un compte par rôle : Camille (`Collaborateur`), Sophie (`Collaborateur`, `Manager`), Hugo (`Collaborateur`, `GestionnaireRh`) et un administrateur sans fiche. Appelez-la avant `app.Run()` :
 
 ```csharp
 if (app.Environment.IsDevelopment() && app.Configuration["Chronos:Demo:MotDePasse"] is { Length: > 0 } motDePasseDemo)
@@ -692,7 +705,13 @@ Le mot de passe n'est écrit dans aucun fichier versionné : il vient des secret
 dotnet user-secrets set "Chronos:Demo:MotDePasse" "<votre mot de passe>" --project Chronos.Api
 ```
 
-Il doit respecter les règles par défaut d'Identity : six caractères au moins, avec majuscule, minuscule, chiffre et caractère spécial. Hors développement, ce code ne s'exécute pas : les comptes réels sont créés par un administrateur, et aucun environnement partagé ne doit connaître un mot de passe par défaut.
+Il doit respecter les règles par défaut d'Identity : six caractères au moins, avec majuscule, minuscule, chiffre et caractère spécial. Hors développement, ce code ne s'exécute pas : les comptes réels sont créés par un administrateur — le tout premier l'étant créé au démarrage à partir d'un secret, ce que le [module 25](25-exploiter-l-application.md) met en place —, et aucun environnement partagé ne doit connaître un mot de passe par défaut.
+
+> **Piège constaté : les tests lisent aussi vos secrets.** L'hôte de test tourne en environnement `Development` et charge donc les secrets du poste. Ce code s'exécute alors au démarrage de l'hôte, avant le `MigrateAsync` de la fabrique : la base n'existe pas encore, et tous les tests échouent. Dans `ConfigureWebHost` de `ChronosApiFactory`, neutralisez la clé :
+>
+> ```csharp
+> builder.UseSetting("Chronos:Demo:MotDePasse", "");
+> ```
 
 Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-10.0)
 
@@ -702,7 +721,7 @@ Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/as
 
 2. **Le périmètre partout.** Filtrez par `IdentifiantsVisiblesAsync` les feuilles de temps, les absences, les affectations et le plan de charge. Les routes qui recevaient `collaborateurId` en paramètre doivent maintenant le vérifier : que répond `GET /api/absences?collaborateurId=…` pour un collaborateur hors périmètre ? Ajoutez la contrainte de RG-04 à vos tests : que ferait le parcours de la hiérarchie si A manageait B et B manageait A ?
 
-3. **RG-36 jusqu'au bout.** Appliquez la même protection au rejet d'une feuille, puis à l'approbation et au refus d'une absence. Tracez la validation : après l'appel, `ModifieLe` et `ModifiePar` de la feuille désignent le valideur.
+3. **RG-36 jusqu'au bout.** Appliquez la même protection au rejet d'une feuille, puis à l'approbation et au refus d'une absence. Tracez la validation : après l'appel, `ModifieLe` et `ModifiePar` de la feuille, ou de l'absence, désignent le valideur.
 
 4. **L'administrateur.** `VoitTout` donne aujourd'hui toutes les fiches à l'administrateur. Est-ce conforme à son rôle dans le cahier des charges, et à la minimisation ? Décidez, corrigez, et écrivez le test qui fixe votre décision.
 
@@ -712,7 +731,7 @@ Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/as
 
 ## Critères de réussite
 
-- Sans connexion, toute route de l'API autre que la connexion répond 401, sans redirection.
+- Sans connexion, toute route de l'API autre que la connexion répond 401, sans redirection ; en développement, `/openapi/v1.json` répond 200.
 - `POST /api/compte/register` répond 404 et ne crée aucun compte.
 - Une écriture sans en-tête `X-XSRF-TOKEN` répond 400 ; avec l'en-tête, elle réussit.
 - Un collaborateur ne voit que sa fiche ; un manager voit son équipe directe et indirecte ; hors périmètre, 404.

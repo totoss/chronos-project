@@ -1,7 +1,7 @@
 # Module 19 — Authentification côté interface
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Le code de ce module a été **compilé (`ng build`) et testé (`ng test`, puis un parcours Playwright dans Chromium) le 12 novembre 2026**, dans une application créée par la CLI 22.2.7 (Angular 22.2.6, Angular Material 22.2.7, Node.js 24.22.3). **Cette interface n'a pas été branchée sur l'API du module 12** : ses réponses ont été simulées d'après le contrat que ce module publie (cookie `XSRF-TOKEN` compris, renvoyé en en-tête par un vrai navigateur). La connexion réelle et la vérification du jeton anti-CSRF par ASP.NET Core ont été exécutées de leur côté, au module 12, par des tests d'intégration ; les écrans des modules 16 à 18 étaient réduits au minimum. Les extraits qui touchent au code de ces modules — la retouche de `erreursInterceptor` (étape 7), `FicheCollaborateur` (étape 10), `FeuillesDeTempsApi` et `Session.collaborateurId` (étape 11) — ont été **réécrits sur leurs noms réels après les essais et n'ont pas été rejoués** ; le mécanisme de chacun l'avait été sur un code équivalent. Signalez au mentor tout écart constaté.
+> Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite des modules 15 à 18 : `ng build` réussit (avec l'avertissement de budget) et les tests passent. Il a été parcouru dans Chromium (Playwright 1.65) contre la **véritable API .NET** du module 12, avec les quatre comptes de démonstration (collaboratrice, manager, gestionnaire RH, administrateur sans fiche) : gardes et retour à l'adresse demandée, session qui survit au rechargement sans rien stocker, en-tête `X-XSRF-TOKEN`, session expirée, déconnexion, menus par rôle, appels directs à l'API refusés. Les corrections apportées après cet essai sont signalées dans le texte (étapes 2, 6, 7 et 8). Signalez au mentor tout écart constaté.
 
 Depuis le module 12, l'API sait qui l'appelle : elle répond `401` à un inconnu et `403` à quelqu'un qui n'a pas le droit. L'interface, elle, n'en sait rien : depuis le module 16, vous ouvrez la session à la main dans la console du navigateur, et l'identifiant du collaborateur est écrit en dur. Ce module la met à niveau : un écran de connexion, des routes qui exigent d'être connecté, et des menus qui ne proposent à chacun que ce qu'il peut faire.
 
@@ -67,7 +67,7 @@ Deux moments d'appel nous intéressent :
 | | `canActivate` | `canMatch` |
 | --- | --- | --- |
 | Question posée | « Peut-on entrer dans cette route ? » | « Cette route existe-t-elle pour cet utilisateur ? » |
-| Sur `false` | La navigation est annulée, on reste où l'on est. | La route est ignorée ; le routeur essaie les suivantes. |
+| Sur `false` | La navigation est annulée, on reste où l'on est — et au premier chargement de la page, nulle part : écran vide. | La route est ignorée ; le routeur essaie les suivantes. |
 | Code chargé à la demande | Avec `loadChildren`, les routes enfants sont téléchargées **avant** l'appel de la garde. | Rien n'est téléchargé. |
 
 La dernière ligne a été constatée par un test : avec `canActivate` qui renvoie `false`, la fonction `loadChildren` est tout de même appelée ; avec `canMatch`, jamais. (Pour `loadComponent`, les deux évitent le téléchargement.)
@@ -172,7 +172,11 @@ export class Session {
   }
 
   async deconnecter(): Promise<void> {
-    await firstValueFrom(this.http.post('/api/compte/logout', {}));
+    try {
+      await firstValueFrom(this.http.post('/api/compte/logout', {}));
+    } catch {
+      // Session déjà expirée (401) ou API injoignable : l'interface se déconnecte quand même.
+    }
     this.utilisateurCourant.set(null);
   }
 
@@ -191,7 +195,8 @@ Ce qu'il faut y lire :
 - **`connecter()` laisse passer l'erreur**, au contraire : c'est l'écran de connexion qui doit savoir que la tentative a échoué.
 - **`connecter()` enchaîne sur `charger()`**, pour deux raisons. La réponse du `login` est vide : elle ne dit pas qui s'est connecté. Et c'est `GET /api/compte/moi` qui dépose le cookie `XSRF-TOKEN` : sans cet appel, la première écriture serait refusée.
 - **Le service ne stocke que ce que l'API lui a dit.** Recharger la page vide le signal ; `charger()` le remplira de nouveau à partir du cookie.
-- **`logout` reçoit un objet vide `{}`** : l'API du module 12 l'exige, et répond `400` sans lui. Elle supprime alors les deux cookies.
+- **`logout` reçoit un objet vide `{}`** : l'API du module 12 l'exige, et répond `400` sans lui. Elle supprime alors `chronos.session` et `XSRF-TOKEN`. (Le cookie `.AspNetCore.Antiforgery.…`, `HttpOnly`, reste : c'est la moitié serveur du jeton anti-CSRF, inutilisable sans session.)
+- **`deconnecter()` ne lève jamais d'erreur.** Si la session a déjà expiré, l'API répond `401` au `logout` (constaté) ; sans le `try`, l'erreur remonterait et l'utilisateur resterait affiché comme connecté. Se déconnecter doit toujours ramener à l'écran de connexion.
 
 Documentation : [services](https://angular.dev/guide/di/creating-and-using-services), [signals](https://angular.dev/guide/signals)
 
@@ -204,6 +209,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
+import { erreursInterceptor } from './commun/erreurs-interceptor';
 import { Session } from './compte/session';
 
 export const appConfig: ApplicationConfig = {
@@ -219,6 +225,8 @@ export const appConfig: ApplicationConfig = {
 `provideAppInitializer` enregistre une fonction exécutée pendant le démarrage. Comme elle renvoie une promesse, Angular **attend** sa résolution avant d'afficher quoi que ce soit : au moment de la première navigation, `Session` sait déjà si quelqu'un est connecté.
 
 Ouvrez l'onglet *Réseau* des outils du navigateur et rechargez : `GET /api/compte/moi` part avant tout autre appel.
+
+Si l'API est arrêtée, `charger()` reçoit une erreur, la traite comme « personne n'est connecté », et l'application démarre sur l'écran de connexion (constaté, requête avortée). En revanche, une réponse qui n'arrive **jamais** laisse la page blanche aussi longtemps : Angular attend la promesse, et `HttpClient` n'a pas de délai d'expiration par défaut. Ce cas, plus rare, n'est pas traité ici.
 
 Documentation : [`provideAppInitializer`](https://angular.dev/api/core/provideAppInitializer)
 
@@ -237,6 +245,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
+import { ErreurApi } from '../../commun/erreur-api';
 import { Session } from '../session';
 
 @Component({
@@ -245,12 +254,13 @@ import { Session } from '../session';
   templateUrl: './connexion.html',
 })
 export class Connexion {
-  readonly retour = input('/');
+  // Sans « ?retour= » dans l'adresse, le routeur passe undefined : la transformation rétablit '/'.
+  readonly retour = input('/', { transform: (valeur: string | undefined) => valeur ?? '/' });
 
   private readonly session = inject(Session);
   private readonly router = inject(Router);
 
-  protected readonly echec = signal(false);
+  protected readonly echec = signal<string | null>(null);
   protected readonly modele = signal({ email: '', password: '' });
 
   protected readonly formulaire = form(
@@ -263,12 +273,16 @@ export class Connexion {
     {
       submission: {
         action: async (champs) => {
-          this.echec.set(false);
+          this.echec.set(null);
           const { email, password } = champs().value();
           try {
             await this.session.connecter(email, password);
-          } catch {
-            this.echec.set(true);
+          } catch (erreur) {
+            // API injoignable : le dire, plutôt que de laisser croire à un mot de passe erroné.
+            const injoignable = erreur instanceof ErreurApi && erreur.statut === 0;
+            this.echec.set(
+              injoignable ? erreur.message : 'Adresse électronique ou mot de passe incorrect.',
+            );
             return;
           }
           await this.router.navigateByUrl(this.destination());
@@ -306,8 +320,8 @@ export class Connexion {
     }
   </mat-form-field>
 
-  @if (echec()) {
-    <p role="alert">Adresse électronique ou mot de passe incorrect.</p>
+  @if (echec(); as message) {
+    <p role="alert">{{ message }}</p>
   }
 
   <button matButton="filled" type="submit" [disabled]="formulaire().submitting()">Se connecter</button>
@@ -315,11 +329,11 @@ export class Connexion {
 ```
 
 - **`submission.action`** est appelée par `[formRoot]` à l'envoi du formulaire, et seulement s'il est valide. Pendant son exécution, `formulaire().submitting()` vaut `true` : le bouton est désactivé, ce qui empêche le double envoi.
-- **Le message d'échec est volontairement vague.** « Adresse inconnue » ou « mot de passe erroné » diraient à un attaquant quelles adresses ont un compte.
-- **`retour`** est un `input` : grâce à `withComponentInputBinding()`, il reçoit le paramètre `?retour=` de l'URL. On ne suit que les adresses internes à l'application, celles qui commencent par un seul `/`.
+- **Le message d'échec est volontairement vague.** « Adresse inconnue » ou « mot de passe erroné » diraient à un attaquant quelles adresses ont un compte. Seule exception : une API qui ne répond pas (`statut` 0, traduit par `erreursInterceptor` au module 16), qui n'apprend rien à personne.
+- **`retour`** est un `input` : grâce à `withComponentInputBinding()`, il reçoit le paramètre `?retour=` de l'URL. On ne suit que les adresses internes à l'application, celles qui commencent par un seul `/`. `navigateByUrl` ne quitte de toute façon jamais l'application : essayé avec `?retour=https://exemple.test`, `//exemple.test` et `/\exemple.test`, on reste sur `localhost:4200` (les deux premiers mènent à l'accueil, le troisième à « Page introuvable »). Le contrôle reste utile : il documente l'intention, et protège le jour où quelqu'un remplacerait `navigateByUrl` par `window.location`.
 - **`autocomplete`** indique au navigateur et aux gestionnaires de mots de passe quoi proposer dans chaque champ.
 
-Ajoutez la route, hors de toute garde :
+Faites pointer la route `connexion` du module 15 sur ce composant, à la place de `ConnexionProvisoire`, puis supprimez le dossier `compte/connexion-provisoire/`. La route reste hors de toute garde :
 
 ```ts
 {
@@ -329,7 +343,7 @@ Ajoutez la route, hors de toute garde :
 },
 ```
 
-Ouvrez `http://localhost:4200/connexion` et connectez-vous avec un compte de démonstration. **Cet écran remplace l'étape 2 du module 16**, « Ouvrir une session, provisoirement » : vous n'avez plus rien à taper dans la console du navigateur.
+Ouvrez `http://localhost:4200/connexion` et connectez-vous avec un compte de démonstration. **Cet écran remplace l'étape 2 du module 16**, « Ouvrir une session, provisoirement » : vous n'avez plus rien à taper dans la console du navigateur. Ce provisoire-là prend fin ici.
 
 Documentation : [soumission d'un Signal Form](https://angular.dev/guide/forms/signals/form-submission)
 
@@ -375,7 +389,8 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./collaborateurs/collaborateurs.routes').then((m) => m.collaborateursRoutes),
       },
-      // … vos autres routes des modules 15 à 18 : projets, plan de charge, feuille de temps, absences …
+      // … puis, inchangées, vos routes des modules 15 à 18 : projets, plan-de-charge,
+      // feuille-de-temps, feuilles-a-valider, absences …
       {
         path: '**',
         loadComponent: () =>
@@ -399,16 +414,22 @@ Essayez : sans être connecté, ouvrez `http://localhost:4200/feuille-de-temps`.
 
 ```ts
 import { inject } from '@angular/core';
-import { CanActivateFn, CanMatchFn } from '@angular/router';
+import { CanActivateFn, CanMatchFn, Router } from '@angular/router';
 import { Session } from './session';
 import { Role } from './utilisateur';
 
-export function roleGuard(...roles: Role[]): CanMatchFn & CanActivateFn {
+/** Pour `canMatch` : sans le rôle, la route n'existe pas, et le routeur essaie les suivantes. */
+export function roleGuard(...roles: Role[]): CanMatchFn {
   return () => inject(Session).aLeRole(...roles);
+}
+
+/** Pour `canActivate` : sans le rôle, renvoie vers `repli` au lieu d'annuler la navigation. */
+export function roleGuardAvecRepli(repli: string, ...roles: Role[]): CanActivateFn {
+  return () => inject(Session).aLeRole(...roles) || inject(Router).parseUrl(repli);
 }
 ```
 
-`roleGuard` n'est pas une garde : c'est une fonction qui **fabrique** une garde à partir de ses paramètres. Son type de retour dit qu'elle convient à `canMatch` comme à `canActivate`. Sur la route du plan de charge (module 18) :
+`roleGuard` n'est pas une garde : c'est une fonction qui **fabrique** une garde à partir de ses paramètres. `roleGuardAvecRepli` sert à la fin de cette étape. Sur la route du plan de charge (module 18) :
 
 ```ts
 {
@@ -429,7 +450,15 @@ Voici ce qui a été observé, avec la route `**` placée comme à l'étape 5 :
 
 Le troisième cas ne fonctionne que parce que `**` est **enfant** de la route protégée. Placée au même niveau que `connexion`, elle afficherait « Page introuvable » à un visiteur qui n'est simplement pas connecté.
 
-> **`canMatch` passe la main à la route suivante — quelle qu'elle soit.** Dans `collaborateurs.routes.ts`, la route `nouveau` est suivie de `:id`. Avec `canMatch`, un manager qui ouvre `/collaborateurs/nouveau` tomberait sur la fiche du collaborateur « nouveau » (constaté). Sur cette route, écrivez donc `canActivate: [roleGuard('GestionnaireRh')]` : la navigation est annulée, et l'utilisateur reste où il était.
+Faites de même pour `feuilles-a-valider` (manager ou gestionnaire RH : RG-36), et pour `nouveau` dans `projets.routes.ts` : `canMatch: [roleGuard('Manager', 'GestionnaireRh')]`. Aucune route ne la suit dans ce fichier : sans le rôle, le routeur remonte jusqu'à `**`.
+
+> **`canMatch` passe la main à la route suivante — quelle qu'elle soit.** Dans `collaborateurs.routes.ts`, la route `nouveau` est suivie de `:id`. Avec `canMatch`, un manager qui ouvre `/collaborateurs/nouveau` tomberait sur la fiche du collaborateur « nouveau » (constaté). Il faut donc `canActivate` sur cette route. Mais une garde `canActivate` qui renvoie `false` **annule** la navigation : depuis la liste, l'utilisateur reste sur la liste ; sur une adresse tapée ou un lien ouvert dans un nouvel onglet, il n'y a pas de page précédente, et l'on obtient un écran vide à l'adresse `/` (constaté). La documentation d'Angular le dit : pour éconduire, renvoyez un `UrlTree`. Écrivez donc :
+>
+> ```ts
+> canActivate: [roleGuardAvecRepli('/collaborateurs', 'GestionnaireRh')],
+> ```
+>
+> Sans le rôle, on revient à la liste des collaborateurs, d'où que l'on vienne.
 
 ### 7. Réagir aux `401` et aux `403`
 
@@ -483,21 +512,19 @@ provideHttpClient(withInterceptors([erreursInterceptor, authInterceptor])),
 
 L'ordre compte. Une requête traverse les intercepteurs dans l'ordre de la liste ; sa réponse les retraverse en sens inverse. `authInterceptor`, dernier de la liste, voit donc la réponse en premier, sous la forme d'un `HttpErrorResponse`. Dans l'ordre inverse, `erreursInterceptor` l'aurait déjà traduite en `ErreurApi`, et le `401` passerait inaperçu (constaté par un test).
 
-**Le `403` : un message.** `erreursInterceptor` notifie déjà toute écriture en échec. Il reste à lui donner les mots justes. Dans `src/app/commun/erreur-api.ts` :
+**Le `403` : un message.** `erreursInterceptor` notifie déjà toute écriture en échec. Il reste à lui donner les mots justes. Dans `src/app/commun/erreur-api.ts`, ajoutez deux lignes au tableau `LIBELLES` du module 16 :
 
 ```ts
-const messagesParStatut: Record<number, string> = {
+const LIBELLES: Record<number, string> = {
+  400: 'Les données envoyées sont invalides.',
   401: 'Votre session a expiré. Reconnectez-vous.',
   403: "Vous n'avez pas le droit d'effectuer cette action.",
+  404: "La ressource demandée n'existe pas, ou vous n'y avez pas accès.",
+  500: 'Une erreur est survenue sur le serveur.',
 };
 ```
 
-Et dans `versErreurApi`, ces messages passent avant ceux de l'API :
-
-```ts
-const message =
-  messagesParStatut[erreur.status] ?? probleme.detail ?? probleme.title ?? `Erreur ${erreur.status}`;
-```
+`versErreurApi` ne change pas : il prend le `detail` de l'API s'il y en a un, sinon ce libellé. Les réponses `401` et `403` de l'API n'ont qu'un `title` en anglais (« Forbidden ») : c'est donc le libellé français qui s'affiche (constaté).
 
 **Une retouche à `erreursInterceptor`.** Tel quel, il afficherait aussi une notification pour une connexion refusée, que l'écran de connexion signale déjà. Ajoutez une condition à celle du module 17, pour exclure les routes du compte :
 
@@ -524,7 +551,7 @@ Vérifiez dans les outils du navigateur, API démarrée :
 
 - onglet *Application*, rubrique *Cookies* : `chronos.session` est marqué `HttpOnly` et `SameSite=Strict` ; `XSRF-TOKEN` n'est pas `HttpOnly`, et il n'apparaît qu'après l'appel à `/api/compte/moi` ;
 - onglet *Réseau* : enregistrez une feuille de temps, ouvrez la requête `PUT` ; l'en-tête `X-XSRF-TOKEN` y figure, avec la valeur du cookie. Il est absent des requêtes `GET` ;
-- toujours dans *Application*, supprimez le cookie `XSRF-TOKEN`, puis enregistrez de nouveau : l'API répond `400`, « Jeton anti-CSRF absent ou invalide ».
+- toujours dans *Application*, supprimez le cookie `XSRF-TOKEN`, puis enregistrez de nouveau : l'API répond `400`, « Jeton anti-CSRF absent ou invalide » (dans l'onglet *Réseau* ; la notification dit « Les données envoyées sont invalides. »). Faites l'essai sur une écriture que votre compte a le droit de faire : l'API contrôle les rôles **avant** le jeton, et une écriture interdite reçoit `403`, avec ou sans en-tête (constaté).
 
 Si un jour l'API changeait le nom du cookie ou de l'en-tête, il faudrait les déclarer avec `withXsrfConfiguration({ cookieName: '…', headerName: '…' })` dans `provideHttpClient(...)`.
 
@@ -548,9 +575,12 @@ protected readonly session = inject(Session);
 private readonly router = inject(Router);
 
 private readonly liens: LienDeNavigation[] = [
-  { chemin: '/feuille-de-temps', libelle: 'Feuille de temps', icone: 'schedule' },
   { chemin: '/collaborateurs', libelle: 'Collaborateurs', icone: 'group' },
+  { chemin: '/projets', libelle: 'Projets', icone: 'folder' },
   { chemin: '/plan-de-charge', libelle: 'Plan de charge', icone: 'bar_chart', roles: ['Manager', 'GestionnaireRh'] },
+  { chemin: '/feuille-de-temps', libelle: 'Feuille de temps', icone: 'schedule' },
+  { chemin: '/feuilles-a-valider', libelle: 'Feuilles à valider', icone: 'fact_check', roles: ['Manager', 'GestionnaireRh'] },
+  { chemin: '/absences', libelle: 'Absences', icone: 'event_busy' },
 ];
 
 protected readonly liensVisibles = computed(() =>
@@ -618,7 +648,7 @@ Depuis le module 12, l'API réserve au gestionnaire RH la création, la modifica
 
 L'interface suit, en quatre endroits :
 
-- **La création.** Dans `collaborateurs.routes.ts`, la route `nouveau` reçoit `canActivate: [roleGuard('GestionnaireRh')]` (étape 6), et le lien qui y mène n'est affiché qu'à ce rôle.
+- **La création.** Dans `collaborateurs.routes.ts`, la route `nouveau` reçoit `canActivate: [roleGuardAvecRepli('/collaborateurs', 'GestionnaireRh')]` (étape 6), et le lien qui y mène n'est affiché qu'à ce rôle : `*appSiRole="'GestionnaireRh'"`, comme dans l'exemple de l'étape 9.
 - **La modification.** Dans le template de `FicheCollaborateur`, le bouton « Modifier », qui passe `enEdition` à `true`, n'est proposé qu'au gestionnaire RH. Le formulaire ne s'ouvre donc que pour lui.
 
 ```html
@@ -627,7 +657,7 @@ L'interface suit, en quatre endroits :
 }
 ```
 
-- **La suppression.** Même condition sur son bouton.
+- **La suppression.** Même condition sur le bouton « Supprimer » de `CarteCollaborateur`, dans la liste. Le bouton « Nouveau projet » de `ListeProjets`, lui, est réservé aux managers et aux gestionnaires RH : `*appSiRole="['Manager', 'GestionnaireRh']"`.
 - **L'affichage.** Un champ que l'API n'a pas envoyé ne s'affiche pas — ni vide, ni avec un tiret : `@if (c.dateEntree) { … }`. Un manager ne doit pas lire « Date d'entrée : — » et croire qu'elle manque.
 
 `FicheCollaborateur` injecte `Session` dans un champ `protected readonly session`, pour que son template puisse l'interroger.
@@ -650,11 +680,11 @@ Le module 18 a rangé l'identifiant provisoire dans `src/app/commun/collaborateu
 readonly collaborateurId = computed(() => this.utilisateurCourant()?.collaborateurId ?? null);
 ```
 
-Dans `FeuilleDeTempsHebdo`, la constante disparaît :
+Dans `FeuilleDeTempsHebdo`, la constante disparaît, avec le commentaire « PROVISOIRE » du module 18 :
 
 ```ts
-private readonly session = inject(Session);
-private readonly collaborateurId = this.session.collaborateurId;
+/** La fiche de l'utilisateur connecté (RG-50) ; `null` pour un compte qui n'en a pas. */
+protected readonly collaborateurId = inject(Session).collaborateurId;
 
 protected readonly feuille = this.api.deLaSemaine(this.collaborateurId, this.selection.semaine);
 private readonly affectations = this.api.affectations(this.collaborateurId);
@@ -673,7 +703,7 @@ deLaSemaine(collaborateurId: () => number | null, semaine: () => string) {
 }
 ```
 
-Quand la fonction renvoie `undefined`, `httpResource` n'envoie aucune requête. Faites de même pour `affectations`. Dans le template de l'écran, dites-le à l'utilisateur : « Ce compte n'est rattaché à aucun collaborateur. »
+Quand la fonction renvoie `undefined`, `httpResource` n'envoie aucune requête. Faites de même pour `affectations` et `absences`. `collaborateurId` est `protected` : le template de l'écran s'en sert pour le dire à l'utilisateur, `@if (collaborateurId() === null)`, « Ce compte n'est rattaché à aucun collaborateur. » L'administrateur garde l'entrée « Feuille de temps » dans son menu, et y lit ce message.
 
 Supprimez enfin `commun/collaborateur-courant.ts` : la compilation vous montrera les usages oubliés.
 
@@ -685,7 +715,7 @@ L'API garde le paramètre `collaborateurId` — c'est ainsi qu'un manager consul
 
 2. **RG-52 jusqu'au bout.** Connecté comme manager, vérifiez que ni « Nouveau collaborateur », ni « Modifier », ni la suppression ne vous sont proposés, et que la fiche d'un membre de votre équipe n'affiche aucune date de contrat. Puis envoyez tout de même une modification à l'API depuis la console du navigateur, avec `fetch`. Quelle réponse obtenez-vous sans l'en-tête `X-XSRF-TOKEN` ? Et avec lui ? Qu'en concluez-vous sur ce que protège chaque couche ?
 
-3. **RG-36 à l'écran.** Sur la feuille de temps d'un collaborateur, les boutons « Valider » et « Rejeter » ne doivent apparaître qu'à son manager ou à un gestionnaire RH, et jamais sur sa propre feuille. De quelles informations l'interface a-t-elle besoin pour le savoir ? Les a-t-elle toutes ?
+3. **RG-36 à l'écran.** Les boutons « Valider » et « Rejeter » ne doivent apparaître qu'au manager du collaborateur ou à un gestionnaire RH, et jamais sur sa propre feuille. Dans Chronos, ils ne vivent que sur l'écran `FeuillesAValider` du module 18, réservé par l'étape 6, et cet écran n'affiche que ce que renvoie `GET /api/feuilles-de-temps/soumises`. Connectez-vous comme Sophie, puis comme Hugo : quelles feuilles chacun voit-il ? De quelles informations l'interface aurait-elle besoin pour refaire ce filtre elle-même (équipe, propre fiche) ? Les a-t-elle toutes ? Pourquoi vaut-il mieux laisser l'API choisir ?
 
 4. **Session expirée.** Connectez-vous, ouvrez la feuille de temps, puis supprimez le cookie d'authentification dans les outils du navigateur. Changez de semaine. Décrivez ce que fait l'interface, étape par étape, jusqu'au retour sur la feuille de temps après une nouvelle connexion. Une saisie non enregistrée est-elle perdue ?
 
@@ -700,6 +730,8 @@ L'API garde le paramètre `collaborateurId` — c'est ainsi qu'un manager consul
 - Après un rechargement de la page, l'utilisateur est toujours connecté, sans que l'interface ait rien stocké : `localStorage` et `sessionStorage` sont vides.
 - Des identifiants erronés affichent un message unique, qui ne dit pas lequel des deux champs est faux.
 - Un collaborateur sans autre rôle ne voit pas l'entrée « Plan de charge », et l'adresse `/plan-de-charge` lui affiche la page introuvable.
+- Un manager qui tape l'adresse `/collaborateurs/nouveau` arrive sur la liste des collaborateurs, jamais sur un écran vide.
+- « Se déconnecter » ramène à l'écran de connexion, même quand la session avait déjà expiré.
 - La suppression du cookie d'authentification, suivie d'une action, ramène à l'écran de connexion.
 - Les requêtes `POST`, `PUT` et `DELETE` portent l'en-tête `X-XSRF-TOKEN` ; sans lui, l'API répond `400`.
 - La déconnexion reçoit `204`, et les cookies `chronos.session` et `XSRF-TOKEN` ont disparu.
@@ -717,9 +749,11 @@ L'API garde le paramètre `collaborateurId` — c'est ainsi qu'un manager consul
 | Charger l'utilisateur dans le `ngOnInit` du composant racine | Les gardes s'exécutent avant la réponse : l'utilisateur connecté est renvoyé à la connexion. | `provideAppInitializer`. |
 | `APP_INITIALIZER` | Déprécié. | `provideAppInitializer(() => …)`. |
 | La route `**` au même niveau que `connexion` | Un visiteur non connecté lit « Page introuvable » au lieu d'être invité à se connecter. | `**` en dernière enfant de la route protégée. |
-| `canMatch` sur une route suivie de `:id` | La route suivante prend le relais : `/collaborateurs/nouveau` affiche la fiche « nouveau ». | `canActivate` sur cette route. |
+| `canMatch` sur une route suivie de `:id` | La route suivante prend le relais : `/collaborateurs/nouveau` affiche la fiche « nouveau ». | `canActivate` sur cette route, avec `roleGuardAvecRepli`. |
+| Une garde `canActivate` qui renvoie `false` pour un rôle manquant | Sur une adresse tapée, la navigation initiale est annulée : écran vide à l'adresse `/`. | Renvoyer un `UrlTree` vers une page sûre. |
 | Traiter `401` et `403` de la même façon | Renvoyer à la connexion quelqu'un qui est déjà connecté ne lui apprend rien. | `401` : connexion. `403` : message. |
 | `authInterceptor` placé avant `erreursInterceptor` dans la liste | Il reçoit l'erreur déjà traduite en `ErreurApi` et ne reconnaît plus le `401`. | L'intercepteur d'authentification en dernier. |
+| `deconnecter()` qui laisse remonter l'erreur du `logout` | Session déjà expirée : l'API répond `401`, l'utilisateur reste affiché comme connecté. | Oublier l'utilisateur dans tous les cas. |
 | `catchError(() => EMPTY)` dans l'intercepteur | Le composant n'apprend jamais l'échec ; son indicateur de chargement tourne sans fin. | `tap({ error })`, qui laisse passer l'erreur. |
 | « Adresse électronique inconnue » | Révèle quelles adresses ont un compte. | Un message unique pour tout échec de connexion. |
 | Suivre `?retour=` sans le contrôler | Le paramètre vient de l'URL, donc de n'importe qui. | N'accepter qu'un chemin interne. |

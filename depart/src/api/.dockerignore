@@ -1,0 +1,7 @@
+# TODO [module 23] Exclure du contexte de construction de l'image de l'API : les dossiers de compilation (bin, obj), les résultats de tests, les
+#    livrables, les fichiers utilisateur, la configuration et les propriétés de lancement réservées au développement, le dossier d'éditeur .vs, et
+#    le Dockerfile et ce fichier eux-mêmes. Les motifs valent à toute profondeur (« ** »).
+#    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 2 « Exclure ce qui ne doit pas entrer dans l'image »
+# TODO [module 23] Non détaillé dans le module : la solution de référence exclut aussi tout fichier .env, à toute profondeur ; comparer avec la solution au tag
+#    module-25, src/api/.dockerignore
+#    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 2 « Exclure ce qui ne doit pas entrer dans l'image »

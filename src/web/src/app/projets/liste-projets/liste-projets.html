@@ -1,0 +1,57 @@
+<h2 tabindex="-1">Projets</h2>
+
+<div class="outils">
+  <app-barre-de-recherche
+    libelle="Filtrer par code ou libellé"
+    [recherche]="recherche()"
+    (rechercheChange)="rechercher($event)"
+  />
+
+  <label for="statut">Statut</label>
+  <select id="statut" #choix (change)="filtrerParStatut(choix.value)">
+    <option value="">Tous</option>
+    <option value="EnPreparation">En préparation</option>
+    <option value="EnCours">En cours</option>
+    <option value="Termine">Terminé</option>
+    <option value="Annule">Annulé</option>
+  </select>
+
+  <a *appSiRole="['Manager', 'GestionnaireRh']" matButton="filled" routerLink="nouveau">
+    <mat-icon>add</mat-icon>
+    Nouveau projet
+  </a>
+</div>
+
+@if (projets.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement des projets" />
+}
+
+@if (projets.error()) {
+  <p role="alert">
+    La liste n'a pas pu être chargée.
+    <button matButton type="button" (click)="projets.reload()">Réessayer</button>
+  </p>
+} @else if (projets.hasValue()) {
+  @let elements = projets.value().elements;
+
+  @if (total() > 0) {
+    <app-compteur-de-resultats nom="projet" [nombre]="elements.length" [total]="total()" />
+  }
+
+  <div class="cartes">
+    @for (p of elements; track p.id) {
+      <app-carte-projet [projet]="p" />
+    } @empty {
+      <p>Aucun projet ne correspond à ces critères. Modifiez la recherche ou le statut.</p>
+    }
+  </div>
+}
+
+<mat-paginator
+  aria-label="Pagination des projets"
+  [length]="total()"
+  [pageIndex]="page() - 1"
+  [pageSize]="taille()"
+  [pageSizeOptions]="[10, 20, 50]"
+  (page)="changerDePage($event)"
+/>

@@ -1,7 +1,7 @@
 # Module 11 — Tests d'intégration
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md) et le [référentiel GitHub Actions](../docs/references/github-actions.md).
-> Le code de ce module a été **compilé et exécuté le 12 novembre 2026** sur un squelette de la solution (SDK 10.0.404, `xunit.v3` 4.0.3, `Microsoft.AspNetCore.Mvc.Testing` 10.0.15, Testcontainers 4.16.0, EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18, Docker Engine 29.9) : les tests du pas à pas passent, ainsi que les commandes de l'étape 9. `MsSqlBuilder` a été démarré avec SQL Server 2025 (17.0.5045), sans y faire tourner les tests de l'API. Les essais ont été lancés depuis un conteneur du SDK relié au moteur Docker du poste, et non depuis PowerShell. Le squelette n'avait qu'un jeu de migrations, placé dans `Chronos.Infrastructure`, et pas de données initiales. **Non exécuté** : le workflow modifié, sur GitHub ; la fabrique face aux deux projets de migrations du module 07 et aux données initiales du module 06. Signalez au mentor tout écart constaté.
+> Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (état du module 10, SDK 10.0.404, `xunit.v3.mtp-v2` 4.0.3, `Microsoft.AspNetCore.Mvc.Testing` 10.0.15, Testcontainers 4.16.0, EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18, SQL Server 2025) : la fabrique applique les migrations de `Chronos.Migrations.PostgreSql` ou de `Chronos.Migrations.SqlServer` (module 07) et les données initiales du module 06 ; les tests du pas à pas et des exercices 1 à 5 passent (15 tests, environ 6 s sur PostgreSQL et 9 s sur SQL Server), deux fois de suite et classe par classe ; les deux commandes de l'étape 9 aussi, et `actionlint` accepte le workflow. Les essais ont été lancés depuis un conteneur du SDK relié au moteur Docker du poste, et non depuis PowerShell. **Non exécuté** : le workflow modifié, sur GitHub. Signalez au mentor tout écart constaté.
 
 Les tests des modules 04 et 09 vérifient les règles du domaine en quelques millisecondes, sans base ni réseau. Ils ne disent rien de ce qui entoure le domaine : une route mal écrite, une annotation de validation oubliée, une date mal sérialisée, une requête LINQ que PostgreSQL refuse, un index unique absent de la migration. Ces erreurs-là ne se voient qu'en faisant ce que fera l'interface Angular : envoyer une requête HTTP à l'API, branchée sur une vraie base.
 
@@ -106,7 +106,7 @@ Les commandes s'exécutent dans `src/api`.
 dotnet new xunit3 -f net10.0 --name Chronos.Api.Tests
 ```
 
-Comme au [module 04](04-modeliser-le-domaine.md), la commande se termine par l'erreur `NU1008` : le modèle a écrit une version de paquet dans le `.csproj`, ce que la gestion centralisée refuse. La correction est la même (étape 4 du module 04) ; la version de `xunit.v3.mtp-v2` est déjà dans `Directory.Packages.props`.
+Comme au [module 04](04-modeliser-le-domaine.md), la commande se termine par l'erreur `NU1008` : le modèle a écrit une version de paquet dans le `.csproj`, ce que la gestion centralisée refuse. La correction est la même (étape 4 du module 04) ; la version de `xunit.v3.mtp-v2` est déjà dans `Directory.Packages.props`. La commande affiche aussi `Successfully modified global.json` : le fichier contient déjà la section `test` depuis le module 04, et le modèle ne fait qu'en retirer le saut de ligne final. Annulez cette modification (`git restore global.json`).
 
 ```powershell
 dotnet sln add Chronos.Api.Tests
@@ -272,7 +272,7 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
 {
     private readonly HttpClient _client = factory.CreateClient();
 
-    private static object NouveauCollaborateur(string matricule, string? dateSortie = null) => new
+    private static object NouveauCollaborateur(string matricule) => new
     {
         matricule,
         nom = "Martin",
@@ -281,7 +281,8 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
         categorie = "Consultant",
         poste = "Développeuse",
         dateEntree = "2024-09-02",
-        dateSortie,
+        typeContrat = "Cdi",
+        quotite = 1,
     };
 
     [Fact]
@@ -307,7 +308,7 @@ public class CollaborateursTests(ChronosApiFactory factory) : IClassFixture<Chro
 
 - **`IClassFixture<ChronosApiFactory>`** : une fabrique, donc une base, pour cette classe.
 - **`factory.CreateClient()`** renvoie un `HttpClient` relié à l'application en mémoire. Il suit les redirections et conserve les cookies, ce qui servira au module 12.
-- **Le corps de la requête est un objet anonyme**, et la réponse est lue comme du JSON brut. C'est volontaire : le test écrit le JSON **tel que l'interface l'enverra**. S'il réutilisait `CreerCollaborateurRequete` et `CollaborateurDto`, un renommage de propriété casserait le contrat avec Angular sans faire échouer aucun test.
+- **Le corps de la requête est un objet anonyme** qui porte tous les champs obligatoires de `CreerCollaborateurRequete`, y compris le premier contrat (`typeContrat`, `quotite`) exigé depuis le module 08 ; sans eux, la réponse est 400. La réponse est lue comme du JSON brut. C'est volontaire : le test écrit le JSON **tel que l'interface l'enverra**. S'il réutilisait `CreerCollaborateurRequete` et `CollaborateurDto`, un renommage de propriété casserait le contrat avec Angular sans faire échouer aucun test.
 - Les trois dernières assertions vérifient la sérialisation : noms en camelCase, énumération en chaîne, date au format `2024-09-02`. Aucun test unitaire ne voit cela.
 - **`TestContext.Current.CancellationToken`** est le jeton d'annulation du test en cours. L'analyseur de xUnit v3 signale (xUnit1051) tout appel asynchrone qui ne le reçoit pas.
 
@@ -329,7 +330,8 @@ Ajoutez à la même classe :
     {
         var ct = TestContext.Current.CancellationToken;
         var requete = new { matricule = "", nom = "Martin", prenom = "Camille", email = "pas-une-adresse",
-            categorie = "Consultant", poste = "Développeuse", dateEntree = "2024-09-02" };
+            categorie = "Consultant", poste = "Développeuse", dateEntree = "2024-09-02",
+            typeContrat = "Cdi", quotite = 1 };
 
         var reponse = await _client.PostAsJsonAsync("/api/collaborateurs", requete, ct);
 
@@ -404,14 +406,20 @@ Adaptez les arguments au constructeur public de votre `Collaborateur` (module 04
 
 ### 7. Piloter le temps
 
-Le filtre `statut=actif|sorti` de la liste compare la date de sortie à la date du jour. Ajoutez :
+Le filtre `statut=actif|sorti` de la liste compare la date de sortie à la date du jour. La création n'accepte pas de date de sortie (`CreerCollaborateurRequete` n'en a pas) : le test la renseigne par une modification, qui exige la `version` lue à la création (module 08). Ajoutez :
 
 ```csharp
     [Fact]
-    public async Task Le_filtre_actif_depend_de_la_date_du_jour()
+    public async Task Le_filtre_sorti_depend_de_la_date_du_jour()
     {
         var ct = TestContext.Current.CancellationToken;
-        await _client.PostAsJsonAsync("/api/collaborateurs", NouveauCollaborateur("C-0004", dateSortie: "2026-05-15"), ct);
+        var creation = await _client.PostAsJsonAsync("/api/collaborateurs", NouveauCollaborateur("C-0004"), ct);
+        var cree = await creation.Content.ReadFromJsonAsync<JsonElement>(ct);
+
+        var modification = await _client.PutAsJsonAsync($"/api/collaborateurs/{cree.GetProperty("id").GetInt32()}",
+            new { nom = "Martin", prenom = "Camille", email = "c-0004@chronos.example", poste = "Développeuse",
+                dateSortie = "2026-05-15", version = cree.GetProperty("version").GetGuid() }, ct);
+        Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
 
         var avant = await _client.GetFromJsonAsync<JsonElement>("/api/collaborateurs?statut=sorti", ct);
         Assert.DoesNotContain(avant.GetProperty("elements").EnumerateArray(),
@@ -467,7 +475,7 @@ Documentation : [Testcontainers en intégration continue](https://dotnet.testcon
 
 ## À vous
 
-1. **Clients et projets.** Écrivez les tests d'intégration du cycle complet d'un client, puis d'un projet : création, lecture, modification, liste paginée. Ajoutez le test de RG-10 (code de projet déjà utilisé → 409). Pour quelles règles de ces deux ressources un test d'intégration est-il justifié, et pour lesquelles le test unitaire suffit-il ?
+1. **Clients et projets.** Écrivez les tests d'intégration du cycle complet d'un client, puis d'un projet : création, lecture, modification, liste (paginée pour les projets ; celle des clients est un simple tableau). Ajoutez le test de RG-10 (code de projet déjà utilisé → 409). Pour quelles règles de ces deux ressources un test d'intégration est-il justifié, et pour lesquelles le test unitaire suffit-il ?
 
 2. **Archivage (RG-05).** Créez un collaborateur, donnez-lui une affectation, puis appelez `DELETE /api/collaborateurs/{id}`. Vérifiez par l'API qu'il n'apparaît plus dans la liste, puis, par `ChronosDbContext`, que sa ligne existe toujours. Il vous faudra désactiver dans le test le filtre nommé du module 06 : `IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])`.
 
@@ -475,9 +483,9 @@ Documentation : [Testcontainers en intégration continue](https://dotnet.testcon
 
 4. **L'exemple de Camille, par HTTP.** Reproduisez l'exemple chiffré du cahier des charges : jour férié du 8 mai, absence du lundi, deux affectations à 50 %. Appelez `GET /api/plan-de-charge?du=2026-05-04&au=2026-05-08&pas=semaine` et vérifiez la capacité, la charge et le taux décidés au module 09. Ce test fait-il double emploi avec les tests unitaires du calcul ?
 
-5. **Les mêmes tests sur SQL Server.** Ajoutez le paquet `Testcontainers.MsSql` (4.16.0) et une seconde fixture d'assembly construite avec `new MsSqlBuilder("mcr.microsoft.com/mssql/server:2025-latest")` — l'image est obligatoire là aussi. Faites choisir le SGBD à la fabrique d'après une variable d'environnement : la chaîne de connexion vient de la bonne fixture, et `UseSetting("Chronos:Fournisseur", "SqlServer")` fait appliquer par `MigrateAsync` le jeu `Chronos.Migrations.SqlServer`. `ChaineDeConnexion` utilise `NpgsqlConnectionStringBuilder` : quel est son équivalent ? Tous les tests passent-ils sans modification ? Faites-les ensuite tourner sur les deux SGBD dans le workflow, avec `strategy.matrix`. Combien de temps cela ajoute-t-il ?
+5. **Les mêmes tests sur SQL Server.** Ajoutez le paquet `Testcontainers.MsSql` (4.16.0). Une seconde fixture d'assembly démarrerait les deux conteneurs à chaque exécution : remplacez plutôt `ServeurPostgres` par une fixture `ServeurDeBase` qui lit la variable d'environnement `CHRONOS_TESTS_SGBD` (`PostgreSql` par défaut, ou `SqlServer`) et ne démarre que le conteneur choisi — `new MsSqlBuilder("mcr.microsoft.com/mssql/server:2025-latest")` pour SQL Server, l'image est obligatoire là aussi. Les deux conteneurs ont un type commun, `IDatabaseContainer` (espace de noms `DotNet.Testcontainers.Containers`). La fixture expose aussi le `Fournisseur` choisi, que la fabrique passe à `UseSetting("Chronos:Fournisseur", ...)` : `MigrateAsync` applique alors le jeu `Chronos.Migrations.SqlServer`. `ChaineDeConnexion` utilise `NpgsqlConnectionStringBuilder` : quel est son équivalent ? Tous les tests passent-ils sans modification ? Essayez ensuite, sur une branche, de faire tourner le job sur les deux SGBD avec `strategy.matrix` : combien de temps cela ajoute-t-il, et que devient le nom du job, que la protection de `main` exige depuis le module 05 sous le nom `API` ? La solution de référence ne garde pas la matrice : le workflow reste celui de l'étape 9, sur PostgreSQL.
 
-6. **Mesurer.** Combien de temps dure un test d'intégration, hors démarrage du conteneur ? Et un test unitaire ? Passez provisoirement à une seule base pour tout le projet de tests et relancez plusieurs fois : que se passe-t-il, et pourquoi pas à chaque fois ?
+6. **Mesurer.** Combien de temps dure un test d'intégration, hors démarrage du conteneur ? Et un test unitaire ? Passez provisoirement à une seule base pour tout le projet de tests (un nom fixe au lieu de `Guid.NewGuid()`) et relancez plusieurs fois : que se passe-t-il, et pourquoi ? Lisez les messages : quelle étape échoue, avant même le premier test ? Remettez le `Guid`.
 
 ## Critères de réussite
 
@@ -501,7 +509,7 @@ Documentation : [Testcontainers en intégration continue](https://dotnet.testcon
 | `builder.ConfigureAppConfiguration(...)` pour la chaîne de connexion | Appliqué après `builder.Build()` : `Program.cs` a déjà lu l'ancienne valeur. | `builder.UseSetting("ConnectionStrings:Chronos", ...)`. |
 | `EnsureCreated()` dans la fixture | Crée le schéma sans passer par les migrations : une migration fausse ou manquante n'est pas détectée. | `Database.MigrateAsync()`. |
 | `Task InitializeAsync()` et `Task DisposeAsync()` | Signatures de xUnit v2 : elles ne compilent pas en v3. | `ValueTask` pour les deux. |
-| Une seule base pour toutes les classes de tests | Les classes tournent en parallèle et se marchent dessus ; les échecs sont intermittents. | Une base par classe, ou une collection xUnit pour les classes qui doivent partager. |
+| Une seule base pour toutes les classes de tests | Les classes tournent en parallèle : leurs fabriques appliquent les migrations en même temps sur la même base, et toutes sauf une échouent (`42P07: relation … already exists`) ; ensuite, leurs données se mélangent. | Une base par classe, ou une collection xUnit pour les classes qui doivent partager. |
 | Deux tests de la même classe qui créent le même matricule | Le second reçoit 409 selon l'ordre d'exécution. | Des données propres à chaque test. |
 | Désérialiser les réponses dans les DTO de l'API | Un renommage casse le contrat JSON sans faire échouer le test. | Lire le JSON brut, ou des types propres au projet de tests. |
 | Tester par HTTP chaque cas limite d'une règle du domaine | Lent, et redondant avec les tests unitaires. | Un test d'intégration par chemin (succès, 400, 409, 422) ; les cas limites restent unitaires. |

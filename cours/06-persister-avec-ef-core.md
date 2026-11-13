@@ -2,6 +2,7 @@
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
 > Le code et les commandes `dotnet` de ce module ont été **exécutés le 12 novembre 2026** dans le conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, fournisseur Npgsql 10.0.3, outil `dotnet-ef` 10.0.15) contre PostgreSQL 18.6, sur un squelette de la solution écrit pour l'essai : `Projet` et `Periode` y sont ceux du module 04 ; `Client`, `Collaborateur` et `Contrat`, que le module 04 vous fait écrire en exercice, y étaient une version minimale, et les vôtres peuvent différer. Les extraits SQL sont ceux réellement produits. **Non exécutés** : la saisie des commandes dans PowerShell sous Windows (elles l'ont été dans un terminal Linux), l'interface Scalar, et l'ajout au workflow GitHub Actions demandé en exercice (les commandes qu'il lance ont été exécutées localement, sans secret ni base). Signalez au mentor tout écart constaté.
+> **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-05`, mêmes versions : SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, `dotnet-ef` 10.0.15, PostgreSQL 18) : pas à pas et exercices, `database drop` puis `update`, appels HTTP aux trois ressources, `has-pending-model-changes` sans secrets utilisateur. Le workflow GitHub Actions lui-même n'a pas été exécuté.
 
 Depuis le module 03, `/api/projets` sert une liste en mémoire : tout est perdu à chaque redémarrage, et rien n'empêche deux projets de porter le même code. Chronos doit conserver ses données dans une base, et c'est la base qui garantira certaines règles — l'unicité, notamment. Ce module branche l'API sur PostgreSQL avec **Entity Framework Core** (EF Core), la bibliothèque d'accès aux données de .NET.
 
@@ -18,7 +19,7 @@ Depuis le module 03, `/api/projets` sert une liste en mémoire : tout est perdu 
 
 ## Prérequis
 
-- Modules [03](03-premiere-api.md), [04](04-modeliser-le-domaine.md) et [05](05-github-actions-integration-continue.md) : la solution `src/api/` contient `Chronos.Api` (endpoints `/api/projets` servis par `ProjetsEnMemoire`), `Chronos.Domain` (`Projet`, `Periode`, et les entités des exercices : `Client`, `Collaborateur`, `Contrat`) et un workflow d'intégration continue.
+- Modules [03](03-premiere-api.md), [04](04-modeliser-le-domaine.md) et [05](05-github-actions-integration-continue.md) : la solution `src/api/` contient `Chronos.Api` (endpoints `/api/projets` servis par `ProjetsEnMemoire` — liste filtrable par `?statut=`, lecture, création, suppression — et `/api/clients` servis par `ClientsEnMemoire`, exercices du module 03), `Chronos.Domain` (`Projet`, `Periode`, et les entités des exercices : `Client`, `Collaborateur`, `Contrat`) et un workflow d'intégration continue.
 - [Module 01](01-docker-les-bases.md) : la base PostgreSQL démarre avec `docker compose up -d --wait postgres`, depuis la racine du dépôt.
 - Des notions de SQL : `SELECT`, `JOIN`, clé primaire, clé étrangère, index.
 
@@ -237,7 +238,7 @@ dotnet user-secrets init --project Chronos.Api
 dotnet user-secrets set "ConnectionStrings:Chronos" "Host=localhost;Port=5432;Database=chronos;Username=chronos;Password=VOTRE_MOT_DE_PASSE" --project Chronos.Api
 ```
 
-La première commande ajoute un identifiant `UserSecretsId` dans `Chronos.Api.csproj` ; versionnez ce changement. Dans la seconde, remplacez le mot de passe par la valeur de `POSTGRES_PASSWORD` de votre fichier `.env`.
+La première commande ajoute un identifiant `UserSecretsId` dans `Chronos.Api.csproj` ; versionnez ce changement. Avec le SDK 10.0.404, elle réécrit le fichier entier : marque d'ordre d'octets (BOM) ajoutée, `<PropertyGroup>` collé sur la première ligne. Relisez le diff et remettez le fichier en forme, pour ne versionner que le nouveau `<PropertyGroup>` et son `UserSecretsId`. Dans la seconde, remplacez le mot de passe par la valeur de `POSTGRES_PASSWORD` de votre fichier `.env`.
 
 Les secrets utilisateur ne sont lus que dans l'environnement `Development`, et ne sont pas chiffrés : c'est un outil de poste de développement, pas un coffre-fort.
 
@@ -437,7 +438,7 @@ namespace Chronos.Api.Commun;
 public record PageDto<T>(IReadOnlyList<T> Elements, int Page, int Taille, int Total);
 ```
 
-Supprimez `ProjetsEnMemoire.cs` et, dans `Program.cs`, la ligne `AddSingleton<ProjetsEnMemoire>()`. Dans `ProjetsEndpoints.cs`, `MapProjets` ne change pas ; les trois gestionnaires reçoivent maintenant le contexte par injection :
+Supprimez `ProjetsEnMemoire.cs` et, dans `Program.cs`, la ligne `AddSingleton<ProjetsEnMemoire>()`. Dans `ProjetsEndpoints.cs`, retirez la route `DELETE /api/projets/{id}` et son gestionnaire (exercice 3 du module 03) : avec la base, un projet ne se supprime plus, il s'annule (`Annuler()`, module 04), et ses données restent. Les trois gestionnaires restants reçoivent maintenant le contexte par injection ; la liste garde le filtre `?statut=` du module 03 :
 
 ```csharp
 private static readonly Expression<Func<Projet, ProjetDto>> VersDto = p => new ProjetDto(
@@ -447,11 +448,18 @@ private static readonly Expression<Func<Projet, ProjetDto>> VersDto = p => new P
     p.ResponsableId, p.Responsable!.Prenom + " " + p.Responsable.Nom, p.Statut);
 
 private static async Task<Ok<PageDto<ProjetDto>>> Lister(
-    ChronosDbContext db, CancellationToken cancellationToken, int page = 1, int taille = 20)
+    ChronosDbContext db, CancellationToken cancellationToken,
+    int page = 1, int taille = 20, StatutProjet? statut = null)
 {
-    var total = await db.Projets.CountAsync(cancellationToken);
+    IQueryable<Projet> requete = db.Projets;
+    if (statut is not null)
+    {
+        requete = requete.Where(p => p.Statut == statut);
+    }
 
-    var elements = await db.Projets
+    var total = await requete.CountAsync(cancellationToken);
+
+    var elements = await requete
         .OrderBy(p => p.Code)
         .Skip((page - 1) * taille)
         .Take(taille)
@@ -495,6 +503,7 @@ Les `using` à ajouter : `System.Linq.Expressions`, `Chronos.Api.Commun`, `Chron
 
 - **`VersDto`** est la correspondance entité → DTO, écrite une fois, à la main. C'est une *expression* : EF Core ne l'exécute pas, il la **traduit en SQL**. `p.Client!.Nom` ne provoque donc aucune erreur quand le projet n'a pas de client : la jointure renvoie `NULL`. Les `!` ne servent qu'à dire au compilateur que ces navigations, déclarées `Client?` et `Collaborateur?`, peuvent être traversées ici.
 - **Tout est asynchrone** (`ToListAsync`, `SaveChangesAsync`) et reçoit le `CancellationToken` de la requête HTTP : si le client se déconnecte, la requête SQL est abandonnée.
+- **Le filtre s'applique avant `CountAsync`** : `total` compte les projets du statut demandé, pas tous les projets.
 - **`OrderBy` avant `Skip`/`Take`** : sans ordre explicite, une base ne garantit aucun ordre, et deux pages pourraient contenir la même ligne. L'ordre doit porter sur une valeur unique ; le code l'est.
 - **`AnyAsync` avant l'insertion** permet de répondre `409` proprement dans le cas courant. La vraie garantie reste l'index unique : entre le contrôle et l'insertion, une autre requête peut passer. Le module 08 traitera ce cas, ainsi que la validation de `page` et `taille`.
 - `SaveChangesAsync` renseigne `projet.Id` avec la valeur générée par la base.
@@ -537,10 +546,16 @@ Pour mesurer ce que la projection évite, écrivez provisoirement trois variante
 
 Avec la projection, le contexte ne suit aucune entité. Supprimez ces variantes une fois l'observation faite.
 
-Ce journal est précieux en développement et bavard en production. Le niveau se règle par catégorie, dans `appsettings.json` :
+Ce journal est précieux en développement et bavard en production. Le niveau se règle par catégorie, dans la section `Logging:LogLevel` de `appsettings.json` :
 
 ```json
 "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+```
+
+et, pour garder le journal en développement, dans celle d'`appsettings.Development.json` — sans cette seconde ligne, la valeur d'`appsettings.json` s'applique aussi en développement :
+
+```json
+"Microsoft.EntityFrameworkCore.Database.Command": "Information"
 ```
 
 Documentation : [Journalisation d'EF Core](https://learn.microsoft.com/en-us/ef/core/logging-events-diagnostics/extensions-logging)
@@ -574,13 +589,14 @@ Il faut le prendre au sérieux. Passez `EstArchive` à `true` pour Sophie (dans 
 Or un projet dont le responsable est archivé existe toujours. Les requêtes sur les projets doivent donc ignorer ce filtre, et lui seul :
 
 ```csharp
-var elements = await db.Projets
-    .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives])
-    .OrderBy(p => p.Code)
-    // ...
+IQueryable<Projet> requete = db.Projets
+    .IgnoreQueryFilters([CollaborateurConfiguration.FiltreNonArchives]);
+// ...
 ```
 
 Faites de même dans `Obtenir` et dans la relecture de `Creer`, puis vérifiez que les deux projets réapparaissent. Remettez ensuite `EstArchive` à `false`.
+
+L'avertissement, lui, reste affiché à chaque commande `dotnet ef`, et donc dans le journal du workflow (exercice 5) : EF Core signale la configuration, il ne sait pas que vos requêtes la traitent. On le laisse visible, comme un rappel pour toute nouvelle requête qui traverse `Responsable`.
 
 Le nom du filtre est une constante : une faute de frappe dans une chaîne ne serait signalée par personne.
 
@@ -600,13 +616,13 @@ Elle répond `No changes have been made to the model since the last migration.` 
 
 2. **Une règle pour toutes les énumérations.** Répéter `HasConversion<string>()` sur chaque propriété finira par être oublié une fois. La méthode `ConfigureConventions` du contexte permet de le dire une fois pour tous les types d'un genre donné ([configuration en masse](https://learn.microsoft.com/en-us/ef/core/modeling/bulk-configuration)). Mettez-la en place, retirez les conversions propriété par propriété, et prouvez avec la commande de l'étape 12 que le modèle n'a pas changé.
 
-3. **Lister les collaborateurs.** Écrivez `GET /api/collaborateurs?page=&taille=`, dans `Collaborateurs/CollaborateursEndpoints.cs`, qui renvoie une page de `CollaborateurDto` : identité, catégorie, poste, nom du manager, et quotité du contrat en cours à la date du jour. Le journal ne doit montrer que deux requêtes SQL, quel que soit le nombre de collaborateurs. Ajoutez Camille aux données initiales (contrat à 80 %, Sophie pour manager) pour avoir de quoi vérifier ; la fonction d'alimentation ne fait rien sur une base qui contient déjà des collaborateurs, il faudra donc repartir d'une base vide.
+3. **Lister les collaborateurs.** Écrivez `GET /api/collaborateurs?page=&taille=`, dans `Collaborateurs/CollaborateursEndpoints.cs`, qui renvoie une page de `CollaborateurDto` : identité, catégorie, poste, nom du manager, et quotité du contrat en cours — celui qui n'a pas de date de fin, comme dans `AjouterContrat` ; `0` s'il n'y en a pas. Comme pour les projets, écrivez la correspondance une fois, dans un champ `VersDto` ; le module 08 la réutilise telle quelle (`.Select(VersDto)`). N'y lisez pas l'horloge (`DateTime.Now`) : la date du jour arrive au module 08, avec `TimeProvider`. Un collaborateur sans manager doit avoir un `managerNom` nul, pas `" "`. Le journal ne doit montrer que deux requêtes SQL, quel que soit le nombre de collaborateurs. Ajoutez Camille aux données initiales (contrat à 80 %, Sophie pour manager) pour avoir de quoi vérifier, et donnez à Sophie un contrat à temps plein — un collaborateur sans contrat afficherait une quotité de 0 ; la fonction d'alimentation ne fait rien sur une base qui contient déjà des collaborateurs, il faudra donc repartir d'une base vide.
 
-4. **Archiver.** Donnez à `Collaborateur` une méthode `Archiver()`, avec son test. Écrivez `DELETE /api/collaborateurs/{id}`, qui archive le collaborateur au lieu de le supprimer ; tant que les affectations, les saisies et les absences n'existent pas (modules 09 et 10), on archive dans tous les cas. Vérifiez ensuite quatre choses : il n'apparaît plus dans la liste ; il apparaît toujours comme responsable de ses projets ; un second `DELETE` répond `404` ; son matricule reste refusé pour un nouveau collaborateur. Ce dernier comportement est-il celui que veut le métier ?
+4. **Archiver.** Donnez à `Collaborateur` une méthode `Archiver()`, avec son test. Écrivez `DELETE /api/collaborateurs/{id}`, qui archive le collaborateur au lieu de le supprimer ; tant que les affectations, les saisies et les absences n'existent pas (modules 09 et 10), on archive dans tous les cas. Vérifiez ensuite quatre choses : il n'apparaît plus dans la liste ; il apparaît toujours comme responsable de ses projets ; un second `DELETE` répond `404` ; son matricule reste refusé pour un nouveau collaborateur. Archivez Sophie : que devient le `managerNom` de Camille, et pourquoi ? Ces deux derniers comportements sont-ils ceux que veut le métier ?
 
-5. **Faire vérifier les migrations par l'intégration continue.** Ajoutez au workflow du module 05, après la compilation, une étape qui restaure les outils (`dotnet tool restore`) et une étape qui exécute la commande de l'étape 12. Le workflow compile en `Release` et ne doit pas recompiler : cherchez les options utiles dans la [référence de `dotnet ef`](https://learn.microsoft.com/en-us/ef/core/cli/dotnet). L'intégration continue n'a ni secrets utilisateur ni base : la commande en a-t-elle besoin ? Provoquez un échec pour vérifier que l'étape joue son rôle.
+5. **Faire vérifier les migrations par l'intégration continue.** Ajoutez au workflow du module 05, après la compilation, une étape qui restaure les outils (`dotnet tool restore`) et une étape qui exécute la commande de l'étape 12. Le workflow compile en `Release` et ne doit pas recompiler : cherchez les options utiles dans la [référence de `dotnet ef`](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) — attention, pour `dotnet ef`, `-c` abrège `--context`, pas `--configuration`. L'intégration continue n'a ni secrets utilisateur ni base : la commande en a-t-elle besoin ? Provoquez un échec pour vérifier que l'étape joue son rôle.
 
-6. **Compter sans charger.** Écrivez `GET /api/clients`, qui renvoie chaque client avec le nombre de ses projets en cours. Une seule requête SQL, aucun `Include`. Lisez le SQL produit : comment EF Core a-t-il traduit le comptage ?
+6. **Compter sans charger.** Branchez `/api/clients` sur la base : supprimez `ClientsEnMemoire.cs` et sa ligne `AddSingleton` dans `Program.cs`, et réécrivez les trois gestionnaires du module 03 (liste, lecture, création) avec le contexte, comme pour les projets. `GET /api/clients` renvoie chaque client avec le nombre de ses projets en cours (`ClientDto` gagne ce nombre). Une seule requête SQL, aucun `Include`. Lisez le SQL produit : comment EF Core a-t-il traduit le comptage ?
 
 ## Critères de réussite
 

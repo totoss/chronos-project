@@ -1,7 +1,7 @@
 # Module 13 — Première application Angular
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, npm 11.19.1, Angular CLI 22.2.7, Angular 22.2.6, TypeScript 6.0.3, Vitest 5.1.0. `ng new`, `ng generate`, `ng build`, `ng test` et `ng serve` y réussissent, et le piège TypeScript 7 y a été reproduit. **Non exécuté** : les mêmes commandes sous Windows / PowerShell (le poste de rédaction n'a pas Node.js). Signalez au mentor tout écart constaté.
+> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, npm 11.19.1, Angular CLI 22.2.7, Angular 22.2.6, TypeScript 6.0.3, Vitest 5.1.0. `ng new`, `ng generate`, `ng build`, `ng test` et `ng serve` y réussissent, et le piège TypeScript 7 y a été reproduit. Le module a été **rejoué le 12 novembre 2026 sur la solution de référence** avec les mêmes versions (build et tests verts, exercices 1 à 5 compris). **Non exécuté** : les mêmes commandes sous Windows / PowerShell (le poste de rédaction n'a pas Node.js). Signalez au mentor tout écart constaté.
 
 L'API de Chronos sait créer un collaborateur, calculer une charge, valider une feuille de temps. Mais personne, dans la société, ne va envoyer du JSON à la main : il faut des écrans. Ce module crée l'application Angular qui les portera, et y affiche une première liste de collaborateurs. Les données sont encore écrites en dur : le dialogue avec l'API viendra au [module 16](16-dialoguer-avec-l-api.md).
 
@@ -161,7 +161,7 @@ La CLI pose encore deux questions :
 
 Sans `--style` et `--ssr`, elle aurait aussi demandé le système de feuilles de style et l'activation du rendu côté serveur.
 
-La commande affiche la liste des fichiers créés, puis `Packages installed successfully.` Tout le reste vient des valeurs par défaut de la version 22 : composants autonomes, zoneless, tests avec Vitest, TypeScript strict, noms de fichiers sans suffixe ([options de `ng new`](https://angular.dev/cli/new)).
+La commande affiche la liste des fichiers créés, puis `Packages installed successfully.` npm 11 peut aussi afficher `npm warn install-scripts 4 packages have install scripts not yet covered by allowScripts` (`esbuild`, `lmdb`, `@parcel/watcher`, `msgpackr-extract`) : c'est un avertissement, il n'empêche ni la compilation ni les tests ; n'approuvez rien pour l'instant. Tout le reste vient des valeurs par défaut de la version 22 : composants autonomes, zoneless, tests avec Vitest, TypeScript strict, noms de fichiers sans suffixe ([options de `ng new`](https://angular.dev/cli/new)).
 
 > Comme annoncé au module 00, le cours n'installe pas la CLI globalement, contrairement à la [documentation d'Angular](https://angular.dev/installation). Une fois le projet créé, **`npx ng`, lancé dans `src/web`, exécute la CLI du projet**, celle que fixe `package.json` : tout le monde utilise la même.
 
@@ -178,7 +178,8 @@ src/web/
   .editorconfig          règles d'indentation pour l'éditeur
   .prettierrc            règles de mise en forme (Prettier)
   .gitignore             exclut node_modules/, dist/, .angular/cache
-  .vscode/               extension et tâches recommandées pour VS Code
+  .vscode/               extension recommandée, tâches et lancement pour VS Code
+  README.md              mode d'emploi générique de la CLI, en anglais
   public/                fichiers servis tels quels (favicon.ico)
   src/
     index.html           la page unique ; elle contient <app-root>
@@ -193,7 +194,7 @@ src/web/
       app.routes.ts      les routes — vides pour l'instant (module 15)
 ```
 
-Ouvrez `package.json` et relevez deux choses : la ligne `"typescript": "~6.0.2"`, sur laquelle l'étape 10 revient, et les scripts `start`, `build` et `test`, qui appellent `ng serve`, `ng build` et `ng test`.
+Ouvrez `package.json` et relevez deux choses : la ligne `"typescript": "~6.0.2"`, sur laquelle l'étape 10 revient, et les scripts `start`, `build` et `test`, qui appellent `ng serve`, `ng build` et `ng test`. La ligne `"packageManager": "npm@11.19.1"` note simplement le gestionnaire de paquets et la version qui ont créé le projet : laissez-la.
 
 Deux remarques pour éviter des recherches inutiles. `tsconfig.json` ne contient pas de ligne `"strict": true` : avec TypeScript 6, le mode strict est la valeur par défaut. Et la CLI installe Prettier avec son fichier `.prettierrc` : laissez-les tels quels, le [module 22](22-qualite-du-code.md) s'en occupe.
 
@@ -300,7 +301,7 @@ Lancez maintenant les tests :
 npm test
 ```
 
-Un test échoue : `app.spec.ts` cherchait encore « Hello, chronos-web » dans le `<h1>`. Corrigez son second test pour qu'il décrive la page actuelle :
+Un test échoue : `app.spec.ts` cherchait encore « Hello, chronos-web » dans le `<h1>`. Corrigez son second test, `should render title`, pour qu'il décrive la page actuelle :
 
 ```ts
   it('affiche le nom de l\'application', async () => {
@@ -311,7 +312,7 @@ Un test échoue : `app.spec.ts` cherchait encore « Hello, chronos-web » dans l
   });
 ```
 
-Dans un terminal, `npm test` reste en mode surveillance (`Watching for file changes...`) et relance les tests à chaque enregistrement ; la touche `q` le quitte. Les tests sont le sujet du [module 20](20-tester-l-interface.md) : d'ici là, on se contente de les garder verts.
+Dans un terminal, `npm test` reste en mode surveillance (`Watching for file changes...`) et relance les tests à chaque enregistrement ; la touche `q` le quitte. Pour une exécution unique, qui rend la main : `npm test -- --no-watch`. Les tests sont le sujet du [module 20](20-tester-l-interface.md) : d'ici là, on se contente de les garder verts.
 
 ### 6. Générer le premier composant métier
 
@@ -578,7 +579,7 @@ git status --short
 
 ## Critères de réussite
 
-- `npm run build` et `npm test` se terminent sans erreur dans `src/web`.
+- `npm run build` et `npm test -- --no-watch` se terminent sans erreur dans `src/web`.
 - `http://localhost:4200/` affiche la liste ; taper `mar` ne laisse que Martin et Marchand ; le bouton montre et masque Sarah Petit ; une recherche sans résultat affiche un message.
 - `package.json` contient `"typescript": "~6.0.2"` et un bloc `devEngines`.
 - Votre code ne contient ni `standalone: true`, ni `changeDetection`, ni `*ngIf`, ni `*ngFor`, ni `NgModule`.

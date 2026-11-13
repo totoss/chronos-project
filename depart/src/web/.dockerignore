@@ -1,0 +1,5 @@
+# TODO [module 23] Exclure de l'image dépendances installées, sortie de construction, cache
+#    d'Angular, `Dockerfile` et `.dockerignore`.
+#    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 6 « Écrire le Dockerfile de l'interface »
+# TODO [module 23] Exclure aussi couverture de code et rapports de tests (Playwright, JUnit).
+#    — cours/23-conteneuriser-l-application.md, non détaillé dans le module : comparer avec la solution au tag `module-23`

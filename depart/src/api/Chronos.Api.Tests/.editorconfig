@@ -1,0 +1,4 @@
+# TODO [module 22] Ne pas imposer aux noms des méthodes de test la règle CA1707 (pas de tiret bas) : les noms de tests sont des phrases, les tirets
+#    bas y sont voulus. Section « [*.cs] » qui désactive cette règle seulement dans ce dossier ; le fichier ne contient pas « root = true »,
+#    il complète celui de la racine du dépôt au lieu de le remplacer. Même fichier dans Chronos.Domain.Tests.
+#    — cours/22-qualite-du-code.md, Pas à pas, étape 5 « Décider du sort de chaque avertissement » (passage « Régler pour un dossier. »)

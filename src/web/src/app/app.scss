@@ -1,0 +1,54 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+h1 {
+  font: inherit;
+  margin: 0 0 0 8px;
+}
+
+mat-sidenav-container {
+  flex: 1;
+}
+
+mat-sidenav {
+  width: 240px;
+}
+
+mat-sidenav-content {
+  padding: 24px;
+}
+
+.utilisateur {
+  margin-left: auto;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// Le lien d'évitement : hors de l'écran, sauf quand il reçoit le focus au clavier.
+.evitement {
+  background: var(--mat-sys-primary);
+  border-radius: 4px;
+  color: var(--mat-sys-on-primary);
+  left: 8px;
+  padding: 8px 16px;
+  position: absolute;
+  top: -100px;
+  z-index: 1000;
+
+  &:focus {
+    top: 8px;
+  }
+}
+
+// Le focus d'un lien du menu : Material ne l'indique que par un fond grisé, trop discret.
+a[mat-list-item]:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: -3px;
+}

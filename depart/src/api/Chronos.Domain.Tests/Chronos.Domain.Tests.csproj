@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fourni : la référence vers Chronos.Domain (la dépendance va dans ce sens seulement : le domaine ignore qu'il est testé) et la ligne qui copie
+       xunit.runner.json (fichier fourni) dans le dossier de sortie. Les réglages communs viennent de Directory.Build.props. -->
+
+  <!-- TODO [module 04] Le projet existe déjà, avec sa référence et xunit.runner.json : ne lancez ni « dotnet new xunit3 » ni « dotnet sln add » (le premier
+       refuserait d'écraser les fichiers, et l'option de forçage effacerait ces annotations). Écrivez à la main ce que le modèle aurait produit : faire de ce
+       projet un programme exécutable (propriété OutputType), déclarer une directive using globale pour l'espace de noms Xunit, et référencer le paquet
+       xunit.v3.mtp-v2 sans attribut Version (la version est dans Directory.Packages.props). Ces trois ajouts vont ensemble : sans le paquet, un exécutable
+       sans point d'entrée ne compile pas.
+       — cours/04-modeliser-le-domaine.md, Pas à pas, étape 4 « Créer le projet de tests » -->
+  <!-- TODO [module 09] Référencer le paquet Microsoft.Extensions.TimeProvider.Testing (« dotnet package add » avec les options de projet (celui-ci) et de version (10.11.0))
+       — cours/09-affectations-et-calcul-de-charge.md, Pas à pas, étape 7 « « La semaine en cours » » -->
+  <!-- Fichier généré, non créé : packages.lock.json, produit par « dotnet restore » une fois le verrouillage activé dans Directory.Build.props
+       (module 05, étape 7 « Accélérer avec un cache ») ; à versionner. -->
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronos.Domain\Chronos.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

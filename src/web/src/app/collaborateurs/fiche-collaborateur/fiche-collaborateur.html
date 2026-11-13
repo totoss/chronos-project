@@ -1,0 +1,76 @@
+<h2 #titre tabindex="-1">Fiche collaborateur</h2>
+
+@if (!identifiantValide()) {
+  <p>Cette adresse ne désigne aucun collaborateur : l'identifiant doit être un nombre.</p>
+  <a matButton routerLink="/collaborateurs">Retour à la liste</a>
+} @else if (collaborateur.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement de la fiche" />
+} @else if (introuvable()) {
+  <p>Aucun collaborateur ne porte l'identifiant « {{ id() }} ».</p>
+  <a matButton routerLink="/collaborateurs">Retour à la liste</a>
+} @else if (collaborateur.error()) {
+  <p role="alert">
+    La fiche n'a pas pu être chargée.
+    <button matButton type="button" (click)="collaborateur.reload()">Réessayer</button>
+  </p>
+} @else if (collaborateur.hasValue()) {
+  @let c = collaborateur.value();
+  @if (enEdition()) {
+    <app-formulaire-collaborateur
+      [collaborateur]="c"
+      (enregistre)="terminer($event)"
+      (annule)="quitterLEdition()"
+      (recharger)="collaborateur.reload()"
+    />
+  } @else {
+    <mat-card>
+      <mat-card-header>
+        <h3 mat-card-title>{{ c.prenom }} {{ c.nom }}</h3>
+        <mat-card-subtitle>{{ c.poste }} — {{ c.categorie }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <mat-list>
+          <mat-list-item>
+            <mat-icon matListItemIcon>badge</mat-icon>
+            <span matListItemTitle>Matricule</span>
+            <span matListItemLine>{{ c.matricule }}</span>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon>mail</mat-icon>
+            <span matListItemTitle>Adresse électronique</span>
+            <span matListItemLine>{{ c.email }}</span>
+          </mat-list-item>
+          @if (c.dateEntree; as dateEntree) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>event</mat-icon>
+              <span matListItemTitle>Date d'entrée</span>
+              <span matListItemLine>{{ dateEntree | date: 'dd/MM/yyyy' }}</span>
+            </mat-list-item>
+          }
+          @if (c.dateSortie; as dateSortie) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>event_busy</mat-icon>
+              <span matListItemTitle>Date de sortie</span>
+              <span matListItemLine>{{ dateSortie | date: 'dd/MM/yyyy' }}</span>
+            </mat-list-item>
+          }
+          @if (c.quotite; as quotite) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>schedule</mat-icon>
+              <span matListItemTitle>Quotité</span>
+              <span matListItemLine>{{ quotite | percent }}</span>
+            </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        @if (session.aLeRole('GestionnaireRh')) {
+          <button matButton type="button" (click)="enEdition.set(true)">Modifier</button>
+        }
+        <a matButton routerLink="/collaborateurs">Retour à la liste</a>
+      </mat-card-actions>
+    </mat-card>
+  }
+}

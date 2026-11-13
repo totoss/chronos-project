@@ -1,7 +1,7 @@
 # Module 15 — Routage
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, Angular CLI 22.2.7, Angular 22.2.6, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0. `ng build` et `ng test` y réussissent ; la redirection, les liens, les titres de page, le paramètre de requête et la page introuvable ont été contrôlés dans un navigateur et par un test de navigation. **Non exécuté** : les commandes sous Windows / PowerShell, et les exercices. Signalez au mentor tout écart constaté.
+> Les commandes et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `node:24` : Node.js 24.22.3, Angular CLI 22.2.7, Angular 22.2.6, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0. `ng build` et `ng test` y réussissent ; la redirection, les liens, les titres de page, le paramètre de requête et la page introuvable ont été contrôlés dans un navigateur et par un test de navigation. **Rejoué le 12 novembre 2026 sur la solution de référence** (suite des modules 13 à 15 sur un même code, conteneur `node:24`, Node.js 24.22, mêmes versions) : pas à pas, exercices 1, 3 et 4, `ng build` (seul l'avertissement de budget) et `ng test` (15 fichiers, 32 tests) réussis. **Non exécuté** : les commandes sous Windows / PowerShell. Signalez au mentor tout écart constaté.
 
 À la fin du module 14, Chronos affiche tout sur une seule page, à une seule adresse. Un gestionnaire RH ne peut ni envoyer à un collègue le lien vers la fiche de Camille Martin, ni revenir en arrière avec le bouton du navigateur, ni garder sa recherche après un rechargement. Et l'application aura bientôt une demi-douzaine d'écrans. Ce module donne **une adresse à chaque écran**, ne charge le code d'un écran que lorsqu'on le visite, et installe la barre de navigation.
 
@@ -320,7 +320,7 @@ Ce fichier n'importe plus aucun composant : il ne fait que des `import()` dynami
 
 ### 7. La coquille : barre de titre, menu, emplacement
 
-`App` cesse d'afficher la liste : il devient le cadre commun à tous les écrans. `src/app/app.ts` :
+`App` cesse d'afficher la liste : il devient le cadre commun à tous les écrans. Si vous avez fait l'exercice 5 du module 13, `ListeProjets` quitte `App`, elle aussi : l'exercice 1 lui rendra une adresse, `/projets`. `src/app/app.ts` :
 
 ```ts
 import { Component, signal } from '@angular/core';
@@ -461,7 +461,7 @@ Dans `CarteCollaborateur`, supprimez l'entrée `active` et la sortie `selection`
   </mat-card-actions>
 ```
 
-Dans `ListeCollaborateurs`, supprimez le `linkedSignal`, `FicheCollaborateur` des `imports`, et dans le template le bloc `@if (selection(); …)` ainsi que la `<div class="contenu">` qui plaçait la fiche à côté des cartes. La boucle redevient :
+Dans `ListeCollaborateurs`, supprimez le `linkedSignal` (et l'import de `Collaborateur`, devenu inutile), `FicheCollaborateur` des `imports`, et dans le template le bloc `@if (selection(); …)` ainsi que la `<div class="contenu">` qui plaçait la fiche à côté des cartes ; dans `liste-collaborateurs.scss`, la règle `.contenu` et le `flex: 1` de `.cartes` disparaissent avec elle. Le reste du template (compteur, et, si vous avez fait les exercices du module 13, répartition et bouton de tri) ne change pas. La boucle redevient :
 
 ```html
 <div class="cartes">
@@ -483,6 +483,8 @@ Ajoutez dans la `<div class="outils">` le lien vers le futur formulaire (`MatIco
 ```
 
 `routerLink="nouveau"`, sans `/` initial, est relatif à la route de la liste : il mène à `/collaborateurs/nouveau`.
+
+Dans `liste-collaborateurs.spec.ts`, les deux tests du module 14 qui ouvraient et fermaient la fiche n'ont plus d'objet : supprimez-les, et ajoutez `providers: [provideRouter([])]` au `configureTestingModule`. Vérifier que la liste mène aux bonnes adresses, ou qu'elle lit la recherche dans l'URL (étape 9), demande une vraie navigation : la solution de référence le fait avec `RouterTestingHarness`, que le [module 20](20-tester-l-interface.md) présentera.
 
 Relancez `npm start` et ouvrez `http://localhost:4200/`. L'adresse devient `/collaborateurs`, l'onglet s'intitule « Collaborateurs — Chronos », le lien du menu est en évidence. « Voir la fiche » mène à `/collaborateurs/1` ; le bouton « Précédent » du navigateur ramène à la liste. Essayez aussi `/collaborateurs/999`, `/collaborateurs/abc` et `/nimporte/quoi`.
 
@@ -562,23 +564,23 @@ chunk-BtY9A79-.js   | page-introuvable         | 580 bytes
 chunk-BB-EPSBe.js   | formulaire-collaborateur | 408 bytes
 ```
 
-Chaque `loadComponent` et chaque `loadChildren` a produit un fichier, que le navigateur ne demandera qu'en visitant la route. Vous pouvez le voir dans l'onglet « Réseau » des outils de développement : le fichier de la fiche n'arrive qu'au premier clic sur « Voir la fiche ».
+Chaque `loadComponent` et chaque `loadChildren` a produit un fichier, que le navigateur ne demandera qu'en visitant la route. Les tailles varient avec vos exercices : après l'exercice 1, la liste des projets partage avec celle des collaborateurs les cartes de Material, et ce code commun part dans un fichier sans nom (environ 82 kB) ; le total initial de la solution de référence est de 515 kB. Vous pouvez le voir dans l'onglet « Réseau » des outils de développement : le fichier de la fiche n'arrive qu'au premier clic sur « Voir la fiche ».
 
 L'avertissement de budget du module 14 est toujours là : la coquille utilise elle-même la barre d'outils, le panneau latéral et la liste de Material, qui restent dans le chargement initial. Deux lectures sont possibles — le seuil par défaut de 500 kB est trop bas pour une application Material, ou la coquille est trop lourde — et la colonne « Estimated transfer size » (environ 117 kB après compression) aide à trancher. Ne changez pas `angular.json` avant d'en avoir parlé en séance.
 
 ## À vous
 
-1. **Les autres écrans.** Ajoutez les routes `/projets`, `/plan-de-charge`, `/feuille-de-temps`, `/absences` et `/connexion`, chacune vers un composant provisoire rangé dans le dossier de sa fonctionnalité (`projets/`, `plan-de-charge/`, `feuilles-de-temps/`, `absences/`, `compte/`), chargé à la demande et doté d'un titre. Complétez le menu, avec une icône par entrée. Vérifiez dans le compte rendu de `npm run build` que chaque écran a son propre fichier. La page de connexion doit-elle figurer dans le menu ?
+1. **Les autres écrans.** Ajoutez les routes `/projets`, `/plan-de-charge`, `/feuille-de-temps`, `/absences` et `/connexion`, chacune vers un composant provisoire rangé dans le dossier de sa fonctionnalité (`projets/`, `plan-de-charge/`, `feuilles-de-temps/`, `absences/`, `compte/`), chargé à la demande et doté d'un titre. Pour `/projets`, la `ListeProjets` du module 13 fait l'affaire, avec son fichier `projets.routes.ts`. Les modules suivants comptent sur certains noms : le [module 18](18-ecrans-metier.md) remplira `PlanDeCharge` (`plan-de-charge/plan-de-charge`), mais **générera** `feuilles-de-temps/feuille-de-temps-hebdo` et le [module 19](19-authentification-cote-interface.md) `compte/connexion` — donnez aux composants provisoires de la feuille de temps et de la connexion un autre nom (la solution de référence : `FeuilleDeTempsProvisoire`, `ConnexionProvisoire`), sans quoi `ng generate` refusera d'écraser vos fichiers. Complétez le menu, avec une icône par entrée. Vérifiez dans le compte rendu de `npm run build` que chaque écran a son propre fichier. La page de connexion doit-elle figurer dans le menu ?
 
-2. **Prédire l'ordre.** Dans `collaborateurs.routes.ts`, placez `:id` avant `nouveau`. Prédisez, *avant d'essayer*, ce qu'affichera `/collaborateurs/nouveau`, puis vérifiez. Faites de même en déplaçant la route `**` en tête de `app.routes.ts`. Remettez l'ordre correct.
+2. **Prédire l'ordre.** Dans `collaborateurs.routes.ts`, placez `:id` avant `nouveau`. Prédisez, *avant d'essayer*, ce qu'affichera `/collaborateurs/nouveau`, puis vérifiez. Faites de même en déplaçant la route `**` en tête de `app.routes.ts`. Remettez l'ordre correct. Exercice d'exploration : il ne laisse aucune trace dans le code.
 
 3. **Un identifiant qui n'en est pas un.** `/collaborateurs/abc` affiche « Aucun collaborateur ne porte l'identifiant « NaN » ». Rendez le message correct pour l'utilisateur. Puis discutez : cette adresse devrait-elle plutôt afficher la page introuvable ? Cherchez dans la documentation ce qui permettrait à une route de ne pas reconnaître `abc`.
 
 4. **Le statut dans l'adresse.** Le choix « afficher les sortis » se perd, lui aussi, au rechargement. Faites-en un paramètre de requête `statut`, sur le modèle de `recherche`. Vérifiez que modifier la recherche ne fait pas disparaître `statut`, et inversement : quelle option de `navigate` le garantit ?
 
-5. **Paginer.** Affichez les collaborateurs deux par deux, avec un paramètre `page` et des liens « Précédent » et « Suivant » — des liens `routerLink` avec `[queryParams]`, pas des boutons. Que doit devenir `page` quand la recherche change ? Que faire de `?page=99` ? Rappelez-vous que `page` arrive sous forme de texte, ou n'arrive pas.
+5. **Paginer.** Affichez les collaborateurs deux par deux, avec un paramètre `page` et des liens « Précédent » et « Suivant » — des liens `routerLink` avec `[queryParams]`, pas des boutons. Que doit devenir `page` quand la recherche change ? Que faire de `?page=99` ? Rappelez-vous que `page` arrive sous forme de texte, ou n'arrive pas. Exercice d'exploration : le [module 16](16-dialoguer-avec-l-api.md) remplace cette pagination par celle de l'API et un paginateur Material ; la solution de référence ne la garde pas.
 
-6. **Un titre qui nomme.** L'onglet de la fiche affiche « Fiche collaborateur — Chronos » pour tout le monde. Faites-lui afficher « Camille Martin — Chronos ». La propriété `title` d'une route accepte une fonction : voyez la section [« Page titles »](https://angular.dev/guide/routing/define-routes#page-titles). Pourquoi un titre précis compte-t-il pour un utilisateur de lecteur d'écran, ou pour quelqu'un qui a dix onglets ouverts ?
+6. **Un titre qui nomme.** L'onglet de la fiche affiche « Fiche collaborateur — Chronos » pour tout le monde. Faites-lui afficher « Camille Martin — Chronos ». La propriété `title` d'une route accepte une fonction : voyez la section [« Page titles »](https://angular.dev/guide/routing/define-routes#page-titles). Pourquoi un titre précis compte-t-il pour un utilisateur de lecteur d'écran, ou pour quelqu'un qui a dix onglets ouverts ? Exercice d'exploration : ce titre lit `collaborateurs-en-dur.ts`, que le module 16 supprime ; la solution de référence ne le garde pas.
 
 ## Critères de réussite
 

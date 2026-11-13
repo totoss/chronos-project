@@ -1,0 +1,67 @@
+<h2 mat-dialog-title>Nouvelle affectation</h2>
+
+<form [formRoot]="formulaire">
+  <mat-dialog-content>
+    <mat-form-field>
+      <mat-label>Collaborateur</mat-label>
+      <mat-select [formField]="formulaire.collaborateurId">
+        @if (collaborateurs.hasValue()) {
+          @for (c of collaborateurs.value().elements; track c.id) {
+            <mat-option [value]="c.id">{{ c.prenom }} {{ c.nom }}</mat-option>
+          }
+        }
+      </mat-select>
+      @for (erreur of formulaire.collaborateurId().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Projet</mat-label>
+      <mat-select [formField]="formulaire.projetId">
+        @if (projets.hasValue()) {
+          @for (p of projets.value().elements; track p.id) {
+            <mat-option [value]="p.id">{{ p.code }} — {{ p.libelle }}</mat-option>
+          }
+        }
+      </mat-select>
+      @for (erreur of formulaire.projetId().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Date de début</mat-label>
+      <input matInput type="date" [formField]="formulaire.dateDebut" />
+      @for (erreur of formulaire.dateDebut().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Date de fin</mat-label>
+      <input matInput type="date" [formField]="formulaire.dateFin" />
+      @for (erreur of formulaire.dateFin().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Taux d'allocation</mat-label>
+      <input matInput type="number" [formField]="formulaire.taux" />
+      <span matTextSuffix>%</span>
+      @for (erreur of formulaire.taux().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+
+    @for (erreur of formulaire().errors(); track $index) {
+      <p role="alert">{{ erreur.message }}</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>Annuler</button>
+    <button matButton="filled" type="submit" [disabled]="formulaire().submitting()">Créer</button>
+  </mat-dialog-actions>
+</form>

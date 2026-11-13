@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- TODO [module 05] Verrouiller la restauration des paquets : une propriété qui fait produire un fichier packages.lock.json à côté de chaque projet (à versionner)
+         — cours/05-github-actions-integration-continue.md, Pas à pas, étape 7 « Accélérer avec un cache » -->
+    <!-- TODO [module 22] Élever le niveau d'analyse (niveau « recommended » du dernier jeu de règles) et appliquer les conventions de style dès la compilation
+         — cours/22-qualite-du-code.md, Pas à pas, étape 4 « Élever le niveau d'analyse » -->
+    <!-- TODO [module 22] Faire produire le fichier de documentation (c'est ce qui permet à la règle IDE0005 de s'exécuter à la compilation) et neutraliser CS1591, seule suppression par NoWarn, avec la raison en commentaire
+         — cours/22-qualite-du-code.md, À vous, exercice 1 « Les `using` inutiles. » -->
+    <!-- TODO [module 22] Traiter les avertissements comme des erreurs, sauf les avertissements d'audit NuGet NU1901 à NU1904 qui restent des avertissements
+         — cours/22-qualite-du-code.md, Pas à pas, étape 6 « Transformer les avertissements en erreurs » -->
+  </PropertyGroup>
+</Project>

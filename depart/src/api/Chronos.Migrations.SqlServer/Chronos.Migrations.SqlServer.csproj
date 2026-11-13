@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fourni : la référence vers Chronos.Infrastructure, où se trouve le contexte. L'infrastructure ne connaît ce projet que par son nom (une référence
+       dans ce sens créerait un cycle) ; c'est l'API qui le référence, pour que son assembly soit à côté d'elle. Aucun paquet ici : ceux de
+       l'infrastructure suffisent. Les commandes « dotnet new classlib », « dotnet sln add » et « dotnet reference add » du module 07 sont faites. Ne les relancez pas. -->
+
+  <!-- TODO [module 07] Créer le jeu de migrations SQL Server : « dotnet ef migrations add Initiale » avec ce projet comme projet cible (option project), Chronos.Api comme
+       projet de démarrage (option startup-project) et le réglage Chronos:Fournisseur, valant SqlServer, passé à l'application après le séparateur « deux tirets » de
+       la ligne de commande (sans lui, l'outil s'arrête, faute de correspondance avec l'assembly de migrations configurée). Comparer ensuite avec le jeu PostgreSQL.
+       Le dossier Migrations/ est écrit par « dotnet ef » et n'est pas fourni
+       — cours/07-deux-sgbd-un-seul-code.md, Pas à pas, étape 5 « Créer le jeu SQL Server » -->
+  <!-- TODO [module 07] Chaque changement du modèle se termine par une migration dans CE projet et une dans Chronos.Migrations.PostgreSql, avec le réglage de
+       fournisseur transmis à l'application ; la vérification des changements en attente se fait deux fois, une par jeu
+       — cours/07-deux-sgbd-un-seul-code.md, Pas à pas, étape 10 « La routine à deux jeux » -->
+  <!-- TODO [module 25] Livrer une migration : produire le script SQL idempotent (« dotnet ef migrations script », option idempotent, sortie dans le dossier ignoré par
+       git) puis un bundle exécutable (« dotnet ef migrations bundle », sortie dans ce même dossier, option force), avec ce projet comme projet cible, Chronos.Api comme
+       projet de démarrage et le réglage Chronos:Fournisseur valant SqlServer ; le bundle se lance avec le compte de migration. Après un bundle, remettre les
+       packages.lock.json en état (« dotnet restore » avec l'option force-evaluate).
+       — cours/25-exploiter-l-application.md, Pas à pas, étape 8 « Livrer une migration » -->
+  <!-- TODO [module 25] Créer la migration TypesAbsenceReference (les données de référence des types d'absence voyagent avec les migrations), puis recréer vos bases de
+       développement, que cette migration refuse
+       — cours/25-exploiter-l-application.md, Pas à pas, étape 10 « Données de référence : les types d'absence dans les migrations » -->
+  <!-- Migrations créées dans ce projet au fil du cours, toutes générées : Initiale (module 07, étape 5), IndexNomCollaborateurs (module 07, À vous, exercice 3),
+       VersionCollaborateur et VersionProjet (module 08), Affectations (module 09), FeuillesDeTemps et Absences (module 10), AjoutIdentiteEtTracabilite
+       (module 12), TypesAbsenceReference (module 25), et le snapshot du modèle. Aucune n'est fournie. -->
+  <!-- Fichier généré, non créé : packages.lock.json (module 05, étape 7 « Accélérer avec un cache »). -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronos.Infrastructure\Chronos.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

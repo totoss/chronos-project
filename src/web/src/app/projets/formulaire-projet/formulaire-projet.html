@@ -1,0 +1,91 @@
+<h2 tabindex="-1">Nouveau projet</h2>
+
+<form [formRoot]="formulaire">
+  <mat-form-field>
+    <mat-label>Code</mat-label>
+    <input matInput [formField]="formulaire.code" />
+    @for (erreur of formulaire.code().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Libellé</mat-label>
+    <input matInput [formField]="formulaire.libelle" />
+    @for (erreur of formulaire.libelle().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Nature</mat-label>
+    <mat-select [formField]="formulaire.nature">
+      <mat-option value="Facturable">Facturable</mat-option>
+      <mat-option value="Interne">Interne</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  @if (!formulaire.clientId().hidden()) {
+    <mat-form-field>
+      <mat-label>Client</mat-label>
+      <mat-select [formField]="formulaire.clientId">
+        @if (clients.hasValue()) {
+          @for (c of clients.value(); track c.id) {
+            <mat-option [value]="c.id">{{ c.nom }}</mat-option>
+          }
+        }
+      </mat-select>
+      @for (erreur of formulaire.clientId().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <mat-form-field>
+    <mat-label>Date de début</mat-label>
+    <input matInput type="date" [formField]="formulaire.dateDebut" />
+    @for (erreur of formulaire.dateDebut().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Date de fin</mat-label>
+    <input matInput type="date" [formField]="formulaire.dateFin" />
+    @for (erreur of formulaire.dateFin().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Budget</mat-label>
+    <input matInput type="number" [formField]="formulaire.budgetJours" />
+    <span matTextSuffix>jours</span>
+    @for (erreur of formulaire.budgetJours().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Responsable</mat-label>
+    <mat-select [formField]="formulaire.responsableId">
+      @if (responsables.hasValue()) {
+        @for (r of responsables.value().elements; track r.id) {
+          <mat-option [value]="r.id">{{ r.prenom }} {{ r.nom }}</mat-option>
+        }
+      }
+    </mat-select>
+    @for (erreur of formulaire.responsableId().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @for (erreur of formulaire().errors(); track $index) {
+    <p role="alert">{{ erreur.message }}</p>
+  }
+
+  <div class="actions">
+    <button matButton="filled" type="submit" [disabled]="formulaire().submitting()">Créer</button>
+    <a matButton routerLink="/projets">Annuler</a>
+  </div>
+</form>

@@ -1,0 +1,17 @@
+# Requêtes à rejouer depuis l'éditeur (fichier .http), contre l'API qui écoute sur http://localhost:5080.
+
+# TODO [module 03] Déclarer l'adresse de l'API en variable de tête, puis y garder les requêtes qu'on rejoue : lire un
+#    projet, en créer un (corps JSON : code, libellé, nature, dates, budget). Ce fichier remplace celui du modèle de projet.
+#    — cours/03-premiere-api.md, Pas à pas, étape 12 « Garder ses requêtes dans le fichier `.http` »
+
+# TODO [module 06] Le corps de création d'un projet gagne le client (facultatif) et le responsable.
+#    — cours/06-persister-avec-ef-core.md, non détaillé dans le module : comparer avec la solution au tag `module-06`
+
+# TODO [module 08] Ajouter une requête de création d'un collaborateur avec un corps vide, pour constater les erreurs de validation.
+#    — cours/08-une-api-robuste.md, Pas à pas, étape 2 « Activer la validation et regarder ce qu'elle fait »
+
+# TODO [module 12] Réécrire le fichier pour une API protégée : connexion d'un compte de démonstration (le mot de passe vient d'une
+#    variable d'un fichier d'environnement non versionné, jamais écrit ici), « qui suis-je ? », liste des collaborateurs visibles,
+#    lecture d'un projet, plan de charge de la semaine. Les écritures exigent en plus le jeton anti-CSRF : les faire depuis
+#    l'interface ou les tests.
+#    — cours/12-securite-et-tracabilite.md, non détaillé dans le module : comparer avec la solution au tag `module-12`

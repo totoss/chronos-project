@@ -1,7 +1,7 @@
 # Module 23 — Conteneuriser l'application
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Docker](../docs/references/docker.md).
-> Les deux Dockerfile, la configuration nginx et les services Compose de ce module ont été **construits et exécutés le 12 novembre 2026** sur une application minimale de même structure (API .NET 10 à cinq projets organisés comme au module 07, avec fichiers de verrouillage et les réglages d'analyse du module 22 ; application Angular créée par la CLI 22.2.7), avec Docker Desktop (Engine 29.9.3, Compose 5.7.0, Buildx 0.38.1), le SDK .NET 10.0.404, Node.js 24.22.3, nginx 1.30.6 et PostgreSQL 18. Les variantes des exercices 1 à 4 ont été essayées aussi, l'exercice 2 avec un certificat produit par `openssl`. **Non exécutés** : la connexion à l'application réelle (l'essai n'avait pas l'authentification du module 12 ; seul le comportement des cookies a été vérifié), l'exercice 5 (SQL Server) et l'exercice 6 (clés de protection des données). Signalez au mentor tout écart constaté.
+> Les deux Dockerfile, la configuration nginx et les services Compose de ce module ont été **construits et exécutés le 12 novembre 2026** sur une application minimale de même structure (API .NET 10 à cinq projets organisés comme au module 07, avec fichiers de verrouillage et les réglages d'analyse du module 22 ; application Angular créée par la CLI 22.2.7), avec Docker Desktop (Engine 29.9.3, Compose 5.7.0, Buildx 0.38.1), le SDK .NET 10.0.404, Node.js 24.22.3, nginx 1.30.6 et PostgreSQL 18. Les variantes des exercices 1 à 4 ont été essayées aussi, l'exercice 2 avec un certificat produit par `openssl`. Le module a ensuite été **rejoué le 13 novembre 2026 sur la solution de référence** (application complète des modules 00 à 22, ASP.NET Core 10.0.15, nginx 1.30.6) : construction des deux images, `docker build --check`, pile Compose avec et sans profil, utilisateurs `app` (1654) et `nginx` (101), connexion par nginx, écriture avec et sans jeton anti-CSRF, en-tête `X-Forwarded-Proto` falsifié par le client et ignoré, fuseau `TZ`, clés de protection des données dans un volume (exercice 6) survivant à `up --force-recreate`. **Non exécutés** : l'exercice 2 (HTTPS) et l'exercice 5 (SQL Server) sur l'application complète. Signalez au mentor tout écart constaté.
 
 Depuis le module 01, les bases de données de Chronos tournent en conteneur, mais l'application elle-même tourne « à la main » : `dotnet run` d'un côté, `ng serve` de l'autre. C'est parfait pour développer, et inutilisable pour livrer : un serveur de production n'a ni SDK .NET, ni Node.js, ni vos sources.
 
@@ -78,11 +78,12 @@ Documentation : [Contexte de construction](https://docs.docker.com/build/concept
 | `mcr.microsoft.com/dotnet/aspnet:10.0` | Exécuter une application ASP.NET Core. Ubuntu 24.04. |
 | `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled` | La même, réduite au strict nécessaire : ni shell, ni gestionnaire de paquets. |
 
-Trois faits à connaître :
+Quatre faits à connaître :
 
 - l'application écoute sur le port **8080**, fixé par la variable `ASPNETCORE_HTTP_PORTS` de l'image ;
 - l'image fournit un utilisateur non privilégié, `app`, dont l'identifiant est dans la variable `APP_UID` (1654). Il faut le choisir explicitement par `USER $APP_UID` ; sans cette ligne, l'application tourne sous `root` ;
-- l'image d'exécution ne contient ni `curl` ni `wget` (constaté), ce qui compte pour le contrôle de santé.
+- l'image d'exécution ne contient ni `curl` ni `wget` (constaté), ce qui compte pour le contrôle de santé ;
+- le fuseau horaire du conteneur est **UTC**. Or « aujourd'hui », pour Chronos, se lit à l'heure locale (`Horloge.Aujourdhui`, module 08) : entre minuit et une ou deux heures du matin, l'API se croirait la veille. L'image `aspnet:10.0` contient les données des fuseaux ; la variable `TZ=Europe/Paris` suffit (constaté). Une valeur inconnue retombe sur UTC, sans erreur.
 
 Documentation : [Images de conteneur .NET](https://learn.microsoft.com/en-us/dotnet/core/docker/container-images), [utilisateur non root](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/8.0/app-user), [images *chiseled*](https://github.com/dotnet/dotnet-docker/blob/main/documentation/ubuntu-chiseled.md)
 
@@ -143,8 +144,10 @@ builder.Services.AddHealthChecks();
 puis, après `var app = builder.Build();` :
 
 ```csharp
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 ```
+
+`.AllowAnonymous()` est indispensable : depuis le [module 12](12-securite-et-tracabilite.md), la politique de repli exige un utilisateur connecté sur tout endpoint qui ne dit rien. Sans cette méthode, `/health` répond `401` (constaté), et Compose déclarerait l'API malade.
 
 Lancez l'API et appelez `http://localhost:5080/health` : la réponse est `Healthy`, en texte, avec le code 200. Pour l'instant, ce point de contrôle dit seulement « le processus répond » ; le [module 25](25-exploiter-l-application.md) lui fera vérifier la base.
 
@@ -211,7 +214,7 @@ Ce qu'il faut y lire :
 - **`# syntax=docker/dockerfile:1`** demande la version courante de la syntaxe, nécessaire à `--link` et `--mount`.
 - **`FROM ... AS build`** ouvre la première étape et la nomme.
 - **Les premiers `COPY`** n'apportent que ce qui décrit les dépendances : les fichiers de projet, les fichiers communs, les fichiers de verrouillage. On y trouve les cinq projets dont l'API a besoin — les deux projets de migrations du [module 07](07-deux-sgbd-un-seul-code.md) compris, puisque `Chronos.Api` les référence. Les projets de tests n'y figurent pas.
-- **`COPY --from=racine .editorconfig`** prend le fichier dans le contexte nommé `racine`, que vous fournirez à l'étape 4. Placé dans `/source`, il s'applique à tout le code compilé dans l'image.
+- **`COPY --from=racine .editorconfig`** prend le fichier dans le contexte nommé `racine`, que vous fournirez à l'étape 4. Placé dans `/source`, il s'applique à tout le code compilé dans l'image ; les `.editorconfig` des dossiers de projets (domaine, migrations) arrivent, eux, avec les sources. Si le fichier manque au contexte, la construction s'arrête sur `"/.editorconfig": not found` (constaté) : l'oubli ne passe pas inaperçu. Ce qu'il contient, en revanche, n'est vérifié que par l'intégration continue.
 - **`dotnet restore --locked-mode`** installe exactement les versions des fichiers de verrouillage, comme l'intégration continue du module 05.
 - **`--mount=type=cache`** conserve les paquets NuGet d'une construction à l'autre, hors de l'image. Le montage figure sur les deux `RUN` : les paquets n'étant pas dans une couche, la publication doit pouvoir les retrouver.
 - **`dotnet publish --no-restore -o /app`** compile en configuration `Release` et rassemble l'application dans `/app`.
@@ -335,6 +338,7 @@ Dans `compose.yaml`, ajoutez deux services après `sqlserver` :
     environment:
       ConnectionStrings__Chronos: Host=postgres;Database=chronos;Username=chronos;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant, voir .env.example}
       Chronos__Fournisseur: PostgreSql
+      TZ: Europe/Paris
     depends_on:
       postgres:
         condition: service_healthy
@@ -360,6 +364,7 @@ Dans `compose.yaml`, ajoutez deux services après `sqlserver` :
 - **`profiles: [app]`** : ces deux services ne démarrent que sur demande.
 - **`build`** : Compose construit l'image à partir du Dockerfile du contexte, et la nomme `chronos-api` ou `chronos-web`. `additional_contexts` joue le rôle de `--build-context`.
 - **`Host=postgres`** : dans le réseau du projet, la base s'appelle par le nom de son service, sur son port interne 5432. Le port publié sur votre poste ne joue aucun rôle ici ; il ne sert qu'à vous, pour `dotnet run` et vos outils.
+- **`TZ: Europe/Paris`** : le fuseau dans lequel l'API lit « aujourd'hui » (voir *Les images .NET*).
 - **`depends_on` avec `service_healthy`** : l'API attend que la base accepte les connexions, l'interface attend que l'API réponde.
 - **`restart: true`** : `docker compose restart api` redémarre aussi `web`.
 - **L'API n'a pas de `ports`.** Elle n'est joignable que par nginx. L'étape 9 montre pourquoi c'est important.
@@ -376,7 +381,9 @@ Rien de nouveau : seules les bases démarrent.
 docker compose --profile app up -d --build --wait
 ```
 
-`--build` reconstruit les images si les sources ont changé. La commande rend la main quand tout est sain. Ouvrez `http://localhost:8080` : l'application s'affiche et vous pouvez vous connecter. Les tables existent déjà, puisque vous avez appliqué les migrations à cette même base au module 06.
+`--build` reconstruit les images si les sources ont changé. La commande rend la main quand tout est sain. Ouvrez `http://localhost:8080` : l'application s'affiche.
+
+**Avec quelles données ?** L'API conteneurisée utilise la base PostgreSQL du projet Compose, celle que vous utilisez depuis le module 06 : les migrations y sont appliquées (refaites `dotnet ef database update` si vous en avez ajouté depuis), et `dotnet run` en environnement `Development` y a créé les données initiales et les comptes de démonstration du module 12. Connectez-vous avec l'un d'eux. L'API conteneurisée, elle, tourne en `Production` : elle n'applique pas les migrations, ne crée ni données initiales (`UseSeeding` est réservé au développement depuis le module 06) ni comptes. Sur une base neuve, personne ne pourrait donc se connecter, et il n'y aurait aucun type d'absence (constaté) : le [module 25](25-exploiter-l-application.md) traite le déploiement des migrations, des données de référence et du premier administrateur.
 
 > **Un cookie `Secure` en HTTP ?** L'API tourne ici en environnement `Production` : le cookie de session est donc marqué `Secure`, alors que vous êtes en HTTP. La connexion fonctionne parce que les navigateurs traitent `localhost` comme une origine sûre (constaté avec Chromium 156). Ce n'est vrai que pour `localhost`.
 
@@ -390,7 +397,7 @@ curl.exe -i http://localhost:8080/collaborateurs/12
 curl.exe -i http://localhost:8080/api/projets
 ```
 
-La première commande renvoie `200` et du HTML — c'est `index.html`. La seconde renvoie une réponse de l'API : du JSON, ou `401` si la route exige une connexion.
+La première commande renvoie `200` et du HTML — c'est `index.html`. La seconde renvoie une réponse de l'API : `401` en `application/problem+json`, puisque toute route autre que la connexion exige d'être connecté (module 12). Une adresse d'API inexistante répond aussi `401` à un visiteur non connecté : la politique de repli passe avant le routage vers un 404.
 
 Pour arrêter, le profil doit être répété, sans quoi seules les bases sont arrêtées :
 
@@ -452,11 +459,11 @@ et transmettez-la à l'API, dans son bloc `environment` :
       Chronos__ReseauDuRelais: 10.89.0.0/24
 ```
 
-Un réseau existant ne change pas d'adresse : arrêtez tout avec `docker compose --profile app down`, puis relancez avec `--build`. Rappelez l'endpoint : l'adresse distante est maintenant celle du client. Mettez une adresse de réseau erronée dans la variable et recommencez : les en-têtes sont de nouveau ignorés, et l'API ne le signale qu'au niveau de journalisation `Debug`, par le message `Unknown proxy`.
+Un réseau existant ne change pas d'adresse : arrêtez tout avec `docker compose --profile app down`, puis relancez avec `--build`. Rappelez l'endpoint : l'adresse distante est maintenant celle du client, telle que nginx l'a reçue. Avec Docker Desktop, c'est la passerelle du réseau du projet, `10.89.0.1`, par laquelle arrive tout ce qui passe par un port publié (visible dans `docker compose logs web`) : elle diffère de l'adresse du conteneur nginx. Mettez une adresse de réseau erronée dans la variable et recommencez : les en-têtes sont de nouveau ignorés, et l'API ne le signale qu'au niveau de journalisation `Debug`, par le message `Unknown proxy`.
 
-**Pourquoi l'API n'a pas de port publié.** Une requête arrivée par un port publié provient, vue du conteneur, de la passerelle du réseau du projet — donc d'une adresse de confiance. Quiconque atteindrait ce port pourrait écrire lui-même `X-Forwarded-Proto: https` et une fausse adresse, et l'API les croirait (constaté). La confiance accordée au réseau ne vaut que si nginx en est la seule porte d'entrée.
+**Pourquoi l'API n'a pas de port publié.** Une requête arrivée par un port publié provient, vue du conteneur, de la passerelle du réseau du projet — donc d'une adresse de confiance. Quiconque atteindrait ce port pourrait écrire lui-même `X-Forwarded-Proto: https` et une fausse adresse, et l'API les croirait (constaté). La confiance accordée au réseau ne vaut que si nginx en est la seule porte d'entrée. Par nginx, en revanche, la falsification échoue : `$scheme` remplace le `X-Forwarded-Proto` envoyé par le client, `$proxy_add_x_forwarded_for` ajoute l'adresse réelle à la fin de `X-Forwarded-For`, et l'API ne lit que la dernière valeur (`ForwardLimit` vaut 1 par défaut). Un `X-Forwarded-Proto: https` écrit par le client ne rend pas le cookie `XSRF-TOKEN` `Secure` (constaté).
 
-**Et le HTTPS ?** Ici, nginx reçoit du HTTP : `$scheme` vaut `http`, et le cookie `XSRF-TOKEN` part sans `Secure`. En production, quelqu'un doit porter le certificat. Si c'est nginx, `$scheme` vaut `https`, l'API reçoit `X-Forwarded-Proto: https`, `Request.IsHttps` devient vrai et le cookie est marqué `Secure` : c'est l'exercice 2. Si c'est un serveur de l'hébergeur placé devant nginx, c'est son en-tête que nginx doit retransmettre, et non `$scheme` ; cela dépend de l'hébergeur ([module 24](24-github-actions-construire-et-publier.md)).
+**Et le HTTPS ?** Ici, nginx reçoit du HTTP : `$scheme` vaut `http`, et le cookie `XSRF-TOKEN` part sans `Secure`, comme le cookie `.AspNetCore.Antiforgery.*` qui l'accompagne (tous deux suivent `SameAsRequest`). C'est sans conséquence sur `localhost`, que rien n'intercepte ; jamais acceptable sur un vrai réseau. En production, quelqu'un doit porter le certificat. Si c'est nginx, `$scheme` vaut `https`, l'API reçoit `X-Forwarded-Proto: https`, `Request.IsHttps` devient vrai et le cookie est marqué `Secure` : c'est l'exercice 2. Si c'est un serveur de l'hébergeur placé devant nginx, c'est son en-tête que nginx doit retransmettre, et non `$scheme` ; cela dépend de l'hébergeur ([module 24](24-github-actions-construire-et-publier.md)).
 
 Supprimez l'endpoint de diagnostic.
 
@@ -470,7 +477,7 @@ Documentation : [Changement de comportement des en-têtes transmis](https://lear
 docker image ls
 ```
 
-Dans l'essai : environ 470 Mo pour l'API, dont 342 pour l'image `aspnet:10.0` ; 82 Mo pour l'interface. L'image du SDK, elle, pèse 1,3 Go : c'est ce que la construction en plusieurs étapes vous évite de livrer.
+Dans l'essai : environ 470 Mo pour l'API, dont 342 pour l'image `aspnet:10.0` et 6,5 pour `curl` ; 85 Mo pour l'interface. L'image du SDK, elle, pèse 1,3 Go : c'est ce que la construction en plusieurs étapes vous évite de livrer.
 
 Le reste de l'image de l'API, c'est votre application publiée. Le fournisseur SQL Server y pèse lourd : une publication indépendante de l'architecture embarque ses bibliothèques natives pour **toutes** les plateformes, soit 66 Mo sur 84 dans l'essai.
 
@@ -500,7 +507,7 @@ Documentation : [`docker image history`](https://docs.docker.com/reference/cli/d
 
 5. **L'autre base.** Faites tourner l'application conteneurisée sur SQL Server ([module 07](07-deux-sgbd-un-seul-code.md)) : un second profil, ou une variable. Quelles valeurs changent, et lesquelles ne doivent surtout pas figurer dans `compose.yaml` ?
 
-6. **Rester connecté.** Connectez-vous à l'application, puis recréez le conteneur de l'API avec `docker compose --profile app up -d --force-recreate api`. Êtes-vous toujours connecté ? Lisez la section sur les conteneurs de la page [Protection des données](https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0) et faites en sorte que les sessions survivent à un redéploiement.
+6. **Rester connecté.** Connectez-vous à l'application, puis recréez le conteneur de l'API avec `docker compose --profile app up -d --force-recreate api`. Êtes-vous toujours connecté ? Lisez la section sur les conteneurs de la page [Protection des données](https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0) et faites en sorte que les sessions survivent à un redéploiement. Remarquez qu'un simple `docker compose restart api` ne déconnecte personne : c'est la recréation du conteneur — donc tout redéploiement — qui perd les clés. Un volume nommé monté sur un dossier de l'image prend le propriétaire de ce dossier : créez-le dans le Dockerfile, avant `USER`, et donnez-le à `$APP_UID`. Fixez aussi le nom de l'application (`SetApplicationName("Chronos")`) : c'est lui qui permet à plusieurs instances de partager les mêmes clés. Lisez enfin l'avertissement que l'API journalise au démarrage : que dit-il des clés écrites dans le volume, et qui peut les lire ?
 
 ## Critères de réussite
 
@@ -528,6 +535,9 @@ Documentation : [`docker image history`](https://docs.docker.com/reference/cli/d
 | `EXPOSE 80`, `-p 8080:80` | L'application écoute sur 8080 depuis .NET 8. | `EXPOSE 8080`. |
 | Pas de ligne `USER` | L'application tourne sous `root`. | `USER $APP_UID`. |
 | `HEALTHCHECK` avec `curl` sans l'avoir installé | L'image n'en contient pas : le conteneur reste `unhealthy`. | Installer `curl`, ou sonder de l'extérieur. |
+| `app.MapHealthChecks("/health")` sans `.AllowAnonymous()` | La politique de repli du module 12 répond `401` : le conteneur reste `unhealthy` et l'interface ne démarre pas. | `.AllowAnonymous()`. |
+| Pas de variable `TZ` | L'API calcule « aujourd'hui » en UTC : la veille, entre minuit et 1 ou 2 h. | `TZ: Europe/Paris` dans `compose.yaml`. |
+| Lancer la pile sur une base neuve et s'étonner de ne pas pouvoir se connecter | En `Production`, ni migrations, ni données initiales, ni comptes de démonstration. | Voir le module 25. |
 | `ENTRYPOINT dotnet Chronos.Api.dll` (forme texte) | Le signal d'arrêt n'atteint pas l'application. | La forme tableau. |
 | `COPY dist/chronos-web /usr/share/nginx/html` | Le dossier contient un sous-dossier `browser` : nginx ne trouve pas `index.html`. | `dist/chronos-web/browser`. |
 | `nginxinc/nginx-unprivileged` | Ancien emplacement de l'image. | `nginx/nginx-unprivileged`. |

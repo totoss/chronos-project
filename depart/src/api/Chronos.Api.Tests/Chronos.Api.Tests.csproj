@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fourni : la référence vers le projet de l'API. Le SDK ci-dessous est provisoire : il permet au projet de compiler à vide
+       (le SDK Web produit un exécutable, qui exigerait un point d'entrée). Les propriétés communes (cadre cible, nullabilité,
+       usings implicites) viennent de Directory.Build.props ; aucun numéro de version de paquet ici (gestion centralisée). -->
+
+  <!-- TODO [module 11] Le projet existe déjà et il est déjà dans la solution : ne lancez ni la commande de création de projet de test xUnit ni
+       l'ajout à la solution (ils refuseraient ou écraseraient les fichiers fournis). Écrivez à la main ce que le modèle aurait produit,
+       dans ce fichier, comme décrit ci-dessous. Inscrire les versions des nouveaux paquets dans Directory.Packages.props, en 10.0.x pour
+       les paquets Microsoft.AspNetCore.* (jamais 11) ; la version de Microsoft.Extensions.TimeProvider.Testing ne s'y inscrit pas
+       deux fois si le module 09 l'y a déjà mise.
+       — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+  <!-- TODO [module 11] Donner ce projet au SDK « Microsoft.NET.Sdk.Web » (la documentation des tests d'intégration le demande), à la place du
+       SDK ci-dessus, puis déclarer une propriété de type de sortie « Exe ».
+       — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+  <!-- TODO [module 11] Copier xunit.runner.json (fichier fourni, à côté de ce projet) dans le dossier de sortie, quand il est plus récent :
+       déclarer l'élément en mise à jour (« Update ») de l'élément existant, jamais en ajout (« Include »), sinon NETSDK1022 (éléments
+       « Content » en double).
+       — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+  <!-- TODO [module 11] Déclarer l'espace de noms Xunit en « using » global du projet.
+       — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+  <ItemGroup>
+    <!-- TODO [module 11] Ajouter les références de paquets Microsoft.AspNetCore.Mvc.Testing, Microsoft.Extensions.TimeProvider.Testing (la référence est
+         toujours nécessaire ici : le module 09 ne l'a ajoutée qu'à Chronos.Domain.Tests), Testcontainers.PostgreSql et xunit.v3.mtp-v2, sans version.
+         — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+    <!-- TODO [module 11] Ajouter le paquet Testcontainers.MsSql (version 4.16.0 dans Directory.Packages.props) pour rejouer les mêmes tests sur SQL Server.
+         — cours/11-tests-d-integration.md, À vous, exercice 5 « Les mêmes tests sur SQL Server. » -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronos.Api\Chronos.Api.csproj" />
+  </ItemGroup>
+
+</Project>

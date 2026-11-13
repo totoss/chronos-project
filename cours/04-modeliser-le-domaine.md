@@ -1,7 +1,7 @@
 # Module 04 — Modéliser le domaine en C#
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code et les commandes de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, C# 14, `xunit.v3.templates` et `xunit.v3.mtp-v2` 4.0.3) : les tests du pas-à-pas et ceux de l'exercice 2 passent avec `dotnet test` (17 tests). Les entités, celles des exercices comprises, ont été enregistrées puis relues par EF Core 10.0.15 sans retouche (essai avec le fournisseur SQLite). **Non exécutés** : les commandes sous Windows même, et le lancement des tests depuis un éditeur. Signalez au mentor tout écart constaté.
+> Le code et les commandes de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, C# 14, `xunit.v3.templates` et `xunit.v3.mtp-v2` 4.0.3) : les tests du pas-à-pas et ceux de l'exercice 2 passent avec `dotnet test` (17 tests). Les entités, celles des exercices comprises, ont été enregistrées puis relues par EF Core 10.0.15 sans retouche (essai avec le fournisseur SQLite). Le module a ensuite été **rejoué sur la solution de référence** (même SDK, `xunit.v3.mtp-v2` 4.0.3) : pas à pas et exercices compris, `dotnet build` sans avertissement et `dotnet test` à 73 tests verts ; l'API répond comme au module 03. **Non exécutés** : les commandes sous Windows même, et le lancement des tests depuis un éditeur. Signalez au mentor tout écart constaté.
 
 À la fin du module 03, l'API acceptait un projet facturable sans client, ou un projet qui se termine avant d'avoir commencé. Le cahier des charges interdit les deux. Où écrire ces interdictions ?
 
@@ -434,11 +434,14 @@ Le statut ne se modifie pas : le projet *démarre*, *se termine*, *est annulé*.
     {
         if (EstClos)
         {
+            var etat = Statut == StatutProjet.Termine ? "terminé" : "annulé";
             throw new RegleMetierException("RG-13",
-                $"Le projet {Code} est {Statut} : il n'accepte plus ni affectation ni saisie de temps.");
+                $"Le projet {Code} est {etat} : il n'accepte plus ni affectation ni saisie de temps.");
         }
     }
 ```
+
+Le message d'une `RegleMetierException` est destiné à l'utilisateur : il sera affiché tel quel par l'interface. On y écrit donc « terminé », pas le nom de l'énumération (`Termine`).
 
 Écrivez sur le modèle de `Demarrer()` les deux méthodes qui manquent : `Terminer()`, possible seulement pour un projet en cours, et `Annuler()`, possible tant que le projet n'est pas clos.
 
@@ -538,7 +541,7 @@ Les énumérations existent maintenant en double. L'API doit utiliser celles du 
 dotnet reference add Chronos.Domain --project Chronos.Api
 ```
 
-Dans `Chronos.Api/Projets/ProjetDto.cs`, supprimez les deux énumérations. Ajoutez `using Chronos.Domain;` en tête de `ProjetDto.cs` et de `ProjetsEnMemoire.cs`.
+Dans `Chronos.Api/Projets/ProjetDto.cs`, supprimez les deux énumérations. Ajoutez `using Chronos.Domain;` en tête de `ProjetDto.cs`, de `ProjetsEnMemoire.cs` et de `ProjetsEndpoints.cs` — ce dernier utilise `StatutProjet` depuis le filtre de l'exercice 1 du module 03.
 
 ```powershell
 dotnet build
@@ -556,7 +559,7 @@ L'API ne crée pas encore d'entité `Projet` : sa liste en mémoire contient des
 
 3. **`Client`.** Écrivez l'entité (`Id`, `Nom`) et ses tests. Ajoutez ensuite à `Projet` une propriété `Client? Client`, à *setter* privé, que le constructeur ne renseigne pas : c'est EF Core qui la remplira au module 06, à partir de `ClientId`.
 
-4. **`Collaborateur` et RG-02.** Propriétés : `Id`, `Matricule`, `Nom`, `Prenom`, `Email`, `Categorie` (énumération `CategorieCollaborateur` : `Consultant`, `Interne`), `Poste`, `DateEntree`, `DateSortie?`, `ManagerId?`, `EstArchive`. La date de sortie n'est pas connue à l'embauche : par quelle méthode arrive-t-elle, et comment s'appelle-t-elle dans la bouche d'un gestionnaire RH ? Testez RG-02, limite comprise. Ajoutez à `Projet` la propriété `Collaborateur? Responsable`, comme pour le client.
+4. **`Collaborateur` et RG-02.** Propriétés : `Id`, `Matricule`, `Nom`, `Prenom`, `Email`, `Categorie` (énumération `CategorieCollaborateur` : `Consultant`, `Interne`), `Poste`, `DateEntree`, `DateSortie?`, `ManagerId?`, `EstArchive`. La date de sortie n'est pas connue à l'embauche : par quelle méthode arrive-t-elle, et comment s'appelle-t-elle dans la bouche d'un gestionnaire RH ? Testez RG-02, limite comprise. Prévoyez aussi une méthode qui rattache le collaborateur à un manager (ou à personne) et une qui modifie sa fiche (nom, prénom, adresse, poste, date de sortie, manager) : le module 08 les appellera. Ajoutez à `Projet` la propriété `Collaborateur? Responsable`, comme pour le client.
 
 5. **`Contrat` et RG-03.** Propriétés : `Id`, `CollaborateurId`, `Type` (énumération `TypeContrat` : `Cdi`, `Cdd`, `Alternance`, `Stage`), `Quotite`, `DateDebut`, `DateFin?`. La quotité est une fraction décimale : `0.80m` pour 80 %. Testez RG-03 aux quatre limites avec une théorie ; `[InlineData(0.09m)]` ne compile pas, mais `[InlineData(0.09)]` avec un paramètre `decimal` fonctionne. Un collaborateur conserve l'historique de ses contrats : donnez-lui une méthode `AjouterContrat(...)`, une collection `Contrats` que l'extérieur peut lire mais pas modifier (un champ privé `_contrats` de type `List<Contrat>`, exposé en `IReadOnlyCollection<Contrat>`), et une méthode `QuotiteAu(DateOnly jour)`. Testez un passage de 100 % à 80 % : la quotité d'avant le changement ne doit pas bouger.
 

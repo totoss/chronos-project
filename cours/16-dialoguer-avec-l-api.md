@@ -1,7 +1,7 @@
 # Module 16 — Dialoguer avec l'API
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Le code de ce module a été **compilé et testé le 12 novembre 2026** dans une application créée par `ng new` (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3) , à partir de l'état de l'application à la fin du module 15 : `ng build` réussit et les tests des composants passent. Le proxy et les écrans ont été exécutés dans un navigateur contre une **API factice** qui imite les réponses décrites aux modules 08 et 12. L'enchaînement avec la véritable API .NET n'a **pas** été exécuté, ni donc l'ouverture de session de l'étape 2. Signalez au mentor tout écart constaté.
+> Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à partir de l'état de la fin du module 15 : `ng build` réussit (avec l'avertissement de budget) et les 53 tests passent. Le proxy, l'ouverture de session de l'étape 2 et les écrans ont été exécutés dans Chromium contre la **véritable API .NET** du module 12, avec les quatre comptes de démonstration. L'ajout de l'indicateur `estSorti` à l'API (étape 3) a été rejoué de même : 340 tests côté API, sur PostgreSQL 18 et SQL Server 2025. Signalez au mentor tout écart constaté.
 
 Depuis le module 13, la liste des collaborateurs sort d'un tableau écrit en dur. L'API des modules 03 à 12, elle, sait paginer, filtrer, valider et refuser. Ce module branche l'une sur l'autre : l'interface demande ses données à l'API, lui envoie ses modifications, et montre à l'utilisateur ce qui se passe pendant l'attente et quand l'API dit non.
 
@@ -98,7 +98,7 @@ L'API répond aux erreurs par un `ProblemDetails` ([RFC 9457](https://www.rfc-ed
 
 | Code | Sens | Ce que contient la réponse |
 | --- | --- | --- |
-| `400` | Entrées invalides | `errors` : les messages par champ, en anglais, sous le nom C# du champ (`"Matricule"`) |
+| `400` | Entrées invalides | `errors` : les messages par champ, sous le nom C# du champ (`"Matricule"`) ; en français quand l'API les a rédigés (`Statut`, `Tri`, champs de création), en anglais sinon (`Page`, `Taille` : message par défaut d'ASP.NET Core) |
 | `404` | Introuvable | — |
 | `409` | Doublon (RG-01, RG-10) ou modification concurrente | `detail` |
 | `422` | Règle de gestion violée | `detail`, et `regle` : `"RG-11"` |
@@ -220,6 +220,8 @@ export interface Collaborateur {
   dateEntree?: string;
   dateSortie?: string | null;
   quotite?: number;
+  /** Vrai si la date de sortie est passée. Toujours présent : c'est un indicateur, pas une date. */
+  estSorti: boolean;
   /** Jeton de concurrence, à renvoyer tel quel dans une modification. */
   version: string;
 }
@@ -227,7 +229,17 @@ export interface Collaborateur {
 
 Le DTO fait foi. Si le vôtre n'expose pas un champ, retirez-le du type : le compilateur vous montre les lignes à corriger. S'il en expose d'autres, ajoutez-les.
 
-**Les dates et la quotité sont facultatives**, et c'est le changement qui demande de l'attention. Depuis le module 12, la liste ne les envoie plus, et la fiche ne les envoie qu'au gestionnaire RH et à l'intéressé. Ici le compilateur ne dit rien — les pipes `date` et `percent` acceptent `undefined` — et c'est l'écran qui se dégrade : la carte afficherait « entrée le » sans date. Entourez ces affichages d'un `@if (c.dateEntree; as dateEntree) { … }`. Dans `CarteCollaborateur`, corrigez aussi `estSorti` : `dateSortie !== null` est vrai pour `undefined` ; écrivez `dateSortie != null`.
+**Les dates et la quotité sont facultatives**, et c'est le changement qui demande de l'attention. Depuis le module 12, la liste ne les envoie **jamais**, même au gestionnaire RH, et la fiche ne les envoie qu'au gestionnaire RH et à l'intéressé. Ici le compilateur ne dit rien — les pipes `date` et `percent` acceptent `undefined` — et c'est l'écran qui se dégrade : la fiche afficherait « Date d'entrée » sans date. Dans la fiche, entourez ces affichages d'un `@if (c.dateEntree; as dateEntree) { … }` (de même pour la quotité), et ajoutez-y la date de sortie, dans un `@if (c.dateSortie; as dateSortie)`. La carte, elle, n'affiche que des éléments de la liste : retirez-en la date d'entrée et la mention « Sortie le », qu'elle n'a plus les moyens d'afficher.
+
+Reste à distinguer les sortis quand on coche « Afficher les collaborateurs sortis ». La liste n'a plus de date, mais le DTO porte `estSorti` : un indicateur calculé par l'API avec la même règle que son filtre `statut=sorti`. Il ne révèle rien que ce filtre ne donne déjà au même utilisateur, et c'est ce qui permet de l'exposer sans rouvrir les dates. Dans la carte, affichez une mention **en texte** — « A quitté la société » — quand il est vrai ; une couleur peut la renforcer, jamais la remplacer (module 21). La fiche, pour le gestionnaire RH et l'intéressé, reste l'endroit où lire la date elle-même.
+
+**Cet indicateur n'existe pas encore dans votre API** : le module 12 a retiré les dates de la liste sans rien mettre à la place. C'est le premier client d'une API qui révèle ce genre de manque, et c'est à vous de le combler — un aller-retour côté serveur, comme il s'en produit dans tout projet. Dans `Chronos.Api/Collaborateurs/` :
+
+- ajoutez `bool EstSorti` à `CollaborateurDto` et à `CollaborateurRhDto`, juste avant `Version` ;
+- les projections `VersDto` deviennent des méthodes qui reçoivent la date du jour — `VersDto(DateOnly aujourdhui)` — et renvoient l'expression, avec `c.DateSortie < aujourdhui` ; leurs appelants (`Lister`, `Obtenir`, `Creer`, `Modifier`) leur passent `horloge.Aujourdhui()`, jamais `DateTime.Now` ;
+- ajoutez les tests d'intégration : sortie passée → `estSorti` vrai dans la liste et dans la fiche ; pas de sortie, sortie aujourd'hui ou future → faux ; la fiche réduite vue par un manager porte l'indicateur, et toujours ni dates ni quotité.
+
+Aucune migration : le modèle de données ne change pas. Relancez l'API, puis vérifiez dans le document OpenAPI que `estSorti` apparaît dans les deux schémas.
 
 ### 4. Lire une fiche
 
@@ -236,17 +248,21 @@ Dans `fiche-collaborateur.ts`, remplacez la recherche dans le tableau en dur :
 ```ts
 readonly id = input.required({ transform: numberAttribute });
 
-protected readonly collaborateur = httpResource<Collaborateur>(
-  () => `/api/collaborateurs/${this.id()}`,
+protected readonly identifiantValide = computed(() => !Number.isNaN(this.id()));
+
+protected readonly collaborateur = httpResource<Collaborateur>(() =>
+  this.identifiantValide() ? `/api/collaborateurs/${this.id()}` : undefined,
 );
 ```
 
-`httpResource` s'importe de `@angular/common/http`. La fonction lit `this.id()` : si l'utilisateur passe d'une fiche à une autre, la requête repart d'elle-même.
+`httpResource` s'importe de `@angular/common/http`. La fonction lit `this.id()` : si l'utilisateur passe d'une fiche à une autre, la requête repart d'elle-même. Pour `/collaborateurs/abc`, `numberAttribute` donne `NaN` : la fonction renvoie `undefined`, aucune requête ne part, et le message « l'identifiant doit être un nombre » du module 15 reste affiché, en tête du template.
 
 Le template doit maintenant distinguer les états. Dans `fiche-collaborateur.html` :
 
 ```html
-@if (collaborateur.isLoading()) {
+@if (!identifiantValide()) {
+  <!-- le message du module 15 : « l'identifiant doit être un nombre » -->
+} @else if (collaborateur.isLoading()) {
   <mat-progress-bar mode="indeterminate" aria-label="Chargement de la fiche" />
 } @else if (collaborateur.error()) {
   <p role="alert">
@@ -278,11 +294,15 @@ import { Observable } from 'rxjs';
 import { Page } from '../commun/page';
 import { Collaborateur } from './collaborateur';
 
+/** Les tris acceptés par l'API ; `-nom` est l'ordre décroissant. */
+export type TriCollaborateurs = 'nom' | '-nom' | 'matricule';
+
 export interface CriteresCollaborateurs {
   page: number;
   taille: number;
   recherche: string;
   avecSortis: boolean;
+  tri: TriCollaborateurs;
 }
 
 @Service()
@@ -293,10 +313,11 @@ export class CollaborateursApi {
   /** À appeler dans un contexte d'injection : l'initialiseur d'un champ de composant. */
   liste(criteres: () => CriteresCollaborateurs) {
     return httpResource<Page<Collaborateur>>(() => {
-      const { page, taille, recherche, avecSortis } = criteres();
+      const { page, taille, recherche, avecSortis, tri } = criteres();
       return {
         url: this.url,
-        params: { page, taille, recherche, tri: 'nom', ...(avecSortis ? {} : { statut: 'actif' }) },
+        // Sans `statut`, l'API renvoie les actifs et les sortis.
+        params: { page, taille, recherche, tri, ...(avecSortis ? {} : { statut: 'actif' }) },
       };
     });
   }
@@ -317,7 +338,8 @@ export class CollaborateursApi {
 
 - **`liste` et `parId` reçoivent des fonctions**, pas des valeurs : c'est en les appelant *dans* la fonction de `httpResource` que la ressource devient dépendante des signals du composant.
 - **`params`** : au lieu de construire l'URL à la main, on donne un objet ; Angular encode les valeurs. Le filtre `statut` n'est envoyé que s'il sert.
-- **Le composant ne connaît plus l'API** : il parle de « collaborateurs sortis », le service traduit en `statut=actif`.
+- **Le composant ne connaît plus l'API** : il parle de « collaborateurs sortis », le service traduit en `statut=actif`. L'API accepte `statut=actif` ou `statut=sorti` ; sans le paramètre, elle renvoie tout le monde.
+- **`tri`** : l'API ne trie que par `nom`, `-nom` et `matricule` (sinon `400`). Le tri par date d'entrée du module 14 ne peut pas passer côté serveur — la date d'entrée est une information contractuelle que la liste ne porte pas : le bouton de tri bascule désormais entre nom et matricule.
 
 La fiche devient :
 
@@ -326,26 +348,28 @@ private readonly api = inject(CollaborateursApi);
 
 readonly id = input.required({ transform: numberAttribute });
 
-protected readonly collaborateur = this.api.parId(this.id);
+protected readonly identifiantValide = computed(() => !Number.isNaN(this.id()));
+
+protected readonly collaborateur = this.api.parId(() =>
+  this.identifiantValide() ? this.id() : undefined,
+);
 ```
 
-`api` doit être déclaré **avant** `collaborateur` : les champs d'une classe s'initialisent dans l'ordre où ils sont écrits.
+`api` et `identifiantValide` doivent être déclarés **avant** `collaborateur` : les champs d'une classe s'initialisent dans l'ordre où ils sont écrits.
 
 ### 6. Brancher la liste, avec pagination
 
-Dans `liste-collaborateurs.ts`, le signal en dur et le filtre calculé disparaissent. C'est l'API qui filtre :
+Dans `liste-collaborateurs.ts`, le signal en dur, le filtre calculé et la ligne de répartition consultants / internes disparaissent. C'est l'API qui filtre et qui trie ; et une répartition calculée sur les vingt cartes d'une page ne dirait rien de l'ensemble. `recherche` et `afficherSortis` restent ceux du module 15, lus dans l'adresse (`?recherche=…`, `?statut=tous`) :
 
 ```ts
 private readonly api = inject(CollaborateursApi);
 
-readonly recherche = input('', { transform: (valeur: string | undefined) => valeur ?? '' });
-
-protected readonly afficherSortis = signal(false);
+protected readonly tri = signal<TriCollaborateurs>('nom');
 protected readonly taille = signal(20);
 
-/** Revient à la première page dès que la recherche ou le filtre change. */
+/** Revient à la première page dès que la recherche, le filtre ou le tri change. */
 protected readonly page = linkedSignal({
-  source: () => ({ recherche: this.recherche(), avecSortis: this.afficherSortis() }),
+  source: () => ({ recherche: this.recherche(), avecSortis: this.afficherSortis(), tri: this.tri() }),
   computation: () => 1,
 });
 
@@ -354,6 +378,7 @@ protected readonly collaborateurs = this.api.liste(() => ({
   taille: this.taille(),
   recherche: this.recherche(),
   avecSortis: this.afficherSortis(),
+  tri: this.tri(),
 }));
 
 /** Garde le dernier total connu pendant qu'une autre page se charge. */
@@ -370,6 +395,7 @@ protected changerDePage(evenement: PageEvent): void {
 
 - **`page` est un `linkedSignal`** : un signal modifiable (`page.set(3)`) qui se réinitialise quand sa source change. Rester en page 3 d'une recherche qui n'a plus qu'une page afficherait une liste vide.
 - **`total` en est un aussi**, pour une autre raison : pendant le chargement de la page 2, `value()` est `undefined`. Sans ce signal, le paginateur afficherait « 0 » un instant, puis se recalerait.
+- **`basculerTri`** alterne maintenant `'nom'` et `'matricule'`, et le libellé du bouton devient « Trier par matricule ».
 
 Dans `liste-collaborateurs.html`, sous la barre d'outils du module 14 :
 
@@ -384,13 +410,21 @@ Dans `liste-collaborateurs.html`, sous la barre d'outils du module 14 :
     <button matButton type="button" (click)="collaborateurs.reload()">Réessayer</button>
   </p>
 } @else if (collaborateurs.hasValue()) {
-  <p>{{ total() }} collaborateur(s)</p>
+  @let elements = collaborateurs.value().elements;
+
+  @if (total() > 0) {
+    <app-compteur-de-resultats [nombre]="elements.length" [total]="total()" />
+  }
 
   <div class="cartes">
-    @for (c of collaborateurs.value().elements; track c.id) {
+    @for (c of elements; track c.id) {
       <app-carte-collaborateur [collaborateur]="c" />
     } @empty {
-      <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+      @if (recherche()) {
+        <p>Aucun collaborateur ne correspond à « {{ recherche() }} ».</p>
+      } @else {
+        <p>Aucun collaborateur à afficher.</p>
+      }
     }
   </div>
 }
@@ -407,7 +441,9 @@ Dans `liste-collaborateurs.html`, sous la barre d'outils du module 14 :
 
 Ajoutez `MatPaginatorModule` et `MatProgressBarModule` aux `imports` ; `PageEvent` vient lui aussi de `@angular/material/paginator`. Le paginateur compte les pages à partir de 0, l'API à partir de 1 : d'où le `- 1` et le `+ 1`. Il reste en dehors du `@if` pour ne pas disparaître à chaque changement de page. Ses libellés sont en anglais ; le module 21 les traduit.
 
-Si vous aviez placé `statut` et `page` dans l'adresse (exercices 4 et 5 du module 15), gardez-les : vos entrées remplacent les deux signals locaux, et le retour à la première page se fait dans la navigation.
+Le compteur du module 14 change de sens : « 20 collaborateurs sur 27 » compte les cartes de la page et le total de la sélection renvoyé par l'API. Il est masqué quand ce total est nul, plutôt que d'afficher « Aucun collaborateur sur 0 ». Un administrateur, qui n'a pas de fiche et ne voit aucun collaborateur (module 12), obtient ainsi « Aucun collaborateur à afficher ».
+
+Si vous aviez aussi placé `page` dans l'adresse (exercice 5 du module 15), gardez-la : votre entrée remplace le signal local, et le retour à la première page se fait dans la navigation.
 
 Documentation : [`linkedSignal`](https://angular.dev/guide/signals/linked-signal), [paginateur](https://material.angular.dev/components/paginator/overview)
 
@@ -489,6 +525,7 @@ export function versErreurApi(erreur: unknown): ErreurApi {
 
 - **`ErreurApi` étend `Error`** : `httpResource` expose alors l'objet tel quel dans `error()`, et un composant peut écrire `erreur instanceof ErreurApi && erreur.statut === 404`.
 - **Le message vient de `detail`**, que Chronos rédige en français pour les `409` et les `422`. Le `title`, lui, est souvent écrit par ASP.NET Core, en anglais (« Not Found », « One or more validation errors occurred. ») : on ne le montre pas, on le remplace par un libellé de l'interface.
+- **`401` et `403` n'ont pas encore de libellé** : une session expirée ou une suppression tentée sans le rôle de gestionnaire RH donne « L'API a répondu par une erreur 403. ». Le module 19 leur donne des mots justes.
 
 ```powershell
 npx ng generate interceptor commun/erreurs
@@ -545,7 +582,7 @@ protected supprimer(collaborateur: Collaborateur): void {
 }
 ```
 
-Sans `.subscribe(...)`, rien ne part. Sans la fonction `error`, l'erreur relancée par l'intercepteur finirait, non traitée, dans la console. Pendant le rechargement, la liste reste affichée : l'état est `'reloading'`.
+Sans `.subscribe(...)`, rien ne part. Sans la fonction `error`, l'erreur relancée par l'intercepteur finirait, non traitée, dans la console. Pendant le rechargement, la liste reste affichée : l'état est `'reloading'`. L'en-tête `X-XSRF-TOKEN` exigé par l'API pour toute écriture (module 12) est posé par `HttpClient`, à partir du cookie déposé par `/api/compte/moi` : vérifiez-le dans l'onglet *Réseau*. Avec un compte qui n'est pas gestionnaire RH, la suppression est refusée (`403`) et notifiée.
 
 Cette suppression ne demande pas de confirmation ; vous l'ajouterez au module 18, avec les dialogues.
 
@@ -562,13 +599,15 @@ await TestBed.configureTestingModule({
 const http = TestBed.inject(HttpTestingController);
 fixture = TestBed.createComponent(FicheCollaborateur);
 fixture.componentRef.setInput('id', '1');
-fixture.detectChanges();
+TestBed.tick();
 
 http.expectOne('/api/collaborateurs/1').flush(camille);
 await fixture.whenStable();
 ```
 
-`provideHttpClientTesting` et `HttpTestingController` viennent de `@angular/common/http/testing`. Le module 20 revient en détail sur ces tests. Supprimez enfin `collaborateurs-en-dur.ts`.
+`provideHttpClientTesting` et `HttpTestingController` viennent de `@angular/common/http/testing`. L'ordre est celui de la documentation de `httpResource` : `TestBed.tick()` fait partir la requête, le test y répond, puis attend la stabilité. Ne commencez pas par `await fixture.whenStable()` : tant qu'une requête attend sa réponse, l'application n'est pas stable, et la promesse ne se résout jamais (constaté).
+
+Il en va de même après une action. Un clic qui change un signal (« Réessayer », le tri, le paginateur) : `TestBed.tick()`, puis `expectOne`. Un clic qui passe par le routeur (le filtre des sortis, qui écrit dans l'adresse) ou une recherche temporisée : la requête part plus tard, `await vi.waitFor(() => http.expectOne(…))` la laisse apparaître. Le module 20 revient en détail sur ces tests. Supprimez enfin `collaborateurs-en-dur.ts`.
 
 ```powershell
 npm test
@@ -578,7 +617,7 @@ npm test
 npm run build
 ```
 
-Les tests doivent passer (`q` quitte le mode surveillance) et la compilation réussir, avec le même avertissement de budget qu'au module 14.
+Les tests doivent passer (`q` quitte le mode surveillance) et la compilation réussir, avec l'avertissement de budget du module 14, plus marqué : le chargement initial passe d'environ 513 kB à 617 kB (voir « Pour la séance »).
 
 ## À vous
 
@@ -586,7 +625,7 @@ Les tests doivent passer (`q` quitte le mode surveillance) et la compilation ré
 
 2. **Les projets.** Écrivez le type `Projet` d'après votre `ProjetDto`, le service `ProjetsApi` et l'écran `ListeProjets` sur la route `/projets` : pagination, recherche, filtre par statut. Qu'avez-vous pu reprendre tel quel du travail sur les collaborateurs ? Qu'est-ce que cela suggère ?
 
-3. **Valeur par défaut.** `httpResource` accepte une option `defaultValue`. Réécrivez la liste des projets avec une page vide par défaut, sans `hasValue()`. Qu'y gagne le template ? Que ne sait-il plus distinguer ?
+3. **Valeur par défaut.** `httpResource` accepte une option `defaultValue`. Réécrivez la liste des projets avec une page vide par défaut, sans `hasValue()`. Qu'y gagne le template ? Que ne sait-il plus distinguer ? Provoquez ensuite une erreur (arrêtez l'API) : `value()` lève une exception quand la ressource est en erreur, même avec une valeur par défaut — constaté dans le code d'Angular 22.2. Une lecture hors du template s'écrit donc `hasValue() ? value() : …` ; le module 18 s'en servira.
 
 4. **Se méfier de la réponse.** L'option `parse` reçoit la réponse brute et renvoie la valeur typée. Écrivez une fonction qui vérifie que la réponse de `/api/collaborateurs` a bien un tableau `elements` et un nombre `total`, et lève une erreur sinon. Renommez un champ côté API : que voit l'utilisateur, avec et sans `parse` ?
 
@@ -601,7 +640,8 @@ Les tests doivent passer (`q` quitte le mode surveillance) et la compilation ré
 - Changer de page, de taille de page ou de recherche envoie une requête, et une seule ; une recherche ramène à la première page.
 - API arrêtée : la liste et la fiche affichent un message et un bouton « Réessayer », qui fonctionne une fois l'API relancée.
 - Une suppression refusée par l'API affiche une notification ; une suppression réussie recharge la liste.
-- `npm run build` réussit (l'avertissement de budget du module 14 est toujours attendu) et `npm test` passe.
+- `npm run build` réussit (l'avertissement de budget du module 14 est toujours attendu, avec un dépassement plus grand) et `npm test` passe.
+- Avec un compte de manager, la liste ne montre que son équipe et la fiche d'un équipier n'a ni dates ni quotité ; avec un compte de collaborateur, la seule fiche visible est la sienne, les autres répondent « Aucun collaborateur ne porte l'identifiant » ; aucune erreur dans la console hormis les réponses `4xx` attendues.
 - Comparez avec la solution de référence : `git diff module-15 module-16`.
 
 ## Pièges

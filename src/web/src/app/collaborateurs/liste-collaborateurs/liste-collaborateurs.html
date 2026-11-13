@@ -1,0 +1,74 @@
+<h2 tabindex="-1">Collaborateurs</h2>
+
+<div class="outils">
+  <app-barre-de-recherche
+    libelle="Filtrer par nom"
+    [recherche]="recherche()"
+    (rechercheChange)="rechercher($event)"
+  />
+
+  <button matButton="outlined" type="button" (click)="basculerSortis()">
+    @if (afficherSortis()) {
+      Masquer les collaborateurs sortis
+    } @else {
+      Afficher les collaborateurs sortis
+    }
+  </button>
+  <button matButton="outlined" type="button" (click)="basculerTri()">
+    @if (tri() === 'nom') {
+      Trier par matricule
+    } @else {
+      Trier par nom
+    }
+  </button>
+  <a *appSiRole="'GestionnaireRh'" matButton="filled" routerLink="nouveau">
+    <mat-icon>add</mat-icon>
+    Nouveau collaborateur
+  </a>
+</div>
+
+@if (collaborateurs.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement des collaborateurs" />
+}
+
+@if (collaborateurs.error()) {
+  <p role="alert">
+    La liste n'a pas pu être chargée.
+    <button matButton type="button" (click)="collaborateurs.reload()">Réessayer</button>
+  </p>
+} @else if (collaborateurs.hasValue()) {
+  @let elements = collaborateurs.value().elements;
+
+  @if (total() > 0) {
+    <app-compteur-de-resultats [nombre]="elements.length" [total]="total()" />
+  }
+
+  <div class="cartes">
+    @for (c of elements; track c.id) {
+      <app-carte-collaborateur [collaborateur]="c" (supprimer)="supprimer(c)" />
+    } @empty {
+      @if (recherche()) {
+        <p>
+          Aucun collaborateur ne correspond à « {{ recherche() }} ». Modifiez ou effacez la
+          recherche.
+        </p>
+      } @else {
+        <p>
+          Aucun collaborateur à afficher.
+          @if (!afficherSortis()) {
+            Les collaborateurs sortis sont masqués.
+          }
+        </p>
+      }
+    }
+  </div>
+}
+
+<mat-paginator
+  aria-label="Pagination des collaborateurs"
+  [length]="total()"
+  [pageIndex]="page() - 1"
+  [pageSize]="taille()"
+  [pageSizeOptions]="[10, 20, 50]"
+  (page)="changerDePage($event)"
+/>

@@ -1,7 +1,7 @@
 # Module 10 — Temps et absences
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, Microsoft.Data.SqlClient 6.1.7) : tests unitaires des transitions, appels HTTP de chaque règle, et l'expérience des deux demandes simultanées dans ses quatre variantes, sur PostgreSQL 18.6 ; les mêmes appels et la variante finale de l'expérience ont été rejoués sur SQL Server 2025 (17.0.5045). **Non exécutés** : les migrations (et donc l'effet de `EnableRetryOnFailure` sur les commandes `dotnet ef`), l'envoi depuis un fichier `.http`, les exercices.
+> Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, Microsoft.Data.SqlClient 6.1.7) : tests unitaires des transitions, appels HTTP de chaque règle, et l'expérience des deux demandes simultanées dans ses quatre variantes, sur PostgreSQL 18.6 ; les mêmes appels et la variante finale de l'expérience ont été rejoués sur SQL Server 2025 (17.0.5045). **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-09`, mêmes versions ; PostgreSQL 18.6 et SQL Server 2025 17.0.5045 en conteneurs) : pas à pas, migrations `FeuillesDeTemps` et `Absences` dans les deux jeux et appliquées (`EnableRetryOnFailure` sans effet sur `dotnet ef`), `has-pending-model-changes` pour les deux fournisseurs, exercices 1, 2, 3 et 5 (225 tests verts), parcours des étapes 5, 8 et 9 par HTTP sur chaque base (réponses identiques), courses avec délai provisoire sur les deux SGBD : RG-41 (`201` + `422`), course inverse de l'exercice 5 (`200` + `422` `RG-43`), deux transitions simultanées d'une même feuille ou d'une même absence (`200` + `409` ou `422`). Corrigés à cette occasion : la conversion du statut (étape 3), le projet inconnu (étape 4), le projet non affecté et la saisie corrigée (étape 5), le jeton `Version` de l'absence et les types sur une base existante (étape 6), `Demander` (étape 8), la dernière vérification (étape 9), le test de l'exercice 1. **Non exécutés** : l'envoi depuis un fichier `.http`, l'exercice 6 (exploratoire).
 
 Chronos sait qui est affecté à quoi. Il lui reste à savoir ce qui s'est **réellement** passé : le temps saisi par chacun, validé par son manager, et les absences, demandées puis approuvées.
 
@@ -287,7 +287,6 @@ public class FeuilleDeTempsConfiguration : IEntityTypeConfiguration<FeuilleDeTem
     {
         builder.ToTable("FeuillesDeTemps");
         builder.HasIndex(f => new { f.CollaborateurId, f.Semaine }).IsUnique();
-        builder.Property(f => f.Statut).HasConversion<string>().HasMaxLength(20);
         builder.Property(f => f.MotifRejet).HasMaxLength(500);
         builder.Property(f => f.Version).IsConcurrencyToken();
         builder.HasOne<Collaborateur>().WithMany().HasForeignKey(f => f.CollaborateurId).OnDelete(DeleteBehavior.Restrict);
@@ -308,6 +307,7 @@ public class SaisieDeTempsConfiguration : IEntityTypeConfiguration<SaisieDeTemps
 ```
 
 - **L'index unique `(CollaborateurId, Semaine)`** : une feuille par collaborateur et par semaine. C'est lui qui rend RG-31 vérifiable dans l'agrégat — toutes les saisies d'un jour sont forcément dans la même feuille.
+- **Le statut** est enregistré en chaîne de 20 caractères au plus par la convention de `ConfigureConventions` (module 06, exercice 2) : rien à écrire pour lui.
 - **`Saisies` est lue et écrite par son champ `_saisies`** : EF Core reconnaît ce nom par convention.
 - **La cascade est voulue ici**, pour une fois : une saisie n'existe pas sans sa feuille. Et une saisie retirée de la liste est **supprimée** de la base à l'enregistrement.
 
@@ -383,6 +383,11 @@ if (demandes.Any(d => !feuille.Periode.Contient(d.Jour)))
 
 var idsProjets = demandes.Select(d => d.ProjetId).Distinct().ToList();
 var projets = await db.Projets.Where(p => idsProjets.Contains(p.Id)).ToListAsync(cancellationToken);
+if (projets.Count != idsProjets.Count)
+{
+    return Invalide("Saisies", "Au moins une saisie porte sur un projet inconnu.");
+}
+
 foreach (var projet in projets)
 {
     projet.VerifierOuvert();
@@ -408,14 +413,15 @@ Rejouez le parcours, en notant les réponses. Pour Camille (collaborateur 2, man
 | `PUT …/1/saisies` avec `0.3` jour | `422`, `RG-30` |
 | `PUT …/1/saisies` avec `0.75` + `0.5` le mardi | `422`, `RG-31` |
 | `PUT …/1/saisies` le vendredi 8 mai (férié) | `422`, `RG-32` |
-| `PUT …/1/saisies` sur un projet non affecté | `422`, `RG-33` |
+| `PUT …/1/saisies` sur un projet non affecté (créez-en un troisième par `POST /api/projets` : Camille est affectée aux deux autres toute la semaine) | `422`, `RG-33` |
+| `PUT …/1/saisies` sur un projet qui n'existe pas | `400`, erreur sur `Saisies` |
 | `PUT …/1/saisies` avec `{ "saisies": [ { "projetId": 1, "jour": "2026-05-05" } ] }` | `400`, erreur sur `Saisies[0].Duree` |
 | `POST …/1/validation` sur le brouillon | `422`, `RG-34` |
 | `POST …/1/soumission` | `200`, statut `Soumise` |
 | `PUT …/1/saisies` | `422`, `RG-35` |
 | `POST …/1/validation` avec `{ "valideurId": 2 }` | `422`, `RG-36` |
 | `POST …/1/rejet` avec `{ "valideurId": 1, "motif": "Il manque le jeudi." }` | `200`, statut `Brouillon`, `motifRejet` renseigné |
-| `PUT` corrigé, `POST …/soumission`, `POST …/validation` avec `{ "valideurId": 1 }` | `200`, statut `Validee` |
+| `PUT` corrigé, du mardi au jeudi (Camille sera en congé le lundi, étape 9), `POST …/soumission`, `POST …/validation` avec `{ "valideurId": 1 }` | `200`, statut `Validee` |
 
 ### 6. L'absence
 
@@ -445,7 +451,8 @@ public class Absence
         Statut = StatutAbsence.Demandee;
     }
 
-    // Les propriétés : Id, puis une par paramètre du constructeur, et Statut. Setters privés.
+    // Les propriétés : Id, puis une par paramètre du constructeur, Statut, et Version comme dans la feuille
+    // (Guid.NewGuid() à la création, puis dans chaque transition). Setters privés.
 
     public Periode Periode => new(DateDebut, DateFin);
 
@@ -498,10 +505,11 @@ public class Absence
 - **Les demi-journées** tiennent en deux booléens ; `PartAbsente` les traduit en `0`, `0.5` ou `1` pour un jour donné. Du jeudi après-midi au lundi matin, avec un vendredi férié : `DureeEnJours` rend `1` (RG-42).
 - **`Annuler` reçoit la date du jour** : c'est l'endpoint qui la demande à `TimeProvider` (`horloge.Aujourdhui()`, module 09). Le domaine reste pur et le test choisit sa date.
 - **Pas de motif médical, pas de commentaire libre** : le cahier des charges (§ 6) demande de ne collecter que le nécessaire.
+- **`Version`** joue le même rôle que dans la feuille : un manager qui refuse une absence pendant qu'un autre l'approuve reçoit `409` au lieu d'écraser la décision de l'autre. Seule l'approbation passera par une transaction (étape 8) ; le refus et l'annulation n'ont que ce jeton pour se protéger.
 
 Ajoutez enfin la méthode statique `PartsAbsentes(IEnumerable<Absence> absences, Periode periode)`, qui rend un `IReadOnlyDictionary<DateOnly, decimal>` : pour chaque jour commun à une absence et à la période (`Periode.Intersection`), la somme des `PartAbsente`, plafonnée à `1`. C'est la forme sous laquelle le calcul de charge et la feuille de temps attendent les absences. Testez-la sur l'absence du jeudi après-midi au lundi matin : `0.5` le jeudi, `1` le vendredi, rien pour un lundi hors période.
 
-Configurez `Absence` et `TypeAbsence` (statut en chaîne, relations en `Restrict`, code unique), ajoutez trois types aux données initiales (`CP`, `RTT`, `MAL`), créez les migrations.
+Configurez `Absence` et `TypeAbsence` (`Version` en jeton de concurrence, relations en `Restrict`, code unique ; le statut suit la convention), ajoutez trois types aux données initiales (`CP`, `RTT`, `MAL`), créez les migrations. Attention : `DonneesInitiales.Alimenter` s'arrête dès qu'un collaborateur existe ; sur votre base, déjà alimentée, les types n'apparaîtraient jamais. Donnez-leur leur propre condition (« si la table des types est vide »), indépendante de celle des collaborateurs, dans les deux méthodes, synchrone et asynchrone.
 
 ### 7. RG-41 : deux demandes au même instant
 
@@ -617,7 +625,7 @@ public Task<T> EnTransactionSerialisableAsync<T>(Func<Task<T>> operation, Cancel
 }
 ```
 
-L'approbation se lit alors d'un trait :
+Faites-y passer aussi `Demander` (étape 7) : son corps devient la fonction confiée à `EnTransactionSerialisableAsync`. L'approbation se lit alors d'un trait :
 
 ```csharp
 var absence = await db.EnTransactionSerialisableAsync(async () =>
@@ -667,13 +675,13 @@ Donnez à Camille son congé du lundi 4 mai, approuvez-le, et rappelez `GET /api
 { "debut": "2026-05-04", "fin": "2026-05-10", "capacite": 2.40, "chargePlanifiee": 3.2000, "tauxDeCharge": 1.3333, "surcharge": true, "intercontrat": false }
 ```
 
-2,4 jours de capacité, 3,2 jours de charge, 133 % : l'exemple du cahier des charges, tel que le module 09 l'a tranché, sort maintenant de l'API. Essayez enfin de saisir du temps le lundi 4 : `422`, `RG-32`.
+2,4 jours de capacité, 3,2 jours de charge, 133 % : l'exemple du cahier des charges, tel que le module 09 l'a tranché, sort maintenant de l'API. Essayez enfin de saisir du temps le lundi 4 : `422`, mais `RG-35`, car la feuille de Camille est validée depuis l'étape 5 et ce contrôle passe le premier. Sur un brouillon, c'est `RG-32` qui répondrait, comme le montre le test unitaire de l'étape 2 avec une absence dans le contexte.
 
 ## À vous
 
-1. **Compléter l'API.** `GET /api/absences?collaborateurId=`, `GET /api/types-absence`, le refus et l'annulation. Ajoutez les saisies, les affectations et les absences à la condition d'archivage de `DELETE /api/collaborateurs/{id}` (RG-05), et un test qui le prouve.
+1. **Compléter l'API.** `GET /api/absences?collaborateurId=`, `GET /api/types-absence`, le refus et l'annulation, et `GET /api/feuilles-de-temps/soumises`, la liste des feuilles à valider — attention à ce que cette route ne crée rien, contrairement à la lecture par semaine. Ajoutez les saisies et les absences (les affectations y sont depuis l'exercice 1 du module 09) à la condition d'archivage de `DELETE /api/collaborateurs/{id}` (RG-05) ; une feuille, même vide, compte, car sa clé étrangère interdirait de toute façon la suppression. Vérifiez-le par HTTP ; le test automatisé viendra avec les tests d'intégration du [module 11](11-tests-d-integration.md) (exercice 2).
 
-2. **Des absences qui se touchent sans se chevaucher.** Une absence qui finit le mercredi matin et une autre qui débute le mercredi après-midi sont aujourd'hui refusées. Écrivez `Absence.Chevauche(Absence autre)` dans le domaine, avec ses tests, et utilisez-la après avoir chargé les absences candidates. Faites de même pour RG-43 : une demi-journée d'absence est-elle compatible avec une demi-journée de temps validé le même jour ?
+2. **Des absences qui se touchent sans se chevaucher.** Une absence qui finit le mercredi matin et une autre qui débute le mercredi après-midi sont aujourd'hui refusées. Écrivez `Absence.Chevauche(Absence autre)` dans le domaine, avec ses tests, et utilisez-la après avoir chargé les absences candidates. Faites de même pour RG-43 : une demi-journée d'absence est-elle compatible avec une demi-journée de temps validé le même jour ? N'oubliez pas l'autre demi-journée : une absence approuvée le matin, du temps validé, puis une absence l'après-midi ne doivent pas faire plus d'un jour (`Absence.PartsAbsentes` additionne déjà les absences d'un même jour).
 
 3. **Une absence sans jour ouvré.** Une demande du samedi au dimanche a une durée de zéro. Refusez-la (`RG-42`). Où placez-vous la vérification, sachant qu'elle a besoin du calendrier ?
 

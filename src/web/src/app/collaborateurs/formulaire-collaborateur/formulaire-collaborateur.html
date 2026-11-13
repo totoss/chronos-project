@@ -1,0 +1,133 @@
+@let modification = collaborateur() !== undefined;
+
+<h2 #titre tabindex="-1">{{ modification ? 'Modifier la fiche' : 'Nouveau collaborateur' }}</h2>
+
+<form [formRoot]="formulaire">
+  <mat-form-field>
+    <mat-label>Matricule</mat-label>
+    <input matInput [formField]="formulaire.matricule" />
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
+    @for (erreur of formulaire.matricule().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Nom</mat-label>
+    <input matInput [formField]="formulaire.nom" />
+    @for (erreur of formulaire.nom().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Prénom</mat-label>
+    <input matInput [formField]="formulaire.prenom" />
+    @for (erreur of formulaire.prenom().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Adresse électronique</mat-label>
+    <input matInput type="email" [formField]="formulaire.email" />
+    @for (erreur of formulaire.email().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Catégorie</mat-label>
+    <mat-select [formField]="formulaire.categorie">
+      <mat-option value="Consultant">Consultant</mat-option>
+      <mat-option value="Interne">Interne</mat-option>
+    </mat-select>
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Poste</mat-label>
+    <input matInput [formField]="formulaire.poste" />
+    @for (erreur of formulaire.poste().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Manager</mat-label>
+    <mat-select [formField]="formulaire.managerId">
+      <mat-option [value]="null">Aucun</mat-option>
+      @for (m of candidatsManager(); track m.id) {
+        <mat-option [value]="m.id">{{ m.prenom }} {{ m.nom }}</mat-option>
+      }
+    </mat-select>
+    @for (erreur of formulaire.managerId().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Date d'entrée</mat-label>
+    <input matInput type="date" [formField]="formulaire.dateEntree" />
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
+    @for (erreur of formulaire.dateEntree().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (!formulaire.dateSortie().hidden()) {
+    <mat-form-field>
+      <mat-label>Date de sortie</mat-label>
+      <input matInput type="date" [formField]="formulaire.dateSortie" />
+      @for (erreur of formulaire.dateSortie().errors(); track $index) {
+        <mat-error>{{ erreur.message }}</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  @if (!formulaire.typeContrat().hidden()) {
+    <mat-form-field>
+      <mat-label>Type de contrat</mat-label>
+      <mat-select [formField]="formulaire.typeContrat">
+        <mat-option value="Cdi">CDI</mat-option>
+        <mat-option value="Cdd">CDD</mat-option>
+        <mat-option value="Alternance">Alternance</mat-option>
+        <mat-option value="Stage">Stage</mat-option>
+      </mat-select>
+    </mat-form-field>
+  }
+
+  <mat-form-field>
+    <mat-label>Quotité</mat-label>
+    <input matInput type="number" [formField]="formulaire.quotite" />
+    <span matTextSuffix>%</span>
+    @if (modification) {
+      <mat-hint>Ne se modifie plus après la création.</mat-hint>
+    }
+    @for (erreur of formulaire.quotite().errors(); track $index) {
+      <mat-error>{{ erreur.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @for (erreur of formulaire().errors(); track $index) {
+    <p role="alert">
+      {{ erreur.message }}
+      @if (erreur.kind === 'concurrence') {
+        <button matButton type="button" (click)="recharger.emit()">Recharger la fiche</button>
+      }
+    </p>
+  }
+
+  <div class="actions">
+    <button matButton="filled" type="submit" [disabled]="formulaire().submitting()">
+      {{ modification ? 'Enregistrer' : 'Créer' }}
+    </button>
+    <button matButton type="button" (click)="annuler()">Annuler</button>
+  </div>
+</form>

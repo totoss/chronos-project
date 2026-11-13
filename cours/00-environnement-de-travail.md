@@ -400,6 +400,8 @@ cd chronos
 git init
 ```
 
+> **Avec le projet de départ.** Le dossier [`depart/`](../depart/README.md) du dépôt du cours contient le corps du projet, à compléter module après module. Copiez **tout son contenu** ici, à la racine de votre dépôt : son [mode d'emploi](../depart/README.md#démarrer) donne la commande. Les trois fichiers ci-dessous en font partie ; lisez-les au lieu de les écrire.
+
 Ajoutez-y trois fichiers de configuration. Les deux premiers se copient depuis le dépôt du cours.
 
 **`.gitattributes`** — les fins de ligne :

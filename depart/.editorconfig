@@ -1,0 +1,21 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,xml,csproj,props,slnx,html,scss,ts}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# TODO [module 22] Ajouter à la fin de ce fichier une section « [*.cs] » qui fait de deux conventions des avertissements : espaces de noms
+#    à portée de fichier, accolades systématiques ; chaque ligne suit la forme « option = valeur:sévérité »
+#    — cours/22-qualite-du-code.md, Pas à pas, étape 3 « Écrire les conventions de style »
+# TODO [module 22] Donner à la règle IDE0005 (using inutiles) la sévérité « warning » dans cette même section ; la compilation réclamera
+#    alors deux réglages dans Directory.Build.props
+#    — cours/22-qualite-du-code.md, À vous, exercice 1 « Les `using` inutiles. »

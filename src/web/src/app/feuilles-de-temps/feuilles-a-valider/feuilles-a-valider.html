@@ -1,0 +1,53 @@
+<h2 #titre tabindex="-1">Feuilles à valider</h2>
+
+@if (soumises.isLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Chargement des feuilles à valider" />
+}
+
+@if (soumises.error()) {
+  <p role="alert">
+    Les feuilles à valider n'ont pas pu être chargées.
+    <button matButton type="button" (click)="soumises.reload()">Réessayer</button>
+  </p>
+} @else if (soumises.hasValue()) {
+  @if (soumises.value().length === 0) {
+    <p>Aucune feuille de temps n'attend votre validation.</p>
+  } @else {
+    <ul class="feuilles">
+      @for (f of soumises.value(); track f.id) {
+        <li>
+          <button
+            matButton="outlined"
+            type="button"
+            [attr.aria-pressed]="f.id === feuille()?.id"
+            (click)="ouvrir(f)"
+          >
+            {{ nomDuCollaborateur(f.collaborateurId) }} — semaine du {{ libelleJour(f.semaine) }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+}
+
+@if (feuille(); as f) {
+  <h3>{{ nomDuCollaborateur(f.collaborateurId) }} — semaine du {{ libelleJour(f.semaine) }}</h3>
+  <p>État : {{ libelleStatut[f.statut] }}</p>
+
+  <app-grille-de-saisie
+    [jours]="jours()"
+    [lignes]="lignes()"
+    [joursFermes]="joursFermes()"
+    [lectureSeule]="true"
+    [grille]="grille()"
+  />
+
+  <div class="actions">
+    <button matButton="filled" type="button" [disabled]="envoiEnCours()" (click)="valider(f)">
+      Valider
+    </button>
+    <button matButton="outlined" type="button" [disabled]="envoiEnCours()" (click)="rejeter(f)">
+      Rejeter
+    </button>
+  </div>
+}

@@ -1,0 +1,6 @@
+// TODO [module 16] Relais de développement : tout ce qui commence par /api/ part vers l'API
+//    (http://localhost:5080), pour que l'adresse de l'API n'apparaisse nulle part dans src/app/.
+//    Déclarer ensuite le fichier dans angular.json, cible `serve`, option `proxyConfig` ; relancer
+//    `npm start`.
+//    — cours/16-dialoguer-avec-l-api.md, Pas à pas, étape 1 « Relayer `/api` vers l'API »
+{}

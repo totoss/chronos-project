@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7.0.1
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v6.1.0
+        with:
+          global-json-file: src/api/global.json
+          cache: true
+          cache-dependency-path: src/api/**/packages.lock.json
+
+      - name: Restaurer les paquets
+        run: dotnet restore --locked-mode
+
+      - name: Vérifier le formatage
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Compiler
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Restaurer les outils .NET
+        run: dotnet tool restore
+
+      - name: Vérifier que les migrations PostgreSQL couvrent le modèle
+        run: dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.PostgreSql --startup-project Chronos.Api --no-build --configuration Release -- --Chronos:Fournisseur PostgreSql
+
+      - name: Vérifier que les migrations SQL Server couvrent le modèle
+        run: dotnet ef migrations has-pending-model-changes --project Chronos.Migrations.SqlServer --startup-project Chronos.Api --no-build --configuration Release -- --Chronos:Fournisseur SqlServer
+
+      - name: Tests unitaires
+        run: dotnet test --no-build --configuration Release --project Chronos.Domain.Tests --report-xunit-trx --results-directory TestResults
+
+      - name: Tests d'intégration
+        run: dotnet test --no-build --configuration Release --project Chronos.Api.Tests --report-xunit-trx --results-directory TestResults
+
+      - name: Conserver les résultats des tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: resultats-tests-api
+          path: src/api/TestResults/
+          if-no-files-found: ignore
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7.0.1
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: src/web/package.json
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier le formatage
+        run: npm run format:check
+
+      - name: Analyser le code
+        run: npx ng lint
+
+      - name: Tester
+        run: npx ng test --coverage --reporters=default --reporters=junit --output-file=resultats-tests/junit.xml
+
+      - name: Compiler
+        run: npx ng build
+
+      - name: Vérifier les types des parcours
+        run: npx tsc -p e2e/tsconfig.json --noEmit
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Tester de bout en bout
+        run: npx ng e2e
+
+      - name: Conserver les résultats des tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: resultats-tests-web
+          path: src/web/resultats-tests/
+          if-no-files-found: ignore
+
+      - name: Conserver le rapport Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rapport-playwright
+          path: src/web/playwright-report/
+          if-no-files-found: ignore

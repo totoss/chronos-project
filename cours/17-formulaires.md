@@ -1,7 +1,7 @@
 # Module 17 — Formulaires
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
-> Le code de ce module a été **compilé et testé le 12 novembre 2026** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite de celui du module 16. L'association de Signal Forms et d'Angular Material, signalée « à vérifier » par le référentiel, a fait l'objet d'un **essai réel** : tests avec les harnais de Material, puis saisie dans un navigateur. Les réponses de l'API (201, 400, 409, 422, 500) ont été **simulées** d'après le module 08 ; le formulaire n'a pas été branché sur la véritable API .NET. Signalez au mentor tout écart constaté.
+> Le code de ce module a été **compilé et testé le 12 novembre 2026** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite de celui du module 16. L'association de Signal Forms et d'Angular Material, signalée « à vérifier » par le référentiel, a fait l'objet d'un **essai réel** : tests avec les harnais de Material, puis saisie dans un navigateur. Le module a ensuite été **rejoué le 12 novembre 2026 sur la solution de référence, contre la véritable API .NET** (module 12, PostgreSQL 18) dans Chromium, avec les comptes du gestionnaire RH, de la manager et de la collaboratrice : 201, 400, 409 (unicité et concurrence), 422 (RG-03, RG-04, RG-11, RG-12) et panne réseau. Les compléments que ce module apporte à l'API (étape 6 : `regle` et `code` sur les `409`, messages de validation en français) ont été rejoués de même, avec leurs tests d'intégration. Signalez au mentor tout écart constaté.
 
 Le gestionnaire RH crée la fiche d'un nouveau collaborateur, corrige une adresse, enregistre une date de sortie. Un formulaire, c'est beaucoup de petites décisions : quand afficher une erreur, quoi faire pendant l'envoi, comment montrer le refus de l'API sans effacer dix champs déjà saisis. Ce module les prend une par une, avec Signal Forms.
 
@@ -20,7 +20,7 @@ Le gestionnaire RH crée la fiche d'un nouveau collaborateur, corrige une adress
 
 - [Module 16](16-dialoguer-avec-l-api.md) : `CollaborateursApi`, `ErreurApi`, `erreursInterceptor`, la fiche lue par `httpResource`, et une session ouverte avec un compte de gestionnaire RH.
 - [Module 15](15-routage.md) : la route `/collaborateurs/nouveau` affiche le composant provisoire `FormulaireCollaborateur`.
-- [Module 08](08-une-api-robuste.md) : `CreerCollaborateurRequete`, `ModifierCollaborateurRequete`, et les réponses 400, 409 et 422 de l'API.
+- [Module 08](08-une-api-robuste.md) : `CreerCollaborateurRequete`, `ModifierCollaborateurRequete`, et les réponses 400, 409 et 422 de l'API : `Reponses.Conflit`, `ConflitExceptionHandler`, l'extension `regle` des `422`. L'étape 6 les complète, côté serveur.
 
 ## Règles de gestion
 
@@ -52,8 +52,10 @@ Documentation : [vue d'ensemble](https://angular.dev/guide/forms/signals/overvie
 | Règle sur mesure | `validate(champ, ({ value }) => …)` : renvoie `{ kind, message }` ou `null` |
 | Règle qui lit un autre champ | dans la fonction, `valueOf(champs.autre)` |
 | Règle sous condition | l'option `when` : `required(champ, { when: ({ valueOf }) => … })` |
-| Champ sans objet dans certains cas | `hidden(champ, condition)` |
-| Champ visible mais non modifiable | `disabled(champ, condition)`, `readonly(champ, condition)` |
+| Champ sans objet dans certains cas | `hidden(champ, { when: condition })` |
+| Champ visible mais non modifiable | `disabled(champ, { when: condition })`, `readonly(champ, { when: condition })` |
+
+Sans `when`, la règle s'applique toujours : `disabled(champs.id)`. Passer la condition directement en second argument, `disabled(champ, condition)`, est **déprécié** depuis la v22.
 
 Toutes les règles d'un champ sont évaluées, et réévaluées dès qu'une valeur lue change : une règle qui compare deux dates se met à jour quand l'une **ou** l'autre est modifiée.
 
@@ -224,12 +226,14 @@ function versModele(c: Collaborateur | undefined): ModeleCollaborateur {
     dateEntree: c?.dateEntree ?? '',
     dateSortie: c?.dateSortie ?? '',
     typeContrat: 'Cdi',
-    quotite: Math.round((c?.quotite ?? 1) * 100),
+    // Création : 100 % par défaut. Fiche sans quotité (lue par un autre que le gestionnaire RH,
+    // module 12) : champ vide plutôt qu'une valeur inventée.
+    quotite: c === undefined ? 100 : c.quotite === undefined ? null : Math.round(c.quotite * 100),
   };
 }
 ```
 
-`versModele(undefined)` donne le formulaire vide de la création ; l'étape 7 lui passera un collaborateur. `c?.quotite ?? 1` couvre deux cas : la création, et une fiche que l'API a renvoyée sans quotité parce que l'utilisateur n'est pas gestionnaire RH (module 12). `Math.round` n'est pas une coquetterie : en JavaScript, `0.55 * 100` vaut `55.00000000000001`. Dans la classe, pour l'instant :
+`versModele(undefined)` donne le formulaire vide de la création ; l'étape 7 lui passera un collaborateur. Un formulaire ne doit jamais afficher une valeur fausse : si l'API n'a pas envoyé la quotité, le champ reste vide. `Math.round` n'est pas une coquetterie : en JavaScript, `0.55 * 100` vaut `55.00000000000001`. Dans la classe, pour l'instant :
 
 ```ts
 protected readonly modele = signal(versModele(undefined));
@@ -373,6 +377,57 @@ Cliquez sur « Créer » sans rien saisir : tous les messages apparaissent, et l
 
 Créez un second collaborateur avec le même matricule. L'API répond `409`, l'intercepteur du module 16 affiche une notification, et l'action lève une exception que personne ne traite. Un formulaire mérite mieux : l'erreur doit s'afficher **dans** le formulaire, et y rester.
 
+**Compléter le contrat de l'API.** Avant d'afficher ces refus, regardez ce que l'API envoie. Deux manques apparaissent, et c'est ce premier client qui les révèle :
+
+- **Les `409` se ressemblent tous.** Matricule déjà pris, adresse déjà prise, version périmée : même statut, même titre, seul le texte change. L'étape 8 proposera « Recharger la fiche » après un conflit de version, et seulement dans ce cas : recharger ne sert à rien quand l'adresse est prise, et efface la saisie. L'interface ne doit pas lire le texte du message pour décider.
+- **Les messages d'un `400` sont en anglais** partout sauf dans `CreerCollaborateurRequete` (exercice 4 du module 08) : « The Nom field is required. » pour `PUT /api/collaborateurs/{id}` ou `POST /api/projets`. Le formulaire les montrera tels quels : ils doivent être en français.
+
+Dans `Chronos.Api`, faites l'aller-retour côté serveur. `Commun/Reponses.cs` :
+
+```csharp
+/// <summary>
+/// 409 : la demande est correcte, mais l'état de la ressource ne la permet pas.
+/// <paramref name="regle"/> : la règle de gestion en cause (unicité), dans l'extension « regle », comme pour un 422.
+/// </summary>
+public static ProblemHttpResult Conflit(string detail, string? regle = null) =>
+    TypedResults.Problem(
+        statusCode: StatusCodes.Status409Conflict,
+        title: "Conflit",
+        detail: detail,
+        extensions: regle is null ? null : new Dictionary<string, object?> { ["regle"] = regle });
+```
+
+Dans `Erreurs/ConflitExceptionHandler.cs`, le conflit de version reçoit un code stable, l'extension `code` :
+
+```csharp
+var (detail, code) = exception switch
+{
+    DbUpdateConcurrencyException =>
+        ("La ressource a été modifiée ou supprimée depuis que vous l'avez lue. Rechargez-la, puis recommencez.",
+         "concurrence"),
+    DbUpdateException e when ErreursBaseDeDonnees.EstViolationUnicite(e) =>
+        ("Une ressource porte déjà cette valeur, qui doit être unique.", (string?)null),
+    _ => ((string?)null, (string?)null),
+};
+```
+
+puis, dans le `ProblemDetails` écrit plus bas : `if (code is not null) { problemDetails.Extensions["code"] = code; }` (sortez l'objet dans une variable `problemDetails` pour pouvoir le compléter).
+
+Qui porte quoi :
+
+| Réponse | Extension |
+| --- | --- |
+| `409` matricule ou adresse déjà pris, en création et en modification (`CollaborateursEndpoints`) | `"regle": "RG-01"` |
+| `409` code de projet déjà pris (`ProjetsEndpoints`) | `"regle": "RG-10"` |
+| `409` version périmée (`ConflitExceptionHandler`) | `"code": "concurrence"` |
+| autres `409` (transition de statut, client qui a des projets, jour férié en double, compte existant) | aucune |
+
+Donnez enfin un `ErrorMessage` en français à toutes les annotations des requêtes qui n'en ont pas encore : `ModifierCollaborateurRequete`, `CreerProjetRequete`, `ModifierProjetRequete`, et toute autre requête annotée, sur le modèle de `CreerCollaborateurRequete`.
+
+Ajoutez les tests d'intégration : un matricule déjà pris renvoie `409` avec `regle` = `RG-01` et sans `code` ; une adresse déjà prise en modification, de même ; un code de projet déjà pris, `regle` = `RG-10` ; une modification avec une version périmée, `code` = `concurrence` et sans `regle` ; un `PUT /api/collaborateurs/{id}` au nom vide répond « Le nom est obligatoire. ».
+
+Aucune migration : le modèle de données ne change pas. Relancez l'API, puis rejouez le matricule en double : la réponse porte `"regle": "RG-01"`.
+
 Première pièce : permettre à une requête de dire à l'intercepteur « je m'occupe de mes erreurs de saisie ». Dans `erreur-api.ts`, ajoutez à la classe `ErreurApi` :
 
 ```ts
@@ -381,6 +436,8 @@ get estDeSaisie(): boolean {
   return this.statut === 400 || this.statut === 409 || this.statut === 422;
 }
 ```
+
+Profitez-en pour lire l'extension `code` que vous venez d'ajouter à l'API : `"concurrence"` pour un `409` de version périmée. Un dernier paramètre du constructeur, `readonly code: string | null = null`, un champ `code?: string` dans l'interface `ProblemDetails`, et `probleme.code ?? null` en dernier argument dans `versErreurApi`. L'étape 8 s'en servira.
 
 Dans `erreurs-interceptor.ts` :
 
@@ -424,8 +481,9 @@ import { ErreurApi } from './erreur-api';
 /**
  * Traduit une erreur de l'API en erreurs de formulaire.
  * - 400 : chaque message est rattaché à son champ ;
- * - 409, 422 : l'erreur est rattachée au formulaire entier ; son `kind` est la règle (`RG-xx`)
- *   quand l'API la donne, sinon `http-409` ou `http-422` ;
+ * - 409, 422, ou 400 dont aucun champ n'est reconnu : une erreur sur le formulaire entier, avec
+ *   le message général ; son `kind` est la règle (`RG-xx`) ou le code (`concurrence`) quand l'API
+ *   les donne, sinon `http-400`, `http-409` ou `http-422` ;
  * - autre chose (panne, 500) : aucune erreur de formulaire, l'intercepteur a déjà notifié.
  */
 export function erreursDeFormulaire(
@@ -442,27 +500,26 @@ export function erreursDeFormulaire(
   for (const [nom, messages] of Object.entries(erreur.champs)) {
     // L'API écrit « Nom » ou « nom » selon sa configuration : on accepte les deux.
     const champ = champs[nom.charAt(0).toLowerCase() + nom.slice(1)];
-    for (const messageApi of messages) {
-      // Les messages de validation de l'API sont en anglais : on dit d'où ils viennent.
-      const message = `Valeur refusée par le serveur : ${messageApi}`;
-      erreurs.push(
-        isFieldTree(champ)
-          ? { kind: 'serveur', message, fieldTree: champ }
-          : { kind: 'serveur', message },
-      );
+    if (isFieldTree(champ)) {
+      for (const message of messages) {
+        erreurs.push({ kind: 'serveur', message, fieldTree: champ });
+      }
     }
   }
 
   if (erreurs.length === 0) {
-    erreurs.push({ kind: erreur.regle ?? `http-${erreur.statut}`, message: erreur.message });
+    erreurs.push({
+      kind: erreur.regle ?? erreur.code ?? `http-${erreur.statut}`,
+      message: erreur.message,
+    });
   }
   return erreurs;
 }
 ```
 
 - **Les clés de `errors` portent les noms C#** (`Email`, `Quotite`), les champs du formulaire leurs noms TypeScript (`email`, `quotite`) : mettre la première lettre en minuscule suffit à les rapprocher — à condition de nommer les champs du modèle comme ceux de la requête.
-- **Ce que la fonction ne sait pas placer va au formulaire entier.** C'est le cas d'une clé comme `Saisies[0].Duree`, et du `409` : l'API dit « ce matricule ou cette adresse », sans désigner de champ.
-- **Les messages d'un `400` sont en anglais** (« The Email field is not a valid e-mail address. »). L'interface ne les montre pas comme s'ils étaient les siens : elle les préfixe. Ce cas doit rester rare — vos propres règles, en français, passent avant — et il se corrige à la source : une règle de plus dans le schéma, ou un `ErrorMessage` en français dans l'API (module 08, exercice 4).
+- **Ce que la fonction ne sait pas placer va au formulaire entier**, avec le message général : le `409`, qui dit « ce matricule ou cette adresse » sans désigner de champ, et une clé comme `$.version` (un corps JSON illisible), dont le message technique, en anglais, n'apprendrait rien à l'utilisateur.
+- **Les messages d'un `400` sont montrés tels quels.** Ce sont ceux des `ErrorMessage` des requêtes de l'API, que vous avez tous écrits en français. Ce cas reste rare : vos propres règles passent avant, et le formulaire n'envoie rien tant qu'elles échouent.
 
 Dernière pièce : l'action attrape l'erreur et renvoie sa traduction.
 
@@ -516,12 +573,12 @@ validate(champs.dateSortie, ({ value, valueOf }) => {
 });
 
 // Ce que l'API n'accepte qu'à la création n'est plus modifiable ensuite.
-disabled(champs.matricule, enModification);
-disabled(champs.categorie, enModification);
-disabled(champs.dateEntree, enModification);
-disabled(champs.quotite, enModification);
-hidden(champs.typeContrat, enModification);
-hidden(champs.dateSortie, enCreation);
+disabled(champs.matricule, { when: enModification });
+disabled(champs.categorie, { when: enModification });
+disabled(champs.dateEntree, { when: enModification });
+disabled(champs.quotite, { when: enModification });
+hidden(champs.typeContrat, { when: enModification });
+hidden(champs.dateSortie, { when: enCreation });
 ```
 
 - **`valueOf(champs.dateEntree)`** lit un autre champ ; la règle est réévaluée si l'une des deux dates change.
@@ -611,7 +668,9 @@ Une ressource est modifiable : `collaborateur.set(...)` remplace sa valeur sans 
 
 ### 8. La modification concurrente
 
-Ouvrez la même fiche dans deux onglets, cliquez sur « Modifier » dans chacun. Enregistrez dans le premier, puis dans le second : `409`, « La ressource a été modifiée ou supprimée depuis que vous l'avez lue ». L'étape 6 affiche déjà ce message. Il manque le moyen d'en sortir. Dans le formulaire :
+Ouvrez la même fiche dans deux onglets, cliquez sur « Modifier » dans chacun. Enregistrez dans le premier, puis dans le second : `409`, « La ressource a été modifiée ou supprimée depuis que vous l'avez lue. Rechargez-la, puis recommencez. » L'étape 6 affiche déjà ce message. Il manque le moyen d'en sortir.
+
+Le statut ne suffit pas à reconnaître ce cas : une adresse électronique déjà prise répond aussi `409`, et recharger la fiche n'y changerait rien — sinon perdre la saisie. Depuis l'étape 6, l'API les distingue : `"regle": "RG-01"` pour l'unicité, `"code": "concurrence"` pour la version périmée, que `erreursDeFormulaire` reporte dans le `kind`. Dans le formulaire :
 
 ```ts
 /** Demande au parent de recharger la fiche après un conflit (409). */
@@ -622,7 +681,7 @@ readonly recharger = output<void>();
 @for (erreur of formulaire().errors(); track erreur.kind) {
   <p role="alert">
     {{ erreur.message }}
-    @if (erreur.kind === 'http-409' && collaborateur()) {
+    @if (erreur.kind === 'concurrence') {
       <button matButton type="button" (click)="recharger.emit()">Recharger la fiche</button>
     }
   </p>
@@ -631,7 +690,15 @@ readonly recharger = output<void>();
 
 Et dans la fiche : `(recharger)="collaborateur.reload()"`. La ressource redemande la fiche ; l'entrée du formulaire change ; le `linkedSignal` repart de la nouvelle valeur, avec la nouvelle `version`. La saisie en cours est perdue : c'est le prix de la solution la plus simple, à discuter en séance.
 
-Retirez le `<pre>` de l'étape 2, puis vérifiez :
+Retirez le `<pre>` de l'étape 2.
+
+Un mot sur les tests de ce formulaire. `[formRoot]` lance la soumission sans en garder la promesse, et Angular ne la suit pas : après la réponse d'erreur d'une requête simulée, `await fixture.whenStable()` rend la main **avant** que l'action ait rattaché ses erreurs (constaté, même appelé deux fois). Attendez ce que l'utilisateur voit à la fin d'un envoi — le bouton redevient cliquable quand `submitting()` repasse à `false`, au moment même où les erreurs sont posées :
+
+```ts
+await vi.waitFor(() => expect(bouton('Créer').disabled).toBe(false));
+```
+
+`vi.waitFor` réessaie l'assertion jusqu'à ce qu'elle passe (une seconde au plus) : c'est une attente sur un état, pas une durée choisie au hasard. Puis vérifiez :
 
 ```powershell
 npm test
@@ -647,7 +714,7 @@ npm run build
 
 2. **Le manager.** Ajoutez au formulaire du collaborateur le choix du manager, dans une liste chargée depuis l'API. Provoquez RG-04 (un collaborateur manager de son propre manager) : où s'affiche le refus ? Pourquoi l'interface ne peut-elle pas vérifier cette règle elle-même ?
 
-3. **Voir les erreurs 400.** Votre validation empêche d'envoyer un formulaire invalide : vous ne voyez donc jamais les erreurs par champ de l'API. Désactivez provisoirement vos règles `required` et soumettez un formulaire vide. Les messages arrivent-ils sur les bons champs ? Dans quelle langue ? Reliez votre constat à l'exercice 4 du module 08.
+3. **Voir les erreurs 400.** Votre validation empêche d'envoyer un formulaire invalide : vous ne voyez donc jamais les erreurs par champ de l'API. Désactivez provisoirement vos règles `required` et soumettez un formulaire vide. Les messages arrivent-ils sur les bons champs ? Dans quelle langue ? Retirez un `ErrorMessage` de l'API, le temps d'un essai : que voit l'utilisateur ?
 
 4. **Ne plus se répéter.** La boucle `@for … <mat-error>` est recopiée dans chaque champ. Peut-on la confier à un composant `ErreursDeChamp` ? Essayez, et observez ce que devient l'affichage dans `mat-form-field`. Concluez : factoriser, ou non ?
 
@@ -663,7 +730,8 @@ npm run build
 - Un matricule déjà pris affiche le message de l'API **dans** le formulaire, sans notification ; API arrêtée, c'est une notification, et un second clic renvoie la requête.
 - Depuis la fiche, « Modifier » ouvre le même composant, prérempli ; le matricule, la catégorie, la date d'entrée et la quotité y sont grisés ; la requête `PUT` porte la `version`.
 - Une date de sortie antérieure à la date d'entrée affiche RG-02 sans appeler l'API.
-- Deux onglets sur la même fiche : le second enregistrement affiche le conflit et « Recharger la fiche ».
+- Deux onglets sur la même fiche : le second enregistrement affiche le conflit et « Recharger la fiche ». Une adresse électronique déjà prise affiche son refus, **sans** ce bouton.
+- Côté API : un matricule déjà pris répond `409` avec `"regle": "RG-01"`, une version périmée `409` avec `"code": "concurrence"`, un `PUT` au nom vide « Le nom est obligatoire. » ; `dotnet test` réussit.
 - `npm test` et `npm run build` réussissent.
 - Comparez avec la solution de référence : `git diff module-16 module-17`.
 
@@ -683,6 +751,9 @@ npm run build
 | Envoyer le modèle tel quel à l'API | `80` au lieu de `0.8`, `''` au lieu de `null`, champs en trop. | Une conversion explicite vers la requête. |
 | `date.toISOString().slice(0, 10)` | Décale d'un jour selon le fuseau. | Garder la chaîne d'`<input type="date">`. |
 | Renvoyer une panne réseau comme erreur de formulaire | Bloque tout nouvel envoi tant que rien n'est modifié. | Notification, et rien dans le formulaire. |
+| `disabled(champ, condition)`, `hidden(champ, condition)` | Surcharges dépréciées en v22. | `disabled(champ, { when: condition })`. |
+| Reconnaître un conflit de version à son seul statut `409` | L'unicité répond aussi `409` : « Recharger » perdrait la saisie pour rien. | Le `code` (`concurrence`) ou la `regle` du ProblemDetails. |
+| Dans un test, `whenStable()` puis lire les erreurs d'une soumission refusée | La soumission n'est pas suivie par Angular : l'assertion passe trop tôt. | `vi.waitFor` sur la fin visible de l'envoi (bouton réactivé). |
 | « C'est validé côté client » | N'importe qui appelle l'API directement. | L'API valide tout ; l'interface répète pour le confort. |
 
 La liste générale est dans le [référentiel Angular](../docs/references/angular-22.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
@@ -692,7 +763,7 @@ La liste générale est dans le [référentiel Angular](../docs/references/angul
 - RG-03 est écrite trois fois : dans le domaine, dans le schéma du formulaire, dans le cahier des charges. Que se passe-t-il le jour où la borne passe à 5 % ? Peut-on l'écrire une seule fois ?
 - Après un conflit, « Recharger la fiche » efface la saisie. Quelles autres réponses imaginez-vous, et que coûteraient-elles ?
 - Le `409` d'unicité ne dit pas quel champ est en cause. À qui revient-il de le dire : à l'API, à l'interface ? Que changeriez-vous, et où ?
-- Les erreurs 400 arrivent en anglais, avec les noms de champs C#. Est-ce à l'API ou à l'interface de s'adapter ?
+- Les erreurs 400 arrivent avec les noms de champs C#, et en anglais tant qu'une annotation n'a pas son `ErrorMessage`. Est-ce à l'API ou à l'interface de s'adapter ?
 - Pourquoi le formulaire émet-il `enregistre` en modification, mais navigue-t-il lui-même en création ? Est-ce cohérent ? Proposez autre chose.
 - Vous rejoignez une équipe dont tous les formulaires sont en Reactive Forms. Que faites-vous du prochain formulaire à écrire ?
 

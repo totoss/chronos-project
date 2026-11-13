@@ -1,0 +1,3 @@
+[*.cs]
+# Les noms de tests sont des phrases : les tirets bas y sont voulus.
+dotnet_diagnostic.CA1707.severity = none
