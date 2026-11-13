@@ -1,9 +1,10 @@
 # Module 00 — Environnement de travail
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md) et le [référentiel Angular 22](../docs/references/angular-22.md).
-> **Les commandes d'installation de ce module n'ont pas été exécutées** : rien ne pouvait être installé sur le poste de rédaction. Leurs identifiants ont été relevés le 12 novembre 2026 sur les pages officielles citées. Ont été **exécutés**, dans des conteneurs Linux : le comportement de `global.json` avec les SDK 10.0.404 et 11.0.100 installés côte à côte ; `devEngines`, `engines` et `engine-strict` avec Node.js 24.22.3 et npm 11.19.1 ; `npx @angular/cli@22 version` (CLI 22.2.7) ; `init.defaultBranch` et `.gitattributes`. Sous Windows 11, seules des lectures ont été faites (`winget` 1.29, git 2.56.1). Restent **non exécutés** : `fnm`, `gh`, l'installation des éditeurs. Signalez au mentor tout écart constaté.
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md) et le [référentiel Angular 22](../docs/references/angular-22.md).
+> **Les commandes d'installation de ce module n'ont pas été exécutées** : rien ne pouvait être installé sur le poste de rédaction. Leurs identifiants ont été relevés sur les pages officielles citées. Construit et rejoué le 12 novembre 2026 en .NET 10 (c'est l'état des tags `module-NN`), dans des conteneurs Linux : `devEngines`, `engines` et `engine-strict` avec Node.js 24.22.3 et npm 11.19.1 ; `npx @angular/cli@22 version` (CLI 22.2.7) ; `init.defaultBranch` et `.gitattributes`. Sous Windows 11, seules des lectures ont été faites (`winget` 1.29, git 2.56.1).
+> **Aligné sur .NET 11 le 13 novembre 2026.** Ont été rejoués en .NET 11, dans un conteneur Linux qui ne contient que le SDK 11.0.100 : `dotnet --list-sdks`, `dotnet --version`, `dotnet new globaljson`, et tous les essais de `global.json` de l'étape 3 et des exercices 2 et 3, avec leurs messages d'erreur. Le nom du paquet WinGet du SDK 11 (`Microsoft.DotNet.SDK.11`, version 11.0.100) a été relevé dans le dépôt `winget-pkgs` ; la ligne de Visual Studio et de Rider vient des pages officielles. **Non rejoués** : toute situation à deux SDK (« le plus récent répond » est le comportement documenté, non observé : le conteneur n'a qu'un SDK) ; l'installation du SDK 11 sous Windows, ce qu'y affichent `winget` et `dotnet --list-sdks` (les extraits ci-dessous viennent de Linux), l'étape sur Node.js et tout le reste du module (inchangés, rejoués le 12 novembre). Restent **non exécutés** : `fnm`, `gh`, l'installation des éditeurs. Signalez au mentor tout écart constaté.
 
-Chronos, c'est une API en .NET 10, une interface en Angular 22, deux bases de données en conteneurs et un dépôt sur GitHub. Avant d'écrire la première ligne, il faut que votre poste, celui du mentor et la machine d'intégration continue utilisent **les mêmes outils, aux mêmes versions**. Sans cela, la moitié des séances se passerait à comprendre pourquoi « ça marche chez moi ».
+Chronos, c'est une API en .NET 11, une interface en Angular 22, deux bases de données en conteneurs et un dépôt sur GitHub. Avant d'écrire la première ligne, il faut que votre poste, celui du mentor et la machine d'intégration continue utilisent **les mêmes outils, aux mêmes versions**. Sans cela, la moitié des séances se passerait à comprendre pourquoi « ça marche chez moi ».
 
 Ce module installe les outils, puis montre comment un projet **déclare lui-même** les versions qu'il attend.
 
@@ -11,8 +12,8 @@ Ce module installe les outils, puis montre comment un projet **déclare lui-mêm
 
 À la fin de ce module, vous saurez :
 
-- installer et vérifier le SDK .NET 10, Node.js, git, la CLI GitHub, Docker Desktop et un éditeur ;
-- expliquer pourquoi le cours utilise .NET 10 alors que .NET 11 vient de sortir ;
+- installer et vérifier le SDK .NET 11, Node.js, git, la CLI GitHub, Docker Desktop et un éditeur ;
+- expliquer pourquoi le cours utilise .NET 11, une version STS, alors que .NET 10 est la version LTS, et ce que ce choix coûte ;
 - fixer la version du SDK .NET d'un projet avec `global.json`, et celle de Node.js avec le champ `devEngines` ;
 - configurer git : identité, branche `main`, fins de ligne ;
 - créer votre dépôt personnel, avec ses fichiers `.gitignore`, `.gitattributes` et `.editorconfig`.
@@ -37,19 +38,25 @@ Le **runtime** .NET exécute une application ; le **SDK** contient en plus le co
 
 Microsoft publie une version majeure de .NET par an. Une sur deux est **LTS** (prise en charge trois ans), l'autre **STS** (deux ans). .NET 10 est une LTS ; .NET 11, sorti le 10 novembre 2026, est une STS. Les deux sont prises en charge jusqu'au 14 novembre 2028.
 
-Le cours cible **.NET 10** : c'est la version qu'une entreprise déploie aujourd'hui, celle pour laquelle les bibliothèques du projet existent en version stable (EF Core 10, fournisseur PostgreSQL 10), et celle que proposent les machines d'intégration continue de GitHub.
+Le cours cible **.NET 11** : c'est la version courante, celle qu'installe un poste neuf aujourd'hui. Comme les deux versions s'arrêtent le même jour, la LTS n'offre pas de fenêtre de support plus longue ; et partir de la version courante évite d'installer un SDK ancien à côté du SDK récent, puis de lutter contre des paquets plus récents que le projet.
 
-Un numéro de SDK se lit ainsi : dans `10.0.404`, `10.0` est la version de .NET, `4` la **bande de fonctionnalités** (une par trimestre) et `04` le correctif.
+Ce choix a un coût, que vous devez connaître :
+
+- **C'est une STS.** Elle s'arrête le 14 novembre 2028 — le même jour que .NET 10 : la LTS n'aurait donc pas donné plus de temps. Dans les deux cas, il faudra avoir migré vers une version plus récente avant cette date. Ce qu'une STS a en moins, c'est l'adoption : les bibliothèques et les outils la suivent moins vite, ce que montre le point suivant.
+- **Le SDK est tout neuf.** Le 11.0.100 a un défaut connu, que vous rencontrerez au [module 11](11-tests-d-integration.md) et dont le cours donne le contournement.
+- **L'écosystème n'a pas fini de suivre.** Le fournisseur PostgreSQL d'EF Core n'existe en version 11 qu'en préversion : le projet utilise **EF Core 10** (une LTS, prise en charge jusqu'au 10 novembre 2028 ; elle cible .NET 10 et fonctionne sur .NET 11 par compatibilité ascendante, ce que les tests du projet constatent mais que la documentation d'EF Core ne garantit pas) avec .NET 11. Deux numéros de version cohabitent donc, et le module 03 explique comment ne pas se tromper.
+
+Un numéro de SDK se lit ainsi : dans `11.0.100`, `11.0` est la version de .NET, `1` la **bande de fonctionnalités** (une par trimestre) et `00` le correctif.
 
 Documentation : [politique de support de .NET](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core), [versions du SDK](https://learn.microsoft.com/en-us/dotnet/core/porting/versioning-sdk-msbuild-vs)
 
 ### `global.json` : le projet choisit son SDK
 
-Plusieurs SDK cohabitent sans difficulté sur un même poste. Encore faut-il savoir lequel répond quand vous tapez `dotnet build`. Par défaut, c'est **le plus récent** — donc le 11, dès qu'il est installé.
+Plusieurs SDK peuvent cohabiter sur un même poste. Encore faut-il savoir lequel répond quand vous tapez `dotnet build`. Par défaut, c'est **le plus récent**. Sur votre poste neuf, il n'y en a qu'un, le SDK 11 : la question ne se pose pas encore. Elle se posera le jour où une mise à jour d'éditeur installera un SDK plus récent, ou quand un autre projet vous en fera installer un plus ancien.
 
 Un fichier `global.json` inverse la décision : ce n'est plus le poste qui choisit, c'est le projet. La commande `dotnet` cherche ce fichier dans le dossier courant, puis dans chaque dossier parent, et utilise le SDK qu'il désigne.
 
-Pour Chronos, ce fichier demandera le SDK `10.0.400` avec la politique `latestFeature` : « le SDK 10.0 le plus récent installé, à partir du 10.0.400 — et jamais un SDK 11 ».
+Pour Chronos, ce fichier demandera le SDK `11.0.100` avec la politique `latestFeature` : « le SDK 11.0 le plus récent installé, à partir du 11.0.100 — et jamais un SDK 12 ». Tant que vous n'avez que le SDK 11, il ne change rien à ce que répond `dotnet` ; il sert à tous ceux qui n'ont pas votre poste, et à la machine d'intégration continue, qui le lit pour choisir le SDK à installer.
 
 Documentation : [global.json](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json)
 
@@ -91,11 +98,11 @@ Documentation : [EditorConfig](https://editorconfig.org/)
 
 Le cours n'impose pas d'éditeur. Les trois ci-dessous conviennent ; ce qui les distingue le plus, pour vous, est la licence.
 
-| Éditeur | Pour .NET 10 | Licence |
+| Éditeur | Pour .NET 11 | Licence |
 | --- | --- | --- |
 | **VS Code** avec l'extension **C# Dev Kit** | L'extension utilise le SDK installé sur le poste. | VS Code est gratuit. C# Dev Kit est gratuit pour un usage personnel, académique ou open source, et pour les équipes de 5 personnes au plus en usage commercial ; au-delà, il faut un abonnement Visual Studio Professional ou supérieur. |
-| **Visual Studio 2026** | Version 18.0 ou supérieure : c'est la première qui prend officiellement en charge `net10.0`. | L'édition Community est gratuite pour un développeur individuel, pour l'enseignement, la recherche et l'open source, et pour 5 utilisateurs au plus dans une organisation qui n'est pas une « entreprise » (plus de 250 postes ou plus d'un million de dollars de chiffre d'affaires). |
-| **JetBrains Rider** | Pris en charge depuis la version 2025.3 ; la version courante est la 2026.3. | Gratuit pour un usage non commercial (apprentissage, loisir, open source) ; une licence payante est exigée pour un usage commercial. |
+| **Visual Studio 2026** | Version 18.12 ou supérieure : c'est celle que la page des versions du SDK associe au SDK 11.0.1xx. La page des versions du SDK dit : « Targeting `net11.0` is officially supported in Visual Studio 18.12+ only ». Vérifiez dans Visual Studio Installer qu'elle vous est proposée (nous ne l'avons pas vérifié le 13 novembre). | L'édition Community est gratuite pour un développeur individuel, pour l'enseignement, la recherche et l'open source, et pour 5 utilisateurs au plus dans une organisation qui n'est pas une « entreprise » (plus de 250 postes ou plus d'un million de dollars de chiffre d'affaires). |
+| **JetBrains Rider** | La version 2026.3 annonce la prise en charge de .NET 11 et de C# 15. | Gratuit pour un usage non commercial (apprentissage, loisir, open source) ; une licence payante est exigée pour un usage commercial. |
 
 Pour Angular, le service de langage officiel existe pour VS Code et Visual Studio, entre autres ; sa documentation ne cite pas Rider.
 
@@ -113,10 +120,10 @@ winget --version
 
 La commande affiche un numéro de version. Si elle est introuvable, la [documentation de WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/) indique comment l'obtenir.
 
-### 2. Installer le SDK .NET 10
+### 2. Installer le SDK .NET 11
 
 ```powershell
-winget install Microsoft.DotNet.SDK.10
+winget install Microsoft.DotNet.SDK.11
 ```
 
 Ouvrez un **nouveau** terminal, puis :
@@ -125,15 +132,15 @@ Ouvrez un **nouveau** terminal, puis :
 dotnet --list-sdks
 ```
 
-La liste doit contenir une ligne qui commence par `10.0.4`. Elle peut en contenir d'autres : un SDK 11, par exemple, si un éditeur l'a installé.
+La liste doit contenir une ligne qui commence par `11.0.` suivi d'un numéro au moins égal à `100` : `11.0.100` à la date de rédaction. Elle peut en contenir d'autres : un SDK 10, par exemple, installé par un éditeur ou par un autre projet.
 
 ```powershell
 dotnet --version
 ```
 
-Cette commande affiche le SDK **qui sera utilisé dans le dossier courant**. Si vous avez aussi un SDK 11, c'est lui qui s'affiche : c'est normal, et c'est l'objet de l'étape suivante.
+Cette commande affiche le SDK **qui sera utilisé dans le dossier courant** : `11.0.100` ou plus récent. Si un SDK 10 est aussi installé, c'est le plus récent des deux qui répond, donc le 11. C'est l'objet de l'étape suivante : faire décider le projet plutôt que le poste.
 
-> **Si vous utilisez Visual Studio**, installez quand même le SDK 10 séparément. Visual Studio n'installe qu'une seule copie du SDK et la remplace à chaque mise à jour, y compris par une version majeure plus récente.
+> **Si vous utilisez Visual Studio**, installez quand même le SDK 11 séparément. Visual Studio n'installe qu'une seule copie du SDK et la remplace à chaque mise à jour, y compris par une version majeure plus récente.
 
 Documentation : [installer .NET sur Windows](https://learn.microsoft.com/en-us/dotnet/core/install/windows), [vérifier les versions installées](https://learn.microsoft.com/en-us/dotnet/core/install/how-to-detect-installed-versions)
 
@@ -150,7 +157,7 @@ cd $env:TEMP\essai-versions
 ```
 
 ```powershell
-dotnet new globaljson --sdk-version 10.0.400 --roll-forward latestFeature
+dotnet new globaljson --sdk-version 11.0.100 --roll-forward latestFeature
 ```
 
 La commande crée ce fichier :
@@ -159,16 +166,38 @@ La commande crée ce fichier :
 {
   "sdk": {
     "rollForward": "latestFeature",
-    "version": "10.0.400"
+    "version": "11.0.100"
   }
 }
 ```
 
-Comparez maintenant :
+```powershell
+dotnet --version
+```
+
+Elle répond `11.0.100` : le SDK demandé est celui que vous avez, rien ne change. Pour voir le fichier agir, faites-lui demander un SDK que vous n'avez pas. Ouvrez `global.json` et remplacez `11.0.100` par `11.0.900` (la bande de fonctionnalités 9 n'existera pas), puis relancez :
 
 ```powershell
 dotnet --version
 ```
+
+Cette fois, la commande échoue :
+
+```text
+…
+  * You intended to execute a .NET SDK command:
+      A compatible .NET SDK was not found.
+
+Requested SDK version: 11.0.900
+global.json file: …\global.json
+
+Installed SDKs:
+11.0.100 […]
+
+Install the [11.0.900] .NET SDK or update […\global.json] to match an installed SDK.
+```
+
+Les premières lignes, qui parlent d'une « application '--version' » qui n'existerait pas, sont génériques : le diagnostic utile commence à `A compatible .NET SDK was not found`. Lisez ce message : il nomme la version demandée, le fichier `global.json` qui la demande, et les SDK que `dotnet` a trouvés. C'est le message que verra quiconque clone le dépôt sans le bon SDK. Remettez `11.0.100`, puis remontez d'un dossier :
 
 ```powershell
 cd ..
@@ -178,23 +207,13 @@ cd ..
 dotnet --version
 ```
 
-Lors de l'essai, avec les SDK 10.0.404 et 11.0.100 installés, la première commande a répondu `10.0.404` et la seconde `11.0.100`. Le fichier n'agit que **dans son dossier et ses sous-dossiers**.
+La commande répond de nouveau `11.0.100`, sans erreur : le fichier n'agit que **dans son dossier et ses sous-dossiers**.
 
 Ce qu'il faut retenir du fichier :
 
-- **`version`** est un numéro complet. `10.0` ou `10.0.x` sont refusés.
-- **`rollForward`** dit quoi faire si cette version exacte n'est pas installée. Avec `latestFeature`, n'importe quel SDK 10.0 plus récent convient, et le plus récent est choisi.
-- Si aucun SDK ne convient, `dotnet` s'arrête avec un message qui nomme la version demandée, le fichier `global.json` en cause et les SDK installés :
-
-```text
-A compatible .NET SDK was not found.
-
-Requested SDK version: 10.0.500
-global.json file: …\global.json
-
-Installed SDKs:
-…
-```
+- **`version`** est un numéro complet. `11.0` ou `11.0.x` n'en sont pas : lors de l'essai, avec le SDK 11.0.100, `dotnet --version` et `dotnet build` n'ont rien dit et le champ a été ignoré — le fichier ne protège alors de rien. Seul `dotnet --info` le signale (« Version '11.0' is not valid for the 'sdk/version' value … Invalid global.json is ignored for SDK resolution »).
+- **`rollForward`** dit quoi faire si cette version exacte n'est pas installée. Avec `latestFeature`, n'importe quel SDK 11.0 plus récent convient, et le plus récent est choisi. Sans cette ligne, la politique est `patch`, plus stricte : elle reste dans la bande de fonctionnalités demandée (`11.0.1xx` pour `11.0.100`).
+- Si aucun SDK ne convient, `dotnet` s'arrête avec le message ci-dessus.
 
 Vous créerez le vrai `global.json` de Chronos au [module 03](03-premiere-api.md), dans `src/api/`. Conséquence de ce que vous venez d'observer : à la racine de votre dépôt, au-dessus de `src/api/`, il ne s'appliquera pas. Les commandes `dotnet` se lancent depuis `src/api/`.
 
@@ -462,9 +481,9 @@ Documentation : [`gh repo create`](https://cli.github.com/manual/gh_repo_create)
 
 1. **Dresser la fiche du poste.** Dans le `README.md` de votre dépôt, ajoutez un tableau donnant, pour chaque outil du module, la commande qui affiche sa version et la version obtenue. Comparez-le à celui du mentor : quels écarts sont sans conséquence, lesquels peuvent poser un problème ?
 
-2. **Prédire puis vérifier.** Dans un dossier d'essai, écrivez un `global.json` qui demande la version `10.0.100` **sans** ligne `rollForward`. Avant de lancer `dotnet --version`, cherchez dans la documentation la politique appliquée par défaut et prédisez le résultat. Recommencez avec `latestMajor`. Laquelle de ces politiques ne voudriez-vous pas pour Chronos, et pourquoi ?
+2. **Prédire puis vérifier.** Dans un dossier d'essai, écrivez un `global.json` qui demande la version `11.0.50` (un numéro de la bande 0, qui n'existe pas dans la vraie numérotation : on s'en sert pour demander moins que ce que vous avez) **sans** ligne `rollForward`. Avant de lancer `dotnet --version`, cherchez dans la documentation la politique appliquée par défaut et prédisez le résultat : vous avez le SDK `11.0.100`, de la bande 1. Recommencez avec `latestFeature`. Puis demandez `10.0.100` avec `latestMajor` : quel SDK répond ? Laquelle de ces politiques ne voudriez-vous pas pour Chronos, et pourquoi ?
 
-3. **Trouver la portée.** Créez un dossier d'essai contenant un sous-dossier `api`, et placez le `global.json` dans `api`. Depuis quel dossier `dotnet new console` crée-t-il un projet `net10.0` ? Et un projet `net11.0` ? Déduisez-en ce que devra savoir la machine d'intégration continue, qui démarre à la racine du dépôt.
+3. **Trouver la portée.** Créez un dossier d'essai contenant un sous-dossier `api`, et placez dans `api` un `global.json` qui demande la version `11.0.900`. Depuis quels dossiers — la racine de l'essai, `api`, un sous-dossier de `api` — `dotnet --version` répond-il `11.0.100`, et depuis lesquels échoue-t-il ? Que donne `dotnet new console` lancé depuis `api` ? Déduisez-en ce que devra savoir la machine d'intégration continue, qui démarre à la racine du dépôt.
 
 4. **Comparer deux mécanismes.** Dans votre essai de l'étape 5, remplacez `devEngines` par le champ plus ancien `engines`, en exigeant toujours une version que vous n'avez pas. Que fait `npm install` ? Cherchez dans la documentation de npm le réglage `engine-strict`, activez-le dans un fichier `.npmrc` et recommencez. Lequel des deux champs lisent npm, fnm et l'action `setup-node` de GitHub ? Pourquoi le cours retient-il `devEngines` ?
 
@@ -474,8 +493,8 @@ Documentation : [`gh repo create`](https://cli.github.com/manual/gh_repo_create)
 
 ## Critères de réussite
 
-- `dotnet --list-sdks` affiche un SDK `10.0.4xx`.
-- Dans un dossier contenant le `global.json` de l'étape 3, `dotnet --version` répond `10.0.4xx`, même si un SDK 11 est installé.
+- `dotnet --list-sdks` affiche un SDK `11.0.100` ou plus récent.
+- Dans un dossier contenant le `global.json` de l'étape 3, `dotnet --version` répond `11.0.100` ou plus récent ; si le fichier demande la version `11.0.900`, il échoue en nommant la version demandée et le fichier, et vous savez lire ce message.
 - `node --version` affiche une version 24 au moins égale à `24.15.0` ; `npx @angular/cli@22 version` affiche une CLI 22.
 - `git config --global --get init.defaultBranch` répond `main` ; `gh auth status` vous montre connecté.
 - `docker version` affiche un bloc `Server`.
@@ -487,10 +506,10 @@ Documentation : [`gh repo create`](https://cli.github.com/manual/gh_repo_create)
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
-| Installer « le dernier SDK » et commencer sans `global.json` | `dotnet new` crée alors des projets `net11.0` (constaté) : les paquets 10.x du cours ne correspondent plus. | SDK 10 installé, et `global.json` dans `src/api/`. |
-| `"version": "10.0"` ou `"10.0.x"` dans `global.json` | Refusé : le champ exige un numéro complet. | `"10.0.400"` et une politique `rollForward`. |
+| Commencer sans `global.json`, en comptant sur « le SDK du poste » | Aujourd'hui, avec un seul SDK, rien ne casse. Mais `dotnet` prend le SDK le plus récent installé : le jour où une mise à jour en installe un plus récent, `dotnet new` crée des projets pour cette version, qui n'est plus celle du cours. | `global.json` dans `src/api/`, dès le module 03. |
+| `"version": "11.0"` ou `"11.0.x"` dans `global.json` | Pas un numéro complet. Avec le SDK 11.0.100, `dotnet --version` ne signale rien et le champ est ignoré (constaté) ; seul `dotnet --info` l'indique. Le fichier ne protège de rien. | `"11.0.100"` et une politique `rollForward`. |
 | Lancer `dotnet` depuis la racine du dépôt | Le `global.json` de `src/api/` ne s'y applique pas : c'est le SDK le plus récent qui répond. | Se placer dans `src/api/`. |
-| Compter sur Visual Studio pour fournir le SDK 10 | Une mise à jour de Visual Studio remplace sa copie du SDK. | Installer le SDK 10 séparément. |
+| Compter sur Visual Studio pour fournir le SDK 11 | Une mise à jour de Visual Studio remplace sa copie du SDK. | Installer le SDK 11 séparément. |
 | `npm install -g @angular/cli` | La CLI globale vieillit sans qu'on y pense et finit par ne plus correspondre au projet. | `npx @angular/cli@22` pour créer, `npx ng` ensuite. |
 | Installer la version « la plus récente » de Node.js | Une version impaire ou en préversion (25, 27) n'est pas acceptée par Angular 22. | Une version LTS : 24 pour ce cours. |
 | `npm install typescript@latest` | La dernière version de TypeScript est la 7 ; Angular 22 exige la 6.0. | Garder la version posée à la création du projet. |
@@ -502,7 +521,7 @@ Documentation : [`gh repo create`](https://cli.github.com/manual/gh_repo_create)
 
 ## Pour la séance
 
-- .NET 10 et .NET 11 cessent d'être pris en charge le même jour. Quels arguments restent en faveur de la version LTS ? Dans quel cas choisiriez-vous la 11 ?
+- Le cours a choisi .NET 11, une STS, alors que .NET 10, la LTS, est prise en charge jusqu'à la même date. Quels arguments restent en faveur de la LTS ? Dans quel cas la choisiriez-vous pour une application qui doit vivre cinq ans ?
 - Qu'est-ce qui distingue un réglage de votre poste (`git config --global`) d'un réglage du dépôt (`.gitattributes`, `global.json`, `devEngines`) ? Lequel protège l'équipe ?
 - La documentation de `global.json` conseille `rollForward: disable` quand le projet utilise des fichiers de verrouillage de paquets, ce qui sera le cas dès le module 05. Le cours garde `latestFeature`. Que gagne-t-on et que risque-t-on dans chaque cas ?
 - La documentation d'Angular fait installer la CLI globalement ; le cours ne le fait pas. Qui a raison ? De quoi dépend la réponse ?

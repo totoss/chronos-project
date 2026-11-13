@@ -5,7 +5,7 @@
        réglages que Directory.Build.props fournit déjà. Ne reste que les paquets : -->
 
   <!-- TODO [module 06] Référencer Npgsql.EntityFrameworkCore.PostgreSQL (le fournisseur PostgreSQL ; 10.0.3) et Microsoft.EntityFrameworkCore.Relational (qui fixe la
-       version d'EF Core ; 10.0.15) par « dotnet package add », avec les options de projet et de version. Sans l'option de version, la commande prend une 11.x.
+       version d'EF Core ; 10.0.15) par « dotnet package add », avec les options de projet et de version. Sans l'option de version, la commande prend une 11.0.0, incompatible avec le fournisseur PostgreSQL.
        — cours/06-persister-avec-ef-core.md, Pas à pas, étape 1 « Créer le projet d'infrastructure » -->
   <!-- TODO [module 06] Installer l'outil « dotnet ef » comme outil LOCAL du dépôt (« dotnet new tool-manifest », puis « dotnet tool install dotnet-ef » en version 10.0.15, alignée sur les paquets EF Core) :
        cela crée dotnet-tools.json dans src/api, à versionner. Le paquet Microsoft.EntityFrameworkCore.Design se référence dans le projet de démarrage, Chronos.Api.

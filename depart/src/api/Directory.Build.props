@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- TODO [module 05] Verrouiller la restauration des paquets : une propriété qui fait produire un fichier packages.lock.json à côté de chaque projet (à versionner)

@@ -10,18 +10,18 @@
 
   <ItemGroup>
     <!-- TODO [module 03] Ajouter le paquet Microsoft.AspNetCore.OpenApi (génération du document OpenAPI) ; sa version
-         se fixe dans Directory.Packages.props.
+         (11.0.0) se fixe dans Directory.Packages.props.
          — cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions » -->
 
     <!-- TODO [module 03] Ajouter le paquet Scalar.AspNetCore (interface d'exploration de l'API).
          — cours/03-premiere-api.md, Pas à pas, étape 11 « Explorer l'API avec Scalar » -->
 
-    <!-- TODO [module 06] Ajouter le paquet Microsoft.EntityFrameworkCore.Design en version 10.0.x (jamais 11) : l'outil
+    <!-- TODO [module 06] Ajouter le paquet Microsoft.EntityFrameworkCore.Design en version 10.0.15 (jamais la 11.0.0, qu'une commande sans version prendrait) : l'outil
          « dotnet ef » en a besoin dans le projet de démarrage ; ses actifs ne doivent pas se propager aux projets qui
          référencent l'API.
          — cours/06-persister-avec-ef-core.md, Pas à pas, étape 1 « Créer le projet d'infrastructure » -->
 
-    <!-- TODO [module 25] Ajouter le paquet Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore (version 10.0.x),
+    <!-- TODO [module 25] Ajouter le paquet Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore (version 10.0.15, comme EF Core),
          qui fournit le contrôle de santé du contexte EF Core.
          — cours/25-exploiter-l-application.md, Pas à pas, étape 4 « Deux points de contrôle de santé » -->
 

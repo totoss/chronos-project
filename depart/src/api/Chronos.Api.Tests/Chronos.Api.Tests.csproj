@@ -6,13 +6,18 @@
 
   <!-- TODO [module 11] Le projet existe déjà et il est déjà dans la solution : ne lancez ni la commande de création de projet de test xUnit ni
        l'ajout à la solution (ils refuseraient ou écraseraient les fichiers fournis). Écrivez à la main ce que le modèle aurait produit,
-       dans ce fichier, comme décrit ci-dessous. Inscrire les versions des nouveaux paquets dans Directory.Packages.props, en 10.0.x pour
-       les paquets Microsoft.AspNetCore.* (jamais 11) ; la version de Microsoft.Extensions.TimeProvider.Testing ne s'y inscrit pas
+       dans ce fichier, comme décrit ci-dessous. Inscrire les versions des nouveaux paquets dans Directory.Packages.props, en 11.0.0 pour
+       Microsoft.AspNetCore.Mvc.Testing ; la version de Microsoft.Extensions.TimeProvider.Testing ne s'y inscrit pas
        deux fois si le module 09 l'y a déjà mise.
        — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
 
   <!-- TODO [module 11] Donner ce projet au SDK « Microsoft.NET.Sdk.Web » (la documentation des tests d'intégration le demande), à la place du
        SDK ci-dessus, puis déclarer une propriété de type de sortie « Exe ».
+       — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+
+  <!-- TODO [module 11] Contourner un défaut du SDK 11.0.100 : une fois le SDK Web posé, la compilation en Debug échoue (erreur sur les « scoped css bundles » sans point d'accès correspondant),
+       parce que ce projet du SDK Web en référence un autre. Désactiver, dans ce projet seulement, les ressources web statiques (propriété StaticWebAssetsEnabled), avec un commentaire qui dit pourquoi et quand retirer la ligne.
+       L'erreur n'apparaît qu'après le passage au SDK « Microsoft.NET.Sdk.Web » demandé par l'annotation précédente, pas avant.
        — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
 
   <!-- TODO [module 11] Copier xunit.runner.json (fichier fourni, à côté de ce projet) dans le dossier de sortie, quand il est plus récent :

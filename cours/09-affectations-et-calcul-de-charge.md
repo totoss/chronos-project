@@ -1,7 +1,8 @@
 # Module 09 — Affectations et calcul de charge
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
 > Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, `xunit.v3.mtp-v2` 4.0.3, `Microsoft.Extensions.TimeProvider.Testing` 10.11.0, EF Core 10.0.15) : les tests cités passent avec `dotnet test`, les deux lectures de l'exemple chiffré ont été exécutées (167 %, puis 133 %), et les endpoints ont répondu comme indiqué sur PostgreSQL 18.6 et SQL Server 2025. **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-08`, mêmes versions ; PostgreSQL 18.6 et SQL Server 2025 en conteneurs) : pas à pas, migration `Affectations` dans les deux jeux et appliquée, `has-pending-model-changes` pour les deux fournisseurs, exercices 1 à 5 (144 tests verts), appels HTTP des critères de réussite sur chaque base (réponses identiques, trois requêtes SQL pour le plan de charge) ; exercice 3 vérifié par HTTP sur PostgreSQL (422 `RG-24`, puis 201 avec `surchargeConfirmee`), exercice 5 de même (400 pour `du=04/05/2026`). Corrigés à cette occasion : l'avertissement du filtre d'archivage (étape 1), le cas « sans contrat » (étape 6), `Collaborateurs.Lister` (étape 7), le jour férié sur une base existante (étape 9). **Non exécutés** : l'envoi depuis un fichier `.http`, l'exercice 6 (exploratoire).
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100 ; EF Core et Npgsql restés en 10). Ont été rejoués en .NET 11 : `dotnet package add Microsoft.Extensions.TimeProvider.Testing` avec et sans version, et un test de `FakeTimeProvider` exécuté avec la version obtenue (11.0.0), dans le projet de tests du domaine à l'état du tag `module-05` (plomberie .NET 11) ; l'état final de la solution (225 tests unitaires, 144 tests d'intégration, vérifié par le coordinateur). **N'ont pas été rejoués** : le pas à pas de ce module depuis le tag `module-08`, les migrations, les exercices, les appels HTTP.
 
 « Qui est disponible, surchargé ou sans mission ? » C'est la première question que le cahier des charges pose à Chronos, et celle pour laquelle un manager ouvrira l'application chaque lundi. La réponse est un calcul : des jours ouvrés, une quotité, des absences, des taux d'allocation.
 
@@ -464,11 +465,13 @@ public static class Horloge
 
 `DayOfWeek` vaut 0 le dimanche : le calcul `(… + 6) % 7` ramène le lundi à 0. `Aujourdhui` est une méthode d'extension sur `TimeProvider` — qui fait partie de .NET, le domaine ne dépend toujours de rien.
 
-Pour le tester, ajoutez le paquet de l'horloge factice au projet de tests, en version 10 :
+Pour le tester, ajoutez le paquet de l'horloge factice au projet de tests, dans la version de la solution de référence :
 
 ```powershell
 dotnet package add Microsoft.Extensions.TimeProvider.Testing --version 10.11.0 --project Chronos.Domain.Tests
 ```
+
+Sans `--version`, la commande prendrait aujourd'hui la `11.0.0`, qui fonctionne aussi sur .NET 11 (rejoué : le paquet se restaure, se compile, et un test de `FakeTimeProvider` passe). On garde `10.11.0` pour que votre `Directory.Packages.props` soit celui de la solution : ce n'est plus une contrainte du cadre cible, seulement un alignement.
 
 ```csharp
 using Microsoft.Extensions.Time.Testing;
@@ -668,7 +671,7 @@ Pour Camille : `"capacite":3.20,"chargePlanifiee":3.2000,"tauxDeCharge":1.00,"su
 | `DateTime.Now`, `DateTime.Today` dans le code métier | Impossible à tester ; dépend du fuseau du serveur sans le dire. | `TimeProvider` injecté. |
 | `ISystemClock` | Obsolète depuis .NET 8. | `TimeProvider`. |
 | `GetUtcNow()` pour obtenir « aujourd'hui » | Le jour change à minuit UTC, pas à minuit chez l'utilisateur. | `GetLocalNow()`, et un test avec un fuseau. |
-| `dotnet package add Microsoft.Extensions.TimeProvider.Testing` sans version | La commande prend la plus récente, 11.x. | `--version 10.11.0`. |
+| `dotnet package add Microsoft.Extensions.TimeProvider.Testing` sans version | La commande prend la plus récente : `11.0.0` aujourd'hui (rejoué : elle fonctionne sur .NET 11). Votre fichier diffère alors de celui de la solution. | `--version 10.11.0`, la version de la solution. |
 | `TheoryData<…>` ou `IEnumerable<object[]>` pour `[MemberData]` | Dépréciés en xUnit v3. | `IEnumerable<TheoryDataRow<…>>`. |
 | Écrire les valeurs attendues en exécutant le code | Le test ne vérifie plus que le code est égal à lui-même. | Calculer l'attendu à la main, ou le prendre dans le cahier des charges. |
 | Corriger en silence une règle ambiguë | Le code et le document de référence divergent. | Un exemple chiffré, une question au métier, une règle mise à jour. |

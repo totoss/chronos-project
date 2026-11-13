@@ -1,7 +1,8 @@
 # Module 22 — Qualité du code
 
-> Pratiques vérifiées le 12 novembre 2026 — voir les référentiels [.NET 10](../docs/references/dotnet-10.md), [Angular 22](../docs/references/angular-22.md) et [GitHub Actions](../docs/references/github-actions.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir les référentiels [.NET 11](../docs/references/dotnet-11.md), [Angular 22](../docs/references/angular-22.md) et [GitHub Actions](../docs/references/github-actions.md).
 > Les commandes de ce module ont été **exécutées le 12 novembre 2026** dans des conteneurs Linux, d'abord sur des projets d'essai (dont proviennent les exemples `Essai.cs`), puis **rejouées sur la solution de référence de Chronos** (état du module 21 : sept projets .NET, 348 tests ; application Angular, 262 tests et 33 parcours) avec le SDK .NET 10.0.404, EF Core 10.0.15, Node.js 24.22, Angular CLI 22.2.7, angular-eslint 22.6.0, ESLint 10.14 et Prettier 3.10. Les nombres et messages cités pour Chronos sont ceux qui ont été obtenus. **Non exécutés** : les étapes ajoutées au workflow, sur GitHub, et l'ensemble sous Windows. Si votre code diffère de la solution de référence, la liste des avertissements différera aussi : c'est attendu.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100). **Rejoués en .NET 11**, à partir de l'état du tag `module-21` auquel on a appliqué la plomberie .NET 11 : l'état des lieux de l'étape 1 (`dotnet build`, 0 avertissement ; `dotnet format --verify-no-changes` : 118 lignes `WHITESPACE` dans neuf fichiers et 17 lignes `CHARSET`, code de sortie 2) ; `Migrations/.editorconfig` ; `dotnet format` (neuf fichiers modifiés, dont huit de tests) ; les conventions de l'étape 3 ; l'étape 4 (`Essai.cs` : neuf avertissements ; solution : 266 avertissements, dont 243 `CA1707`, 6 `CA1816`, 5 `CA1304`, 5 `CA1311`, 5 `CA1862`, 1 `CA1305` et 1 `CA1725`, et les neuf `CS8618` de `dotnet format`) ; la correction d'`Essai.cs`, qui laisse `CA1848` et `CA1873` ; le réglage de `CA1707` (25 avertissements restent) ; l'erreur `CS8602` de l'étape 6 ; les exercices 1 et 2, sur l'état final de la solution (1 : le message `EnableGenerateDocumentationFile`, puis `CS1591` ; 2 : `latest-all` sur le domaine, 18 avertissements sans les suppressions de la solution, dont les trois `CA1032` de `RegleMetierException`). **Les avertissements de la solution sont les mêmes qu'en .NET 10**, mêmes règles, mêmes nombres. Deux points diffèrent du texte d'origine : les décomptes de règles par mode sont ceux du SDK 11.0.100 (le texte d'origine donnait ceux du SDK 10.0.404), et `dotnet format` appliqué aux `DbSet` donne, à ce stade (sans `TreatWarningsAsErrors`), 95 avertissements de nullabilité, là où le texte d'origine annonçait 80 erreurs (écart non revérifié en .NET 10). **Non rejoués en .NET 11** : le détail de l'étape 5 sur la solution complète (corrections de `CA1816`, `CA1305`, `CA1725`, `#pragma` des `ToLower`), l'avertissement `NU1901` à `NU1904` avec un paquet vulnérable, le job `api` de l'étape 7 sur GitHub, et tout ce qui concerne l'interface (étapes 8 à 12), qui n'est pas touchée par ce changement.
 
 Chronos compile, ses tests passent, l'interface fonctionne. Ouvrez pourtant deux fichiers écrits à trois mois d'écart : les accolades ne sont pas au même endroit, ici une variable ne sert à rien, là une comparaison de chaînes dépend de la langue du serveur. Rien de tout cela ne fait échouer un test. Tout cela ralentit la relecture, et une partie finira en anomalie.
 
@@ -53,13 +54,13 @@ Deux propriétés changent cela. **`EnforceCodeStyleInBuild`** fait appliquer le
 | Mode | Ce qu'il active | Règles en avertissement |
 | --- | --- | --- |
 | `default` | Le strict minimum. | une trentaine, d'après la documentation |
-| `minimum` | Les règles jugées indispensables. | 92 |
-| `recommended` | Davantage de règles. | 145 |
-| `all` | Presque toutes. | 280 |
+| `minimum` | Les règles jugées indispensables. | 98 |
+| `recommended` | Davantage de règles. | 151 |
+| `all` | Presque toutes. | 286 |
 
-Les trois derniers nombres ont été relevés dans les fichiers de configuration du SDK 10.0.404.
+Les trois derniers nombres ont été relevés dans les fichiers de configuration du SDK 11.0.100 (ceux du SDK 10.0.404 donnaient 92, 145 et 280).
 
-La valeur s'écrit `<version>-<mode>` : `latest-recommended` désigne les règles recommandées de la dernière version connue du SDK — c'est-à-dire, grâce à votre `global.json`, celles du SDK 10.
+La valeur s'écrit `<version>-<mode>` : `latest-recommended` désigne les règles recommandées de la dernière version connue du SDK — c'est-à-dire, grâce à votre `global.json`, celles du SDK 11. Le sens de `latest` change donc avec le SDK : passer du SDK 10 au SDK 11 ajoute six règles à `recommended` (`CA1517`, `CA1876`, `CA1877`, `CA2026`, `CA2027`, `CA2028`). Aucune ne se manifeste sur Chronos (constaté), mais un projet qui avait zéro avertissement peut en avoir après une mise à jour du SDK ; `AnalysisLevel` à `10-recommended` fige le jeu de règles.
 
 Documentation : [analyse du code dans .NET](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview), [propriétés d'analyse](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#code-analysis-properties)
 
@@ -227,13 +228,13 @@ Chaque message se termine par l'adresse de la page qui explique la règle. **Lis
 
 Le reste de votre solution produit aussi ses avertissements. Ne les corrigez pas encore. Sur la solution de référence, sans `Essai.cs` : **266 avertissements**, dont 243 `CA1707`, 6 `CA1816`, 5 `CA1304`, 5 `CA1311`, 5 `CA1862`, 1 `CA1305` et 1 `CA1725`.
 
-**Une surprise de `dotnet format`.** Relancez `dotnet format --verify-no-changes` : avec ces réglages, il exécute aussi les analyseurs, et signale neuf erreurs que la compilation ne montre pas :
+**Une surprise de `dotnet format`.** Relancez `dotnet format --verify-no-changes` : avec ces réglages, il exécute aussi les analyseurs, et signale neuf avertissements `CS8618` que la compilation ne montre pas :
 
 ```text
 …/Chronos.Infrastructure/ChronosDbContext.cs(13,33): warning CS8618: Non-nullable property 'Collaborateurs' must contain a non-null value when exiting constructor. […]
 ```
 
-Les propriétés `DbSet<T> … { get; set; }` du module 06 ne sont jamais nulles : EF Core les remplit lui-même, et un *suppresseur* fourni par EF Core retire cet avertissement à la compilation. `dotnet format` ne connaît pas ce suppresseur. **Ne lancez pas `dotnet format` pour « corriger »** : il rend les neuf propriétés nullables (`DbSet<Collaborateur>?`), et la compilation échoue ensuite sur chaque usage — 80 erreurs. Écrivez plutôt chaque propriété comme le recommande la documentation d'EF Core, en lecture seule :
+Les propriétés `DbSet<T> … { get; set; }` du module 06 ne sont jamais nulles : EF Core les remplit lui-même, et un *suppresseur* fourni par EF Core retire cet avertissement à la compilation. `dotnet format` ne connaît pas ce suppresseur. **Ne lancez pas `dotnet format` pour « corriger »** : il rend les neuf propriétés nullables (`DbSet<Collaborateur>?`), et la compilation signale ensuite chaque usage : sur Chronos, 95 avertissements de nullabilité (`CS8604`, `CS8602`), qui deviendront des erreurs à l'étape 6. Écrivez plutôt chaque propriété comme le recommande la documentation d'EF Core, en lecture seule :
 
 ```csharp
     public DbSet<Collaborateur> Collaborateurs => Set<Collaborateur>();
@@ -561,7 +562,7 @@ Poussez, ouvrez une *pull request* et vérifiez que les deux jobs sont verts. Le
 | Activer `latest-all` et `TreatWarningsAsErrors` d'un coup sur un code existant | Des centaines d'erreurs ; on renonce le jour même. | Monter par paliers : formatage, puis `recommended`, puis erreurs. |
 | Le paquet `Microsoft.CodeAnalysis.FxCopAnalyzers`, des fichiers `.ruleset` | Paquet déprécié, format déprécié. | Les analyseurs du SDK et `.editorconfig`. |
 | `dotnet format` sans `--verify-no-changes` dans le workflow | Les fichiers sont corrigés sur une machine qui sera détruite : le job est vert et le dépôt reste mal formaté. | `--verify-no-changes`. |
-| Lancer `dotnet format` pour faire taire `CS8618` sur les `DbSet<T> { get; set; }` | Il les rend nullables : 80 erreurs de compilation (constaté). | `public DbSet<T> X => Set<T>();` : étape 4. |
+| Lancer `dotnet format` pour faire taire `CS8618` sur les `DbSet<T> { get; set; }` | Il les rend nullables : 95 avertissements de nullabilité sur les usages, des erreurs dès l'étape 6 (constaté en .NET 11). | `public DbSet<T> X => Set<T>();` : étape 4. |
 | Formater avant d'avoir déclaré les migrations comme code généré | `dotnet format` réécrit les dix-sept migrations. | `Migrations/.editorconfig` d'abord : étape 1. |
 | Formatage et modification de fond dans le même commit | La relecture devient impossible. | Un commit de formatage à part. |
 | Déclarer `IDE0005` en `warning` sans autre réglage | La compilation réclame `GenerateDocumentationFile` (constaté) : voir l'exercice 1. | Suivre le message. |
@@ -585,7 +586,7 @@ Poussez, ouvrez une *pull request* et vérifiez que les deux jobs sont verts. Le
 
 ## Pour aller plus loin
 
-- [Liste des règles de qualité](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) : la page d'ensemble donne les règles actives par défaut en .NET 10 et renvoie au catalogue complet.
+- [Liste des règles de qualité](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) : la page d'ensemble donne les règles actives par défaut jusqu'en .NET 10 (elle n'a pas encore d'onglet .NET 11 au 13 novembre 2026) et renvoie au catalogue complet.
 - [Fichiers de configuration globaux](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files) : `.globalconfig`, pour régler les analyseurs par projet plutôt que par dossier.
 - [`Directory.Build.props`](https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory) : comment MSBuild trouve ce fichier, et comment en combiner plusieurs niveaux.
 - [angular-eslint](https://github.com/angular-eslint/angular-eslint) : `ng add angular-eslint --tseslint-preset=strictTypeChecked` active des règles qui s'appuient sur les types.

@@ -1,8 +1,9 @@
 # Module 06 — Persister avec EF Core
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
 > Le code et les commandes `dotnet` de ce module ont été **exécutés le 12 novembre 2026** dans le conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, fournisseur Npgsql 10.0.3, outil `dotnet-ef` 10.0.15) contre PostgreSQL 18.6, sur un squelette de la solution écrit pour l'essai : `Projet` et `Periode` y sont ceux du module 04 ; `Client`, `Collaborateur` et `Contrat`, que le module 04 vous fait écrire en exercice, y étaient une version minimale, et les vôtres peuvent différer. Les extraits SQL sont ceux réellement produits. **Non exécutés** : la saisie des commandes dans PowerShell sous Windows (elles l'ont été dans un terminal Linux), l'interface Scalar, et l'ajout au workflow GitHub Actions demandé en exercice (les commandes qu'il lance ont été exécutées localement, sans secret ni base). Signalez au mentor tout écart constaté.
 > **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-05`, mêmes versions : SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, `dotnet-ef` 10.0.15, PostgreSQL 18) : pas à pas et exercices, `database drop` puis `update`, appels HTTP aux trois ressources, `has-pending-model-changes` sans secrets utilisateur. Le workflow GitHub Actions lui-même n'a pas été exécuté.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100 ; EF Core, Npgsql et `dotnet-ef` restés en 10.0.15, 10.0.3 et 10.0.15). Ont été rejoués en .NET 11, à partir de l'état du tag `module-05` dont on a remplacé la plomberie (SDK, cadre cible, `Microsoft.AspNetCore.OpenApi` 11.0.0) : l'étape 1 (`dotnet new classlib`, `dotnet reference add` et `remove`, les trois `dotnet package add` **avec** et **sans** `--version`) ; `dotnet user-secrets init` ; l'étape 5 (`dotnet new tool-manifest`, `dotnet tool install dotnet-ef` avec et sans version, `dotnet ef --version`) ; puis, sur l'état final de la solution et une base PostgreSQL 18 vide : `dotnet ef database update`, `migrations list`, `migrations has-pending-model-changes`, `migrations add`, `migrations script` et `migrations remove`, avec l'outil 10.0.15 **et** avec l'outil 11.0.0. **N'ont pas été rejoués** en .NET 11 : l'écriture du contexte, des configurations et des migrations des étapes 2 à 9 depuis le tag `module-05`, les exercices, l'ajout au workflow GitHub Actions.
 
 Depuis le module 03, `/api/projets` sert une liste en mémoire : tout est perdu à chaque redémarrage, et rien n'empêche deux projets de porter le même code. Chronos doit conserver ses données dans une base, et c'est la base qui garantira certaines règles — l'unicité, notamment. Ce module branche l'API sur PostgreSQL avec **Entity Framework Core** (EF Core), la bibliothèque d'accès aux données de .NET.
 
@@ -120,7 +121,7 @@ dotnet reference remove Chronos.Domain/Chronos.Domain.csproj --project Chronos.A
 
 Comme au module 04, supprimez `Class1.cs` et retirez du `.csproj` les trois réglages que `Directory.Build.props` fournit déjà.
 
-La dernière commande retire la référence directe de l'API vers le domaine, posée au module 04 : l'API atteint désormais le domaine **à travers** l'infrastructure. Les dépendances vont dans un seul sens : `Chronos.Api` → `Chronos.Infrastructure` → `Chronos.Domain`. Pour le retrait, donnez le chemin du fichier `.csproj` : avec le seul nom du dossier, le SDK 10.0.404 répond que la référence est introuvable.
+La dernière commande retire la référence directe de l'API vers le domaine, posée au module 04 : l'API atteint désormais le domaine **à travers** l'infrastructure. Les dépendances vont dans un seul sens : `Chronos.Api` → `Chronos.Infrastructure` → `Chronos.Domain`. Pour le retrait, donnez le chemin du fichier `.csproj` : avec le seul nom du dossier, le SDK répond que la référence est introuvable (constaté avec le SDK 10.0.404, puis avec le 11.0.100 : « Project reference `../../Chronos.Domain/Chronos.Domain.csproj` could not be found »).
 
 Ajoutez les paquets, **en précisant la version** :
 
@@ -140,7 +141,20 @@ dotnet package add Microsoft.EntityFrameworkCore.Design --project Chronos.Api --
 - `Microsoft.EntityFrameworkCore.Relational` fixe la version d'EF Core. Sans cette ligne, le fournisseur se contente de la version minimale qu'il exige (10.0.4 lors de l'essai) et le projet ne reçoit pas les correctifs suivants.
 - `Microsoft.EntityFrameworkCore.Design` est requis par l'outil `dotnet ef` dans le projet de démarrage. La commande l'ajoute avec `PrivateAssets` : il ne sert qu'au développement.
 
-Ouvrez `Directory.Packages.props` : les trois versions s'y trouvent, et les fichiers `.csproj` ne contiennent que les noms des paquets. C'est le piège des versions 11 du module 03 : sans `--version`, la commande aurait choisi la dernière version publiée, une 11.x, qui exige .NET 11.
+Ouvrez `Directory.Packages.props` : les trois versions s'y trouvent, et les fichiers `.csproj` ne contiennent que les noms des paquets. C'est ici que le piège des versions du module 03 **se déplace**. Le projet est en .NET 11, mais EF Core y reste en 10 : sans `--version`, une commande `dotnet package add Microsoft.EntityFrameworkCore.…` choisit la dernière version stable, une **11.0.0**, que le fournisseur PostgreSQL ne sait pas utiliser.
+
+> **Pourquoi EF Core 10 dans un projet .NET 11 ?** EF Core 11.0.0 est sorti avec .NET 11 (le 10 novembre 2026), mais le fournisseur dont Chronos a besoin, `Npgsql.EntityFrameworkCore.PostgreSQL`, n'a encore, pour EF Core 11, qu'une préversion (`11.0.0-rc.3`, constatée sur nuget.org) : elle exige **exactement** la préversion `11.0.0-rc.3` d'EF Core, pas la version finale. Le fournisseur stable le plus récent est la `10.0.3`, qui demande EF Core `>= 10.0.4` et `< 11.0.0`. EF Core 10 est une version à support long (LTS), supportée jusqu'au 10 novembre 2028 selon [la page des versions d'EF Core](https://learn.microsoft.com/en-us/ef/core/what-is-new/) ; une application `net11.0` référence sans difficulté des bibliothèques compilées pour `net10.0` (rejoué : les 144 tests d'intégration de la solution passent). La documentation d'EF Core ne liste EF Core 10 qu'avec .NET 10 : son usage sous .NET 11 repose sur la compatibilité ascendante, constatée ici par les tests. Les paquets qui dépendent d'EF Core suivent donc : `Microsoft.AspNetCore.Identity.EntityFrameworkCore` (module 12), `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, et l'outil `dotnet-ef`. À l'inverse, `Microsoft.AspNetCore.OpenApi` et `Microsoft.AspNetCore.Mvc.Testing` suivent ASP.NET Core : `11.0.0`. Le référentiel [.NET 11](../docs/references/dotnet-11.md) tient la liste à jour. Le jour où un fournisseur PostgreSQL stable pour EF Core 11 paraîtra, le passage se fera en une fois, dans `Directory.Packages.props` : c'est une question pour la séance.
+
+Ce que donnent les commandes **sans** `--version`, rejoué avec le SDK 11.0.100 :
+
+| Commande sans `--version` | Version prise | Ce qui se passe |
+| --- | --- | --- |
+| `dotnet package add Npgsql.EntityFrameworkCore.PostgreSQL` | `10.0.3` | Rien d'anormal : la préversion `11.0.0-rc.3` n'est pas choisie sans `--prerelease`. |
+| `dotnet package add Microsoft.EntityFrameworkCore.Relational` (le fournisseur 10.0.3 est déjà là) | `11.0.0` | Le fournisseur veut `< 11.0.0` : **avertissement `NU1608`**, puis erreurs `NU1107` (« Version conflict detected for Microsoft.EntityFrameworkCore ») et `NU1102` à la restauration. La commande écrit quand même la version dans `Directory.Packages.props` : à corriger à la main ou en relançant avec `--version 10.0.15`. |
+| `dotnet package add Microsoft.EntityFrameworkCore.Design` (même situation) | `11.0.0` | **Avertissements `NU1608`** à l'ajout et à chaque compilation, mais la compilation **réussit** : le piège est silencieux. Le jour où le projet traitera les avertissements comme des erreurs (module 22), il deviendra bloquant. |
+| `dotnet tool install dotnet-ef` | `11.0.0` | Installé sans message. `dotnet ef --version` affiche `11.0.0`. |
+
+Avec `--version 10.0.15` pour EF Core, ces commandes réussissent sans avertissement, et la solution compile sans avertissement.
 
 ### 2. Écrire le contexte
 
@@ -238,11 +252,11 @@ dotnet user-secrets init --project Chronos.Api
 dotnet user-secrets set "ConnectionStrings:Chronos" "Host=localhost;Port=5432;Database=chronos;Username=chronos;Password=VOTRE_MOT_DE_PASSE" --project Chronos.Api
 ```
 
-La première commande ajoute un identifiant `UserSecretsId` dans `Chronos.Api.csproj` ; versionnez ce changement. Avec le SDK 10.0.404, elle réécrit le fichier entier : marque d'ordre d'octets (BOM) ajoutée, `<PropertyGroup>` collé sur la première ligne. Relisez le diff et remettez le fichier en forme, pour ne versionner que le nouveau `<PropertyGroup>` et son `UserSecretsId`. Dans la seconde, remplacez le mot de passe par la valeur de `POSTGRES_PASSWORD` de votre fichier `.env`.
+La première commande ajoute un identifiant `UserSecretsId` dans `Chronos.Api.csproj` ; versionnez ce changement. Avec le SDK 10.0.404, puis avec le 11.0.100 (rejoué), elle réécrit le fichier entier : marque d'ordre d'octets (BOM) ajoutée, `<PropertyGroup>` collé sur la première ligne. Relisez le diff et remettez le fichier en forme, pour ne versionner que le nouveau `<PropertyGroup>` et son `UserSecretsId`. Dans la seconde, remplacez le mot de passe par la valeur de `POSTGRES_PASSWORD` de votre fichier `.env`.
 
 Les secrets utilisateur ne sont lus que dans l'environnement `Development`, et ne sont pas chiffrés : c'est un outil de poste de développement, pas un coffre-fort.
 
-Documentation : [Secrets en développement](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-10.0), [Paramètres de connexion Npgsql](https://www.npgsql.org/doc/connection-string-parameters.html)
+Documentation : [Secrets en développement](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-11.0), [Paramètres de connexion Npgsql](https://www.npgsql.org/doc/connection-string-parameters.html)
 
 ### 5. Installer l'outil `dotnet ef`
 
@@ -262,9 +276,9 @@ dotnet ef --version
 
 La première commande crée le manifeste `dotnet-tools.json`, la deuxième y inscrit l'outil, la troisième doit afficher `10.0.15`. **Versionnez `dotnet-tools.json`.** Sur un autre poste, `dotnet tool restore` installe les outils du manifeste.
 
-> Avec le SDK 10.0.404, le manifeste est créé directement dans `src/api/`. La documentation décrit encore un sous-dossier `.config/` : ne soyez pas surpris de ne pas le trouver.
+> Avec le SDK 10.0.404, puis avec le 11.0.100 (rejoué), le manifeste est créé directement dans `src/api/`. La documentation décrit encore un sous-dossier `.config/` : ne soyez pas surpris de ne pas le trouver.
 
-Gardez la version de l'outil alignée sur celle des paquets EF Core.
+Gardez la version de l'outil alignée sur celle des paquets EF Core. **Sans `--version`, la deuxième commande installe `dotnet-ef` `11.0.0`** (constaté), alors que le projet reste en EF Core 10. Rejoué sur l'état final de la solution : l'outil 11.0.0 exécute lui aussi, sans erreur, `database update`, `migrations list`, `has-pending-model-changes`, `migrations add`, `script` et `remove` sur notre modèle. Ce n'est donc pas une panne immédiate ; c'est un écart que le manifeste doit empêcher, pour que tous les postes et le workflow utilisent le même outil, et pour que le comportement ne change pas avec lui (voir la ligne sur `.config/dotnet-ef.json` dans les pièges).
 
 Documentation : [Outils .NET locaux](https://learn.microsoft.com/en-us/dotnet/core/tools/global-tools)
 
@@ -640,7 +654,7 @@ Elle répond `No changes have been made to the model since the last migration.` 
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
-| `dotnet package add` ou `dotnet tool install` sans `--version` | Installe une version 11.x, qui exige .NET 11. | Préciser une version 10.x ; la retrouver dans `Directory.Packages.props`. |
+| `dotnet package add Microsoft.EntityFrameworkCore.…` ou `dotnet tool install dotnet-ef` sans `--version` | Installe la `11.0.0` (constaté), incompatible avec le fournisseur PostgreSQL 10.0.3 : `NU1608`, parfois `NU1107` et `NU1102` (voir l'étape 1) ; pour l'outil, un écart silencieux avec les paquets. | Écrire `--version 10.0.15` ; la retrouver dans `Directory.Packages.props` ou `dotnet-tools.json`. |
 | Chaîne de connexion dans `appsettings.json` | Le mot de passe part dans le dépôt. | `dotnet user-secrets` en développement. |
 | `context.Database.EnsureCreated()` au démarrage | Crée le schéma sans migrations ; les migrations échouent ensuite. | `dotnet ef database update`. |
 | `HasData` pour toutes les données initiales | Les données entrent dans les migrations et le snapshot, avec des clés fixées à la main. | `UseSeeding` **et** `UseAsyncSeeding` ; `HasData` seulement pour des données fixes. |
@@ -655,9 +669,9 @@ Elle répond `No changes have been made to the model since the last migration.` 
 | Un *repository* générique par-dessus `DbSet` | `DbSet` en est déjà un ; la couche masque `Select`, `Include` et les filtres. | Injecter `ChronosDbContext`. |
 | Un filtre de requête sur une entité visée par une relation obligatoire | Les entités qui y font référence disparaissent des jointures (étape 11). | Nommer le filtre et l'ignorer là où le métier l'exige. |
 | `EnableSensitiveDataLogging()` laissé actif | Les valeurs — noms, adresses — partent dans les journaux. | Le réserver à une session de débogage locale. |
-| Chercher `.config/dotnet-ef.json` pour éviter de répéter `--project` | Ce fichier n'existe qu'à partir d'EF Core 11. | Répéter les options, ou écrire un script. |
+| Chercher `.config/dotnet-ef.json` pour éviter de répéter `--project` | Ce fichier n'est lu que par l'outil `dotnet-ef` 11 : avec l'outil 10.0.15 du cours, rejoué, `dotnet ef migrations list` répond « No project was found » ; avec le 11.0.0, il est pris en compte. | Répéter les options, ou écrire un script. |
 
-Les sources sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md#accès-aux-données-1).
+Les sources sont dans le [référentiel .NET 11](../docs/references/dotnet-11.md#accès-aux-données-1).
 
 ## Pour la séance
 

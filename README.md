@@ -6,8 +6,8 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 
 | Couche | Technologie |
 | --- | --- |
-| API | .NET 10 (LTS), ASP.NET Core, C# 14 |
-| Accès aux données | EF Core 10 |
+| API | .NET 11 (STS), ASP.NET Core, C# 15 |
+| Accès aux données | EF Core 10 (LTS ; elle cible .NET 10 et fonctionne sur .NET 11 par compatibilité ascendante, ce que les tests constatent mais que sa documentation ne garantit pas) — le fournisseur PostgreSQL d'EF Core 11 n'existe qu'en préversion, donc EF Core reste en 10 |
 | Base de données | SQL Server 2025 et PostgreSQL 18 — le même code tourne sur les deux |
 | Interface | Angular 22 |
 | Environnement local | Docker et Docker Compose |
@@ -26,13 +26,13 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 | --- | --- |
 | [cours/](cours/README.md) | Le plan de cours et les modules. |
 | [docs/cahier-des-charges.md](docs/cahier-des-charges.md) | Ce que l'application doit faire : acteurs, vocabulaire, règles de gestion numérotées. |
-| [docs/references/dotnet-10.md](docs/references/dotnet-10.md) | Pratiques à jour pour .NET 10, EF Core 10 et les deux bases, avec leurs sources. |
+| [docs/references/dotnet-11.md](docs/references/dotnet-11.md) | Pratiques à jour pour .NET 11, EF Core 10 et les deux bases, avec leurs sources, et le choix de .NET 11 argumenté. |
 | [docs/references/angular-22.md](docs/references/angular-22.md) | Pratiques à jour pour Angular 22, avec leurs sources. |
 | [docs/references/docker.md](docs/references/docker.md) | Pratiques à jour pour Docker et Compose, avec leurs sources. |
 | [docs/references/github-actions.md](docs/references/github-actions.md) | Pratiques à jour pour GitHub Actions, avec leurs sources. |
 | [compose.yaml](compose.yaml) | Les deux bases de données en conteneur (module 01) et, sous le profil `app`, l'application complète (modules 23 et 25). Copier `.env.example` en `.env` avant de démarrer. |
 | [depart/](depart/README.md) | Le projet de départ du mentoré : la structure et l'architecture, vidées de leur implémentation, avec une annotation `TODO [module NN]` à chaque endroit à compléter. |
-| `src/api/`, `src/web/` | La solution de référence : l'API .NET 10 et l'interface Angular 22. Un tag `module-NN` marque l'état attendu à la fin de chaque module. |
+| `src/api/`, `src/web/` | La solution de référence : l'API .NET 11 et l'interface Angular 22. Un tag `module-NN` marque l'état attendu à la fin de chaque module ; les tags datent de la construction en .NET 10 (voir [la solution de référence](cours/README.md#solution-de-référence)). |
 
 ## Qualité
 
@@ -57,4 +57,6 @@ Le cours est complet : cahier des charges, référentiels techniques, plan de co
 
 Chaque module a été rejoué sur ce code, puis relu indépendamment ; quand le texte et l'exécution ne s'accordaient pas, le module a été corrigé. Au dernier tag : 369 tests côté API (sur PostgreSQL 18 et SQL Server 2025), 262 tests et 33 parcours de bout en bout côté interface, et une installation à partir d'une base neuve jouée de bout en bout dans des conteneurs.
 
-Ce qui n'a pas été vérifié est dit sans détour dans le [suivi](cours/README.md#avancement) : rien n'a été exécuté sur GitHub depuis le module 05, tout a tourné dans des conteneurs Linux et non directement sous Windows, et l'interface ne couvre pas tout le cahier des charges (pas d'écran pour les absences ni pour la gestion des comptes).
+**Alignement sur .NET 11 (13 novembre 2026).** Les tags datent de la construction en .NET 10 ; le code de la branche principale est en .NET 11 (décision du 13 novembre 2026), avec EF Core resté en 10. L'état final de la solution a été revérifié en entier avec le SDK 11.0.100 ; le texte des modules et les référentiels ont été alignés, et chaque module dit dans son en-tête ce qui a été rejoué en .NET 11 et ce qui ne l'a pas été. Le détail est dans le [suivi](cours/README.md#avancement).
+
+Ce qui n'a pas été vérifié est dit sans détour dans le [suivi](cours/README.md#avancement) : le workflow de publication, corrigé depuis son premier échec, n'a pas encore tourné sur GitHub, et l'attestation comme le déploiement n'ont jamais été exécutés ; tout a tourné dans des conteneurs Linux et non directement sous Windows, et l'interface ne couvre pas tout le cahier des charges (pas d'écran pour les absences ni pour la gestion des comptes).

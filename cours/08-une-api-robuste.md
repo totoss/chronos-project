@@ -1,7 +1,8 @@
 # Module 08 — Une API robuste
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
 > Le code du pas à pas a été **compilé et exécuté le 12 novembre 2026** dans un conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core et EF Core 10.0.15, Npgsql 10.0.3) contre PostgreSQL 18.6, puis rejoué contre SQL Server 2025 (17.0.5045) : les réponses HTTP reproduites ici sont celles qui ont été obtenues. Les commandes `curl.exe` et `Invoke-RestMethod` ont été essayées sous Windows PowerShell 5.1. **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-07`, mêmes versions ; PostgreSQL 18.6 et SQL Server 2025 en conteneurs, bases recréées par `database drop` puis `database update`) : pas à pas, migrations dans les deux jeux, exercices 1 à 5, `has-pending-model-changes` pour les deux fournisseurs, appels HTTP des critères de réussite sur chaque base (réponses identiques). Corrigés à cette occasion : la réponse de l'étape 2 (avant `AddProblemDetails()`), la vérification d'unicité de l'étape 5 (valeurs normalisées), `Invalide` et `Conflit` rangées dans `Commun/Reponses.cs` et les clés d'erreur en PascalCase (étapes 5 et 6), la borne de `Page` (étape 6), l'application de la migration (étape 7). Non exécutés : l'envoi depuis un fichier `.http`, l'exercice 6.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100, ASP.NET Core 11.0, EF Core et Npgsql restés en 10.0.15 et 10.0.3). Ont été rejoués en .NET 11, sur l'état final de la solution (PostgreSQL 18) et sur de petites applications d'essai : la réponse de l'étape 2 et chaque ligne du tableau « Ce qui a été constaté » ; le paramètre `int?` annoté `[Required]` (absent, vide, avec `[Range]`) ; la validation asynchrone ; la clé d'erreur des types reçus par `[AsParameters]` et la génération de `/openapi/v1.json` avec l'annotation sur le paramètre du constructeur ; `UseExceptionHandler()` sans `StatusCodeSelector`, en `Development` et en `Production` (en `Production`, par `dotnet run --no-launch-profile` : sans cette option, `dotnet run` applique `launchSettings.json` et reste en `Development`). Le comportement des paramètres `?x=` et du JSON illisible en `Production` a en outre été rejoué indépendamment à la relecture du 13 novembre 2026, sur une application d'essai et sur l'état final de Chronos (`POST /api/compte/login` avec un JSON tronqué). **Les corrections de ces points sont signalées dans le texte** (étapes 2, 3 et 6, et « Pièges »). **N'ont pas été rejoués** : le pas à pas complet depuis le tag `module-07`, SQL Server, les exercices.
 
 À la fin du module 07, l'API de Chronos fonctionne tant qu'on lui parle poliment. Envoyez-lui un collaborateur sans nom, une quotité de 5 %, un matricule déjà pris, ou deux modifications de la même fiche à une seconde d'intervalle : elle répond par une erreur 500, par un message différent à chaque fois, ou — pire — elle enregistre.
 
@@ -45,7 +46,7 @@ Chronos distingue donc trois types par ressource : `CreerCollaborateurRequete` e
 
 | Ce qui ne va pas | Qui le détecte | Réponse |
 | --- | --- | --- |
-| La **forme** : champ absent, texte trop long, adresse mal écrite, JSON illisible | Les annotations sur la requête, avant que votre code ne s'exécute | `400`, avec `errors` par champ |
+| La **forme** : champ absent, texte trop long, adresse mal écrite, JSON illisible | Les annotations sur la requête, avant que votre code ne s'exécute | `400` ; `errors` par champ, sauf pour un JSON illisible (voir l'étape 3 : le corps dépend de l'environnement) |
 | Une **règle de gestion** : quotité de 5 %, sortie avant l'entrée | Le domaine, qui lève `RegleMetierException` | `422`, avec `regle` |
 | Un **conflit avec l'état de la base** : matricule déjà pris, fiche modifiée entre-temps | La base (index unique, jeton de concurrence) | `409` |
 
@@ -57,13 +58,13 @@ Documentation : [422 Unprocessable Content](https://developer.mozilla.org/en-US/
 
 `ProblemDetails` est le format normalisé d'une erreur d'API HTTP (RFC 9457, qui remplace la RFC 7807) : un objet JSON servi en `application/problem+json`, avec les membres `type`, `title`, `status`, `detail`, `instance`, et le droit d'en ajouter. Chronos en ajoute deux : `errors` (posé par ASP.NET Core sur les erreurs de validation) et `regle`.
 
-Documentation : [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457), [Gérer les erreurs dans les API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0)
+Documentation : [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457), [Gérer les erreurs dans les API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-11.0)
 
 ### `AddValidation()`
 
 Depuis .NET 10, les Minimal APIs valident elles-mêmes les paramètres annotés. Un générateur de source lit la signature de vos gestionnaires à la compilation et prépare la validation des types qu'il y trouve ; si elle échoue, le gestionnaire n'est pas appelé et le client reçoit un `400`.
 
-Documentation : [Validation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/validation?view=aspnetcore-10.0), [Validation dans les Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validation-support-in-minimal-apis)
+Documentation : [Validation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/validation?view=aspnetcore-11.0), [Validation dans les Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-11.0#validation-support-in-minimal-apis)
 
 ### Gérer les exceptions à un seul endroit
 
@@ -75,7 +76,7 @@ Trois pièces se complètent :
 
 Aucun `try`/`catch` dans les endpoints : ils restent lisibles, et une exception oubliée ne fuit pas vers le client.
 
-Documentation : [Gestion des erreurs — `IExceptionHandler`](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling?view=aspnetcore-10.0)
+Documentation : [Gestion des erreurs — `IExceptionHandler`](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling?view=aspnetcore-11.0)
 
 ### Concurrence optimiste
 
@@ -143,6 +144,7 @@ Réponse `400 Bad Request`, de type `application/json` :
 ```json
 {
   "title": "One or more validation errors occurred.",
+  "status": 400,
   "errors": {
     "Matricule": ["The Matricule field is required."],
     "Nom": ["The Nom field is required."],
@@ -152,9 +154,9 @@ Réponse `400 Bad Request`, de type `application/json` :
 }
 ```
 
-(La réponse réelle liste les neuf champs obligatoires.) Votre gestionnaire n'a pas été appelé. Il manque encore `type` et `status`, et le type `application/problem+json` : l'étape 3 les ajoute. Faites maintenant l'expérience inverse : remplacez un instant `[Required] DateOnly? DateEntree` par `DateOnly DateEntree` et renvoyez `{}`. L'erreur sur `DateEntree` disparaît, et la date vaudrait `0001-01-01` : un type valeur non nullable **a toujours une valeur**, celle par défaut, et `[Required]` n'y voit rien. Pire pour une énumération : `Categorie` vaudrait silencieusement `Consultant`. Remettez `DateOnly?`.
+(La réponse réelle liste les neuf champs obligatoires.) Votre gestionnaire n'a pas été appelé. Il manque encore `type` et le type de contenu `application/problem+json` : l'étape 3 les ajoute. (Le champ `status` figure déjà dans la réponse en .NET 11.) Faites maintenant l'expérience inverse : remplacez un instant `[Required] DateOnly? DateEntree` par `DateOnly DateEntree` et renvoyez `{}`. L'erreur sur `DateEntree` disparaît, et la date vaudrait `0001-01-01` : un type valeur non nullable **a toujours une valeur**, celle par défaut, et `[Required]` n'y voit rien. Pire pour une énumération : `Categorie` vaudrait silencieusement `Consultant`. Remettez `DateOnly?`.
 
-Ce qui a été constaté en .NET 10.0.15 :
+Ce qui a été constaté en .NET 11.0 (rejoué le 13 novembre 2026) :
 
 | `AddValidation()`… | Constat |
 | --- | --- |
@@ -162,8 +164,8 @@ Ce qui a été constaté en .NET 10.0.15 :
 | valide les `record`, les objets imbriqués et les éléments de liste | Oui ; la clé d'erreur devient alors `Saisies[0].Duree`. |
 | nomme les erreurs comme le JSON | **Non** : les clés sont les noms C# (`Matricule`), pas ceux du JSON (`matricule`). L'interface devra en tenir compte. |
 | traduit les messages | **Non** : ils sont en anglais. Écrivez `[Required(ErrorMessage = "Le matricule est obligatoire.")]` là où le message sera montré tel quel. |
-| applique `[Required]` à un **paramètre** nullable (`int? x` dans la signature) | **Non** : l'absence passe. `[Range]` sur ce même paramètre est bien vérifié quand une valeur est fournie. Limite connue de .NET 10, corrigée en .NET 11 ([dotnet/aspnetcore#67033](https://github.com/dotnet/aspnetcore/issues/67033)). Une **propriété** `DateOnly?` d'un corps JSON n'est pas concernée : `[Required]` y fonctionne. |
-| appelle la base ou un service asynchrone | **Non** en .NET 10 : l'unicité se vérifie ailleurs (étape 5). |
+| applique `[Required]` à un **paramètre** nullable (`int? x` dans la signature) | **Oui** : si la requête ne porte pas `x`, la réponse est `400` et `errors` contient `"x": ["The x field is required."]`. C'était la limite de .NET 10 (l'absence passait), corrigée en .NET 11 ([dotnet/aspnetcore#67033](https://github.com/dotnet/aspnetcore/issues/67033)). Deux précisions constatées : `[Range]` **seul** sur ce paramètre ne dit rien quand il est absent (la requête passe, la valeur est `null`) ; une valeur présente mais illisible (`?x=`, `?x=abc`) est une erreur de liaison. En `Development`, la réponse est `400` titré `Bad Request`, sans `errors`. En `Production`, la validation s'exécute quand même sur la valeur non liée : `400` avec `"x": ["The x field is required."]`, un message trompeur pour `abc` (constaté en .NET 11). Une **propriété** `DateOnly?` d'un corps JSON n'a jamais été concernée : `[Required]` y fonctionne. |
+| appelle la base ou un service asynchrone | **Oui, depuis .NET 11** : un attribut qui dérive de `AsyncValidationAttribute` (méthode `IsValidAsync`) est attendu avant l'appel du gestionnaire (la méthode synchrone `IsValid` doit aussi être écrite, elle peut lever une exception ; la signature asynchrone est `Task<ValidationResult?> IsValidAsync(…)`), et son refus répond `400` avec la clé du champ. Chronos ne s'en sert pas : l'unicité reste vérifiée dans le gestionnaire (étape 5), parce que la vraie garantie est l'index unique de la base (deux requêtes simultanées passeraient toutes deux une vérification préalable) et que la réponse attendue est un `409`, pas un `400`. |
 
 ### 3. Le même format pour toutes les erreurs
 
@@ -193,11 +195,11 @@ curl.exe -i http://localhost:5080/api/collaborateurs/999
 
 `404`, avec un corps `{"type":"…","title":"Not Found","status":404,"traceId":"…"}`. Votre `TypedResults.NotFound()` ne contenait rien : `UseStatusCodePages` l'a complété. Il en va de même pour une adresse qui n'existe pas.
 
-Envoyez ensuite `"categorie": "Stagiaire"`, ou un JSON tronqué : `400`, titre `Bad Request`, sans `errors`. Ici, ce n'est pas la validation qui refuse : le JSON n'a pas pu être lu.
+Envoyez ensuite `"categorie": "Stagiaire"`, ou un JSON tronqué : `400`, titre `Bad Request`, sans `errors` (en `Development` ; en production, voir plus bas). Ici, ce n'est pas la validation qui refuse : le JSON n'a pas pu être lu.
 
-Retirez enfin le `StatusCodeSelector` (écrivez `app.UseExceptionHandler();`) et recommencez : en `Development`, la même requête répond **500**. Dans cet environnement, une requête illisible lève une `BadHttpRequestException`, et le gestionnaire d'exceptions de .NET 10 traduit par défaut toute exception en 500 ; en production la réponse est bien 400. Un client qui se trompe ne doit pas faire croire à une panne du serveur, et le développement ne doit pas se comporter autrement que la production : remettez le sélecteur.
+Retirez enfin le `StatusCodeSelector` (écrivez `app.UseExceptionHandler();`) et recommencez. **En .NET 10, la même requête répondait 500 en `Development`** : une requête illisible lève une `BadHttpRequestException`, et le gestionnaire d'exceptions traduisait par défaut toute exception en 500 (en production, la réponse était bien 400). **En .NET 11, rejoué, elle répond 400 dans les deux environnements** : le middleware reprend de lui-même le code porté par une `BadHttpRequestException` (on le lit dans son code source, branche `release/11.0`). En `Development`, l'exception est toujours journalisée au niveau `fail`, ce qui reste un bruit à connaître ; en `Production`, rien n'est journalisé à ce niveau. Le corps, lui, change avec l'environnement. En `Development` : `400` titré `Bad Request`, sans `errors`. En `Production` : `400` titré `One or more validation errors occurred.`, avec une entrée `errors` dont la clé est le chemin JSON (`$.nom`) et le message celui de `System.Text.Json`, nom de type .NET compris (constaté en .NET 11). Le `StatusCodeSelector` fait donc double emploi avec le framework ; la solution de référence le garde, parce qu'il dit explicitement la règle (un client qui se trompe ne doit pas faire croire à une panne du serveur) et qu'elle ne dépend plus d'un détail de version. Si vous le retirez, ne changez rien d'autre : la réponse est la même.
 
-Documentation : [`StatusCodeSelector`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.builder.exceptionhandleroptions.statuscodeselector?view=aspnetcore-10.0)
+Documentation : [`StatusCodeSelector`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.builder.exceptionhandleroptions.statuscodeselector?view=aspnetcore-11.0)
 
 ### 4. Une règle de gestion violée : 422
 
@@ -376,7 +378,7 @@ public record FiltreCollaborateurs(
     string? Tri = null);
 ```
 
-**Notez le `property:`** devant chaque annotation. Dans un record, une annotation écrite sur un paramètre du constructeur s'applique au paramètre ; `property:` la fait porter sur la propriété générée. Pour un type reçu par `[AsParameters]`, la différence n'est pas un détail : avec l'annotation sur le paramètre, la validation fonctionne, mais la génération du document OpenAPI échoue — `/openapi/v1.json` répond `500` et Scalar n'affiche plus rien. Constaté en construisant la solution de référence, et resté inaperçu pendant quatre modules faute d'un test qui appelle ce document : ouvrez Scalar après cette étape.
+**Notez le `property:`** devant chaque annotation. Dans un record, une annotation écrite sur un paramètre du constructeur s'applique au paramètre ; `property:` la fait porter sur la propriété générée. Pour un type reçu par `[AsParameters]`, la différence n'est pas un détail : avec l'annotation sur le paramètre, la validation fonctionne, et — **en .NET 10** — la génération du document OpenAPI échouait : `/openapi/v1.json` répondait `500` et Scalar n'affichait plus rien. Constaté en construisant la solution de référence, et resté inaperçu pendant quatre modules faute d'un test qui appelle ce document. **En .NET 11 (`Microsoft.AspNetCore.OpenApi` 11.0.0), rejoué : l'annotation sur le paramètre ne casse plus rien** — la validation répond `400` avec la clé `Taille` et `/openapi/v1.json` répond `200`, avec les bornes dans le schéma. Le `property:` n'est donc plus indispensable ; la solution le garde (il fait porter l'annotation sur la propriété générée, la forme qui marchait dans les deux versions), et le test qui appelle le document OpenAPI reste une bonne habitude : ouvrez Scalar après cette étape.
 
 Le gestionnaire le reçoit avec `[AsParameters]` : chaque propriété est lue dans la chaîne de requête, les valeurs par défaut s'appliquent, et les annotations sont validées (`?taille=500` répond `400`, avec la clé `Taille`).
 
@@ -451,7 +453,7 @@ private static async Task<Results<Ok<PageDto<CollaborateurDto>>, ValidationProbl
 
 Essayez `/api/collaborateurs?recherche=DU&tri=-nom&taille=2`, puis `?page=0`, `?tri=email`, `?statut=parti`.
 
-Documentation : [`[AsParameters]`](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-10.0), [Pagination](https://learn.microsoft.com/en-us/ef/core/querying/pagination), [Collations et casse](https://learn.microsoft.com/en-us/ef/core/miscellaneous/collations-and-case-sensitivity)
+Documentation : [`[AsParameters]`](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-11.0), [Pagination](https://learn.microsoft.com/en-us/ef/core/querying/pagination), [Collations et casse](https://learn.microsoft.com/en-us/ef/core/miscellaneous/collations-and-case-sensitivity)
 
 ### 7. Modifier sans écraser le travail d'un autre
 
@@ -556,7 +558,7 @@ Faites l'expérience. Lisez `/api/collaborateurs/2` et notez `version`. Envoyez 
 
 Le `ConflitExceptionHandler` de l'étape 5 a fait le travail. Envoyez enfin une `dateSortie` antérieure à la date d'entrée, avec la bonne version : `422`, `"regle": "RG-02"`.
 
-Documentation : [Jeton de concurrence et valeur d'origine](https://learn.microsoft.com/en-us/aspnet/core/data/ef-rp/concurrency?view=aspnetcore-10.0) (tutoriel Razor Pages : la ligne `OriginalValue` y est expliquée)
+Documentation : [Jeton de concurrence et valeur d'origine](https://learn.microsoft.com/en-us/aspnet/core/data/ef-rp/concurrency?view=aspnetcore-11.0) (tutoriel Razor Pages : la ligne `OriginalValue` y est expliquée)
 
 ### 8. RG-04 : pas de boucle dans la chaîne de managers
 
@@ -652,15 +654,15 @@ Dans les deux cas le client reçoit `204`, et un `GET` suivant répond `404`. Le
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
-| `[Range(…)] int Page` dans un record reçu par `[AsParameters]` | L'annotation porte sur le paramètre du constructeur : la validation passe, mais le document OpenAPI ne se génère plus (`500`). Constaté. | `[property: Range(…)] int Page`, et un test qui lit `/openapi/v1.json`. |
+| `[Range(…)] int Page` dans un record reçu par `[AsParameters]` | L'annotation porte sur le paramètre du constructeur : la validation passe ; en .NET 10 le document OpenAPI ne se générait plus (`500`, constaté), en .NET 11 il se génère (rejoué : `200`). | `[property: Range(…)] int Page`, valable dans les deux versions, et un test qui lit `/openapi/v1.json`. |
 | Renvoyer ou recevoir l'entité EF Core | Le JSON public suit le schéma de la base ; le client peut fixer des propriétés qu'il ne devrait pas toucher. | Une requête en entrée, un DTO en sortie. |
 | Valider à la main dans chaque endpoint, ou par un filtre d'endpoint | Pratique d'avant .NET 10 : du code répété, des réponses différentes d'un endpoint à l'autre. | Annotations et `AddValidation()`. |
 | `[Required]` sur un `DateOnly`, un `int` ou une énumération non nullables | Le champ absent prend la valeur par défaut (`0001-01-01`, `0`, la première valeur) sans erreur. Constaté. | `DateOnly?`, `int?`, `Enum?` avec `[Required]`. |
-| `[Required] int? x` en paramètre de requête | Ignoré en .NET 10 quand le paramètre est absent. | Une valeur par défaut et `[Range]`, ou un test dans le gestionnaire. |
+| `[Range]` seul sur un paramètre `int? x`, sans `[Required]` | Un paramètre absent passe (`null`), constaté en .NET 11. `[Required]` seul y était ignoré en .NET 10 ; il fonctionne en .NET 11. | `[Required, Range(…)]` ensemble, ou une valeur par défaut. |
 | Un `try`/`catch` par endpoint pour choisir le code HTTP | Répété, donc oublié une fois ; les formats divergent. | `IExceptionHandler`, enregistré une fois. |
 | Renvoyer `exception.Message` ou la pile d'appels pour « aider » | Fuite d'informations internes : noms de tables, requêtes, chemins. | Le `500` par défaut ; le détail va dans le journal. |
 | `AddExceptionHandler<T>()` sans `app.UseExceptionHandler()` | Les gestionnaires ne sont jamais appelés. | Les deux. |
-| `app.UseExceptionHandler()` sans option en .NET 10 | En `Development`, un JSON illisible répond 500. Constaté. | Le `StatusCodeSelector` de l'étape 3. |
+| `app.UseExceptionHandler()` sans option, en .NET 10 | En `Development`, un JSON illisible répondait 500 (constaté en .NET 10) ; en .NET 11, rejoué, il répond 400. | En .NET 10, le `StatusCodeSelector` de l'étape 3 ; en .NET 11 il est facultatif. |
 | Citer la RFC 7807 | Elle est remplacée par la RFC 9457 ; le format est le même. | RFC 9457. |
 | `OrderBy` construit à partir du texte reçu (SQL concaténé, LINQ « dynamique ») | Injection, ou tri sur une colonne qu'on ne voulait pas exposer. | Une liste blanche : `switch` sur des valeurs connues. |
 | `Skip`/`Take` sans tri, ou avec un tri non unique | Des lignes en double ou manquantes d'une page à l'autre. | `OrderBy(…).ThenBy(c => c.Id)`. |
@@ -669,10 +671,11 @@ Dans les deux cas le client reçoit `204`, et un `GET` suivant répond `404`. Le
 | Comparer `Version` dans le gestionnaire, puis enregistrer | Entre la comparaison et l'`UPDATE`, un autre a le temps de passer. | `OriginalValue`, pour que la base fasse la comparaison. |
 | Oublier de renouveler `Version` dans une méthode de l'entité | Les modifications faites par cette méthode ne sont plus protégées. | Un test par méthode : la version a changé. |
 
-Les sources sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
+Les sources sont dans le [référentiel .NET 11](../docs/references/dotnet-11.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
 
 ## Pour la séance
 
+- En production, un JSON illisible renvoie le message de `System.Text.Json`, nom de type compris. Est-ce une fuite d'information acceptable ?
 - RG-03 est vérifiée par le domaine. Fallait-il **aussi** l'écrire en annotation sur la requête ? Que gagne l'utilisateur, que risque-t-on le jour où la règle change ?
 - 400, 409, 422 : pour chacun, que doit faire l'interface ? Lequel peut-elle corriger seule, lequel demande de relire des données, lequel doit être montré tel quel ?
 - Les clés de `errors` portent les noms C# (`Matricule`) et les messages sont en anglais. Est-ce à l'API ou à l'interface de s'adapter ? Qu'est-ce que cela change pour le module 17 ?
@@ -683,7 +686,7 @@ Les sources sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md
 
 ## Pour aller plus loin
 
-- [Créer des réponses dans les Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses?view=aspnetcore-10.0) : tous les `TypedResults`, et la personnalisation des erreurs de validation par `IProblemDetailsService`.
+- [Créer des réponses dans les Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses?view=aspnetcore-11.0) : tous les `TypedResults`, et la personnalisation des erreurs de validation par `IProblemDetailsService`.
 - [Pagination](https://learn.microsoft.com/en-us/ef/core/querying/pagination) : la pagination par clé (*keyset*), plus efficace que `Skip`/`Take` quand on ne saute pas de page.
 - [Filtres de requête globaux](https://learn.microsoft.com/en-us/ef/core/querying/filters) : les filtres nommés, et le piège des relations obligatoires rencontré au module 06.
 - [Requêtes efficaces](https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying) : index, projections, taille des résultats.
