@@ -3,6 +3,7 @@
 > **Vérifié le 12 novembre 2026** sur docs.github.com, le journal des changements de GitHub, les dépôts `actions/*` et `docker/*`, learn.microsoft.com, xunit.net et angular.dev.
 > Ce document fait foi pour le cours : en cas de doute entre un tutoriel trouvé en ligne et ce référentiel, c'est le référentiel — ou mieux, la documentation officielle du jour — qui a raison.
 > GitHub Actions a beaucoup changé en 2026. À revérifier avant d'écrire chaque module qui s'y rapporte.
+> **Aligné sur .NET 11 le 13 novembre 2026** pour ce qui touche à .NET : contenu de l'image `ubuntu-24.04`, version choisie par `setup-dotnet`, enchaînement `restore` / `build` / `test` rejoué avec le SDK 11.0.100 (module 05). Le reste n'a pas été revérifié ce jour-là.
 
 ## 1. Versions
 
@@ -37,7 +38,7 @@ Toutes ces versions s'exécutent sur Node.js 24. **Node.js 20 a été retiré de
 
 Sources : [images](https://github.com/actions/runner-images), [machines hébergées](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [annonce Ubuntu 26.04](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
 
-Sur les images Ubuntu, Docker et son extension Compose sont préinstallés, ainsi que plusieurs SDK .NET 10 et Node.js 22 et 24. Le SDK .NET 11 n'y figure pas encore ([contenu de l'image 24.04](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)).
+Sur les images Ubuntu, Docker et son extension Compose sont préinstallés, ainsi que plusieurs SDK .NET (8, 9, 10 et 11.0.100) et Node.js 22 et 24. Le SDK .NET 11 figure dans l'image 20261111 (relevé le 13 novembre 2026 ; [contenu de l'image 24.04](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)).
 
 ### Coût
 
@@ -131,8 +132,8 @@ Conséquence pratique : on fait tourner l'intégration continue sur Linux, sauf 
 | `on: pull_request_target` suivi d'un `checkout` du code de la *pull request* | **Dangereux** ; refusé par `checkout` v7 ; l'événement sera bloqué par défaut sur les dépôts publics le 2 décembre 2026 | `on: pull_request` | [annonce](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/) |
 | `run: echo "${{ github.event.pull_request.title }}"` | **Injection de commandes** | Passer la valeur par `env:` puis écrire `"$TITRE"` | [usage sûr](https://docs.github.com/en/actions/reference/security/secure-use) |
 | `if: always()` | Déconseillé : s'exécute même si l'exécution est annulée | `if: ${{ !cancelled() }}` | [expressions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions) |
-| `dotnet test --logger trx` | Option de VSTest, **refusée** par Microsoft.Testing.Platform, que configure le modèle `xunit3` | `dotnet test --report-xunit-trx` | constaté le 12 nov. 2026 |
-| `dotnet-version: 6.0.x` (ou 8, ou 9) | Versions **hors support** | `global-json-file`, ou `10.0.x` | [politique de support](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) |
+| `dotnet test --logger trx` | Option de VSTest, **refusée** par Microsoft.Testing.Platform, que configure le modèle `xunit3` | `dotnet test --report-xunit-trx` | constaté le 12 nov. 2026 ; rejoué le 13 nov. en .NET 11 |
+| `dotnet-version: 6.0.x` (ou 8, ou 9) | Versions **hors support** | `global-json-file`, ou `11.0.x` | [politique de support](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) |
 | `actions/cache` sur `~/.nuget/packages` | Redondant | `setup-dotnet` avec `cache: true` | [setup-dotnet](https://github.com/actions/setup-dotnet) |
 | `node-version: 18` ou `20` | Fin de vie ; Angular 22 exige au moins 22.22.3 | `node-version-file` | [compatibilité](https://angular.dev/reference/versions) |
 | `npm install` | Peut modifier `package-lock.json` | `npm ci` | [tutoriel Node.js](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs) |
@@ -160,12 +161,12 @@ Le cours ne met donc pas de filtre `paths` sur un workflow dont la vérification
 - **Service SQL Server.** GitHub ne documente pas d'exemple, et la commande de contrôle de santé n'est pas vérifiée. Le cours passe par Testcontainers, qui évite la question.
 - **Quotas.** La page de tarification parle de minutes incluses, la documentation de facturation d'un montant en dollars. Les chiffres ci-dessus viennent de la documentation.
 - **Étapes parallèles.** Depuis juin 2026, un job peut lancer des étapes en arrière-plan (`background: true`) ou en parallèle. Le statut exact de la fonctionnalité n'est pas précisé ; le cours ne l'utilise pas.
-- **Ce qui a été exécuté.** Le workflow complet du module 05 l'a été le 12 novembre 2026, sur `ubuntu-24.04`, avec `checkout@v7`, `setup-dotnet@v6` et `upload-artifact@v7` : succès en moins d'une minute, sans avertissement, cache NuGet rempli puis réutilisé, rapport TRX publié en artefact. Le verrouillage des actions l'a été aussi (voir ci-dessous). N'ont **pas** été exécutés sur GitHub : Dependabot, le *ruleset*, ni aucun des ajouts au workflow faits par les modules 06, 11, 20, 22 et 24. Leurs commandes ont été rejouées localement en conteneur, dans l'ordre du job (restauration verrouillée, format, build, tests ; `npm ci`, lint, tests, build, Playwright) ; les workflows du module 24 ont été relus contre la documentation et passés à `actionlint` 1.7.12 sans erreur, rien de plus.
+- **Ce qui a été exécuté.** Le workflow complet du module 05 l'a été le 12 novembre 2026, sur `ubuntu-24.04`, avec `checkout@v7`, `setup-dotnet@v6` et `upload-artifact@v7` : succès en moins d'une minute, sans avertissement, cache NuGet rempli puis réutilisé, rapport TRX publié en artefact. Le verrouillage des actions l'a été aussi (voir ci-dessous). Rejoué le 13 novembre 2026 en .NET 11, localement (SDK 11.0.100, conteneur) : restauration verrouillée, compilation `Release`, tests et rapport TRX du module 05 ; pas sur GitHub. N'ont **pas** été exécutés sur GitHub : Dependabot, le *ruleset*, ni aucun des ajouts au workflow faits par les modules 06, 11, 20, 22 et 24. Leurs commandes ont été rejouées localement en conteneur, dans l'ordre du job (restauration verrouillée, format, build, tests ; `npm ci`, lint, tests, build, Playwright) ; les workflows du module 24 ont été relus contre la documentation et passés à `actionlint` 1.7.12 sans erreur, rien de plus.
 - **Fichier de verrouillage — constats du 12 novembre 2026** (extension `gh-actions-lock` 0.4.1). `gh actions-lock` crée `actions.lock` **et réécrit le workflow** en resserrant `@v7` en `@v7.0.1` (`--no-narrow` l'en empêche). La machine d'exécution charge ensuite les versions depuis le fichier. Une action utilisée sans être verrouillée fait échouer l'exécution au démarrage (`startup_failure`), avant tout job ; `gh actions-lock --verify` le détecte localement.
 
 ### Constats de la construction de la solution de référence (12 et 13 novembre 2026)
 
-- **Rien n'a été exécuté sur GitHub** pour le code de la solution : les workflows `ci.yml` (jobs `api` et `web`) et `publication.yml` sont vérifiés par `actionlint`, par `gh actions-lock --verify`, et par le rejeu local de leurs commandes dans l'ordre. Leur première exécution réelle reste à faire.
+- **Ce qui a tourné sur GitHub (relevé du 13 novembre 2026).** Le workflow `CI` (jobs `API` et `Web`) a tourné et réussi sur les pull requests de la solution en .NET 10, sur `main` après fusion, puis sur la pull request de la migration vers .NET 11. `publication.yml` a tourné une première fois sur `main` (code en .NET 10) : vérifications réussies, images `api` et `web` construites, **job du bundle de migrations en échec** (`NETSDK1004`), déploiement non déclenché (pas de tag `v*`). Le workflow corrigé (étape de restauration) n'a **pas encore tourné** ; l'attestation de provenance et le déploiement par environnement n'ont jamais été exécutés. Les workflows sont aussi vérifiés par `actionlint`, par `gh actions-lock --verify` et par le rejeu local de leurs commandes.
 - **Workflow réutilisable.** Un workflow du même dépôt appelé par `workflow_call` n'a pas à être verrouillé ; `github.workflow` y vaut le nom de l'appelant, ce qui change son groupe `concurrency` (module 24).
 - **Sorties d'un job en matrice.** Une sortie vide n'écrase pas celle d'une autre jambe : une sortie nommée par jambe est le schéma documenté (module 24).
 - **Bundle de migrations.** Exécuté sans `DOTNET_ENVIRONMENT`, il démarre l'application en `Development` ; la variable reste posée dans le job de déploiement, en défense en profondeur (modules 24 et 25).

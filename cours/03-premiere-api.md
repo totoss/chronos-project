@@ -1,7 +1,8 @@
 # Module 03 — Première API
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Les commandes `dotnet` et le code de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core 10.0.15, `Microsoft.AspNetCore.OpenApi` 10.0.15, `Scalar.AspNetCore` 2.21.0) : création de la solution, compilation, exécution, appels HTTP, page Scalar ouverte dans un navigateur. Module **rejoué le 12 novembre 2026 sur la solution de référence** (mêmes versions), exercices 1 à 4 compris. Les appels `curl.exe` et `Invoke-RestMethod` ont été lancés depuis Windows PowerShell 5.1. **Non exécutés** : les commandes `dotnet` sous Windows même, et l'envoi des requêtes du fichier `.http` depuis un éditeur. Signalez au mentor tout écart constaté.
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
+> Construit et rejoué le 12 novembre 2026 en .NET 10 (c'est l'état du tag `module-03`) : les commandes `dotnet` et le code de ce module ont été **exécutés** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, ASP.NET Core 10.0.15, `Microsoft.AspNetCore.OpenApi` 10.0.15, `Scalar.AspNetCore` 2.21.0) : création de la solution, compilation, exécution, appels HTTP, page Scalar ouverte dans un navigateur ; module **rejoué sur la solution de référence**, exercices 1 à 4 compris. Les appels `curl.exe` et `Invoke-RestMethod` ont été lancés depuis Windows PowerShell 5.1.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100, conteneur Linux). Ont été rejoués en .NET 11 : les étapes 1, 2, 3 et 5 telles qu'un mentoré les vit (`dotnet new globaljson`, `sln`, `webapi --no-https`, comparaison fichier par fichier avec ce que le modèle génère, `Directory.Build.props`, `Directory.Packages.props`, `dotnet build`), les `dotnet package add` avec et sans version, et le code des étapes 6 à 10 sur l'état du tag `module-03` mis à niveau (compilation sans avertissement, lancement, `GET`/`POST` par `curl`, document OpenAPI et `/scalar` appelés par `curl`). **Non rejoués en .NET 11** : la page Scalar dans un navigateur, les exercices 1 à 6, `Invoke-RestMethod` et `curl.exe` sous Windows, le fichier `.http` depuis un éditeur, et les commandes `dotnet` sous Windows même. Signalez au mentor tout écart constaté.
 
 Chronos a deux moitiés : une interface, que vous écrirez en Angular à partir du module 13, et une **API** qui détient les données et les règles. L'interface ne touche jamais la base : elle demande à l'API « donne-moi les projets », « crée ce projet », et l'API répond en JSON.
 
@@ -19,7 +20,7 @@ Ce module construit le squelette de cette API et sa première ressource, les **p
 
 ## Prérequis
 
-- Module 00 : le SDK .NET 10 est installé. `dotnet --list-sdks` doit afficher une ligne `10.0.4xx` ou supérieure.
+- Module 00 : le SDK .NET 11 est installé. `dotnet --list-sdks` doit afficher une ligne `11.0.100` ou supérieure.
 - Module 02 : vous savez ce qu'est un projet dans Chronos, sa nature et son statut.
 - Notions de HTTP : verbes `GET` et `POST`, codes de statut, corps JSON.
 - Votre dépôt ignore les dossiers `bin/` et `obj/`. C'est le cas du `.gitignore` du dépôt du cours ; dans un dépôt neuf, `dotnet new gitignore` en crée un.
@@ -34,7 +35,7 @@ Aucune. L'API de ce module accepte n'importe quel projet, même incohérent : c'
 
 Un **projet** (`.csproj`) produit un assemblage : ici, l'exécutable de l'API. Une **solution** (`.slnx`) est la liste des projets qui vont ensemble ; `dotnet build` lancé à côté d'elle les compile tous. Chronos en comptera cinq ou six.
 
-Le **SDK** est l'outil qui compile. Plusieurs versions peuvent être installées côte à côte, et sans consigne `dotnet` prend la plus récente. Or .NET 11 est sorti le 10 novembre 2026 : sur un poste à jour, ce serait lui. Le fichier `global.json` donne la consigne : cette solution se compile avec le SDK 10.
+Le **SDK** est l'outil qui compile. Plusieurs versions peuvent être installées côte à côte, et sans consigne `dotnet` prend la plus récente. Sur votre poste, c'est aujourd'hui le SDK 11, celui du cours ; mais une mise à jour installera un jour un SDK plus récent. Le fichier `global.json` donne la consigne : cette solution se compile avec le SDK 11.
 
 Documentation : [global.json](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json), [format `.slnx`](https://learn.microsoft.com/en-us/dotnet/core/compatibility/sdk/10.0/dotnet-new-sln-slnx-default)
 
@@ -50,7 +51,7 @@ C'est tout ce qu'il faut pour répondre à `GET /api/projets`. Ce style s'appell
 
 Vous croiserez dans du code existant l'autre style, les **contrôleurs** : des classes qui héritent de `ControllerBase`, dont les méthodes portent des attributs `[HttpGet]`, `[Route]`. Ils sont toujours pris en charge et font le même travail ; le cours ne les enseigne pas. Savoir les reconnaître suffit.
 
-Documentation : [Vue d'ensemble des API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/apis?view=aspnetcore-10.0), [Gestionnaires de routes](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/route-handlers?view=aspnetcore-10.0)
+Documentation : [Vue d'ensemble des API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/apis?view=aspnetcore-11.0), [Gestionnaires de routes](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/route-handlers?view=aspnetcore-11.0)
 
 ### D'où viennent les paramètres d'un gestionnaire
 
@@ -65,7 +66,7 @@ Vous ne lisez jamais la requête « à la main ». Vous déclarez des paramètre
 
 Le dernier cas mérite un mot. Un gestionnaire est appelé à chaque requête ; ce dont il a besoin et qui doit vivre plus longtemps — aujourd'hui la liste des projets, demain l'accès à la base — est un **service**. On l'enregistre une fois au démarrage (`builder.Services.Add…`), et ASP.NET Core le fournit à qui le demande. C'est l'**injection de dépendances** : le gestionnaire dit ce qu'il lui faut, pas comment le fabriquer.
 
-Documentation : [Liaison des paramètres](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-10.0), [Injection de dépendances](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0)
+Documentation : [Liaison des paramètres](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-11.0), [Injection de dépendances](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-11.0)
 
 ### DTO et `record`
 
@@ -84,7 +85,7 @@ Le type de retour les énumère : `Results<Ok<ProjetDto>, NotFound>` se lit « s
 - le compilateur refuse un `return` qui ne figure pas dans la liste ;
 - le document OpenAPI décrit ces deux réponses sans une ligne de plus.
 
-Documentation : [Réponses](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses?view=aspnetcore-10.0)
+Documentation : [Réponses](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses?view=aspnetcore-11.0)
 
 ### OpenAPI et Scalar
 
@@ -92,7 +93,7 @@ Documentation : [Réponses](https://learn.microsoft.com/en-us/aspnet/core/fundam
 
 Ce document est du JSON, peu lisible tel quel. **Scalar** est une interface web qui le présente et permet d'envoyer des requêtes d'essai. Les deux ne sont exposés qu'en développement : en production, ils renseigneraient un attaquant sur la structure de l'API.
 
-Documentation : [OpenAPI dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0), [Utiliser le document généré](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents?view=aspnetcore-10.0)
+Documentation : [OpenAPI dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-11.0), [Utiliser le document généré](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents?view=aspnetcore-11.0)
 
 ## Pas à pas
 
@@ -109,7 +110,7 @@ mkdir src/api
 Placez-vous dans ce dossier (`cd src/api`), puis :
 
 ```powershell
-dotnet new globaljson --sdk-version 10.0.400 --roll-forward latestFeature
+dotnet new globaljson --sdk-version 11.0.100 --roll-forward latestFeature
 ```
 
 Le fichier `global.json` créé contient :
@@ -118,19 +119,19 @@ Le fichier `global.json` créé contient :
 {
   "sdk": {
     "rollForward": "latestFeature",
-    "version": "10.0.400"
+    "version": "11.0.100"
   }
 }
 ```
 
-- **`version`** est un minimum : il faut au moins le SDK 10.0.400.
-- **`rollForward: latestFeature`** autorise toute version 10.0 plus récente installée sur le poste, et aucune autre : ni la 9, ni la 11.
+- **`version`** est un minimum : il faut au moins le SDK 11.0.100.
+- **`rollForward: latestFeature`** autorise toute version 11.0 plus récente installée sur le poste, et aucune autre : ni la 10, ni la 12.
 
 ```powershell
 dotnet --version
 ```
 
-Dans ce dossier, la commande doit maintenant afficher `10.0.4xx`, même si le SDK 11 est installé. Si elle affiche une erreur, aucun SDK 10 assez récent n'est installé : retournez au module 00.
+Dans ce dossier, la commande doit maintenant afficher `11.0.100` (ou une version 11.0 plus récente). Si elle affiche l'erreur `A compatible .NET SDK was not found` — celle que vous avez lue au module 00 —, aucun SDK 11.0.100 ou plus récent n'est installé : retournez au module 00.
 
 ### 2. Créer la solution et le projet
 
@@ -154,7 +155,7 @@ dotnet sln add Chronos.Api
 
 Inscrit le projet dans la solution.
 
-Documentation : [Modèles de `dotnet new`](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-new-sdk-templates), [Imposer HTTPS](https://learn.microsoft.com/en-us/aspnet/core/security/enforcing-ssl?view=aspnetcore-10.0)
+Documentation : [Modèles de `dotnet new`](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-new-sdk-templates), [Imposer HTTPS](https://learn.microsoft.com/en-us/aspnet/core/security/enforcing-ssl?view=aspnetcore-11.0)
 
 ### 3. Lire ce que le modèle a généré
 
@@ -162,7 +163,7 @@ Ouvrez chacun des six fichiers du dossier `Chronos.Api`.
 
 | Fichier | Rôle |
 | --- | --- |
-| `Chronos.Api.csproj` | Le projet. `Sdk="Microsoft.NET.Sdk.Web"` en fait une application web ; `net10.0` est la version de .NET ciblée ; une seule dépendance, `Microsoft.AspNetCore.OpenApi`. |
+| `Chronos.Api.csproj` | Le projet. `Sdk="Microsoft.NET.Sdk.Web"` en fait une application web ; `net11.0` est la version de .NET ciblée ; une seule dépendance, `Microsoft.AspNetCore.OpenApi`, dont le modèle écrit la version (`11.0.0`) dans le `.csproj`. |
 | `Program.cs` | Le point d'entrée, et pour l'instant tout le code. |
 | `Properties/launchSettings.json` | Comment `dotnet run` lance l'application **sur votre poste** : l'adresse d'écoute et l'environnement `Development`. Ce fichier ne sert pas en production. |
 | `appsettings.json` | La configuration de l'application ; pour l'instant, le niveau des journaux. |
@@ -203,7 +204,7 @@ Le `.csproj` généré porte trois réglages et un numéro de version. Avec cinq
 ```xml
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -218,12 +219,12 @@ Le `.csproj` généré porte trois réglages et un numéro de version. Avec cinq
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
   </ItemGroup>
 </Project>
 ```
 
-Reprenez le numéro de version qui figure dans votre `.csproj`. Celui-ci se réduit alors à :
+Reprenez le numéro de version qui figure dans votre `.csproj` (`11.0.0` avec le SDK 11.0.100). Celui-ci se réduit alors à :
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.Web">
@@ -243,7 +244,7 @@ dotnet build
 
 doit se terminer par `0 Warning(s)` et `0 Error(s)`.
 
-> **Le piège des versions 11.** Sans numéro de version, `dotnet package add` installe la dernière version publiée. Pour les paquets `Microsoft.AspNetCore.*` et `Microsoft.EntityFrameworkCore.*`, c'est désormais une 11.x, faite pour .NET 11. Essai du 12 novembre 2026 : `dotnet package add Microsoft.AspNetCore.OpenApi` a installé la 11.0.0 dans un projet `net10.0` sans le moindre avertissement, et la compilation a ensuite échoué (`CS1061: 'IServiceCollection' does not contain a definition for 'AddOpenApi'`). Pour ces paquets, précisez toujours la version : `dotnet package add <paquet> --version 10.0.15 --project Chronos.Api`.
+> **Le piège des versions se déplace.** Sans numéro de version, `dotnet package add` installe la dernière version publiée, et c'est désormais une 11.0.0 pour tous les paquets Microsoft. Pour `Microsoft.AspNetCore.*`, c'est ce qu'il faut : `dotnet package add Microsoft.AspNetCore.OpenApi --project Chronos.Api` écrit `11.0.0` dans `Directory.Packages.props`, comme le modèle. Pour tout ce qui touche à EF Core — `Microsoft.EntityFrameworkCore.*`, `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, l'outil `dotnet-ef` —, ce n'est pas ce qu'il faut : le projet reste en **EF Core 10**, parce que le fournisseur PostgreSQL d'EF Core n'existe en version 11 qu'en préversion. Essai du 13 novembre 2026, avec `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 dans le projet : `dotnet package add Microsoft.EntityFrameworkCore.Relational` sans version écrit quand même `11.0.0` dans `Directory.Packages.props`, après avoir affiché `warn : NU1608` (« Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 requires Microsoft.EntityFrameworkCore.Relational (>= 10.0.4 && < 11.0.0) but version … 11.0.0 was resolved ») et `error: NU1107: Version conflict detected for Microsoft.EntityFrameworkCore`. La compilation qui suit réussit pourtant, avec quatre avertissements `NU1608` : le piège est d'autant plus sournois. Ces avertissements deviennent des erreurs dès que les avertissements sont traités comme des erreurs, ce que fera le module 22. Pour ces paquets, précisez toujours la version : `dotnet package add <paquet> --version 10.0.15 --project Chronos.Api`. Vous rencontrerez le cas dès le [module 06](06-persister-avec-ef-core.md).
 
 Documentation : [Gestion centralisée des paquets](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management), [Personnaliser la compilation par dossier](https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory)
 
@@ -436,7 +437,7 @@ et, dans la classe, son gestionnaire :
 Relancez l'API. Sous PowerShell, le plus simple pour envoyer du JSON est `Invoke-RestMethod` :
 
 ```powershell
-$corps = '{ "code": "FORM-NET", "libelle": "Formation .NET 10", "nature": 1, "dateDebut": "2026-11-16", "dateFin": null, "budgetJours": 15 }'
+$corps = '{ "code": "FORM-NET", "libelle": "Formation .NET 11", "nature": 1, "dateDebut": "2026-11-16", "dateFin": null, "budgetJours": 15 }'
 ```
 
 ```powershell
@@ -474,13 +475,13 @@ Documentation : [`JsonStringEnumConverter`](https://learn.microsoft.com/en-us/do
 dotnet package add Scalar.AspNetCore --project Chronos.Api
 ```
 
-Scalar n'est pas un paquet Microsoft et ne suit pas les numéros de .NET : le piège des versions 11 ne le concerne pas. La commande ajoute la référence au `.csproj` et, parce que la gestion centralisée est active, écrit la version dans `Directory.Packages.props`. Ouvrez les deux fichiers pour le constater.
+Scalar n'est pas un paquet Microsoft et ne suit pas les numéros de .NET : le piège des versions ne le concerne pas : sans numéro, la commande a choisi la 2.21.0 lors de l'essai du 13 novembre 2026. La commande ajoute la référence au `.csproj` et, parce que la gestion centralisée est active, écrit la version dans `Directory.Packages.props`. Ouvrez les deux fichiers pour le constater.
 
 Dans `Program.cs`, ajoutez `using Scalar.AspNetCore;` en tête de fichier et, dans le bloc réservé au développement, la ligne `app.MapScalarApiReference();` sous `app.MapOpenApi();`.
 
 Relancez l'API et ouvrez dans un navigateur :
 
-- `http://localhost:5080/openapi/v1.json` — le document OpenAPI. Cherchez-y `/api/projets/{id}` : les réponses 200 et 404 y figurent, déduites du type `Results<Ok<ProjetDto>, NotFound>`. Cherchez `NatureProjet` : ses deux valeurs y sont, en chaînes.
+- `http://localhost:5080/openapi/v1.json` — le document OpenAPI. Cherchez-y `/api/projets/{id}` : les réponses 200 et 404 y figurent, déduites du type `Results<Ok<ProjetDto>, NotFound>`. Cherchez `NatureProjet` : ses deux valeurs y sont, en chaînes. Lisez aussi la deuxième ligne : le document annonce `"openapi": "3.2.0"`, la version de la spécification que .NET 11 génère par défaut (.NET 10 produisait du 3.1).
 - `http://localhost:5080/scalar` — la même information, lisible. Le groupe **Projets** liste vos trois endpoints ; le bouton **Test Request** envoie une requête sans quitter la page.
 
 Documentation : [Scalar pour ASP.NET Core](https://github.com/scalar/scalar/blob/main/documentation/integrations/aspnetcore/integration.md)
@@ -502,7 +503,7 @@ Content-Type: application/json
 
 {
   "code": "FORM-NET",
-  "libelle": "Formation .NET 10",
+  "libelle": "Formation .NET 11",
   "nature": "Interne",
   "dateDebut": "2026-11-16",
   "dateFin": null,
@@ -512,7 +513,7 @@ Content-Type: application/json
 
 `###` sépare les requêtes ; la première ligne définit une variable. Visual Studio affiche un lien *Send Request* au-dessus de chaque requête ; Visual Studio Code fait de même avec l'extension REST Client, dont ce format est issu. Le fichier est versionné : c'est une documentation exécutable de l'API.
 
-Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core/test/http-files?view=aspnetcore-10.0)
+Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core/test/http-files?view=aspnetcore-11.0)
 
 ## À vous
 
@@ -526,11 +527,11 @@ Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core
 
 5. **Changer d'environnement.** Lancez l'API avec `dotnet run --project Chronos.Api --no-launch-profile --urls http://localhost:5080`. Quel environnement le journal de démarrage annonce-t-il, et pourquoi ? Que répondent maintenant `/scalar` et `/openapi/v1.json` ? Envoyez un `POST` au JSON invalide dans les deux environnements et comparez les réponses : laquelle voudriez-vous montrer à un inconnu ?
 
-6. **Lire un contrôleur.** La page [Vue d'ensemble des API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/apis?view=aspnetcore-10.0) montre la même API écrite avec des contrôleurs. Sans l'exécuter, retrouvez-y l'équivalent de chaque élément de votre code : le préfixe de route, le gestionnaire, le paramètre lu dans la route, le service injecté, le résultat 404.
+6. **Lire un contrôleur.** La page [Vue d'ensemble des API](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/apis?view=aspnetcore-11.0) montre la même API écrite avec des contrôleurs. Sans l'exécuter, retrouvez-y l'équivalent de chaque élément de votre code : le préfixe de route, le gestionnaire, le paramètre lu dans la route, le service injecté, le résultat 404.
 
 ## Critères de réussite
 
-- Dans `src/api`, `dotnet --version` affiche une version 10.0, et `dotnet build` se termine sans avertissement ni erreur.
+- Dans `src/api`, `dotnet --version` affiche une version 11.0, et `dotnet build` se termine sans avertissement ni erreur.
 - `GET /api/projets` répond 200 avec une liste ; `GET /api/projets/1` répond 200 ; `GET /api/projets/99` répond 404.
 - `POST /api/projets` répond 201 avec un en-tête `Location`, et un `GET` sur cette adresse renvoie le projet créé.
 - Dans le JSON, `nature` et `statut` sont des chaînes.
@@ -543,10 +544,10 @@ Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
-| `dotnet package add Microsoft.AspNetCore.…` sans version | Installe une 11.x dans un projet `net10.0` : la compilation casse, avec une erreur sans rapport apparent. | Ajouter `--version 10.0.x`. |
+| `dotnet package add Microsoft.EntityFrameworkCore.…` (ou `Identity.EntityFrameworkCore`, `HealthChecks.EntityFrameworkCore`, `dotnet tool install dotnet-ef`) sans version | Installe une 11.0.0, incompatible avec le fournisseur PostgreSQL : selon les paquets déjà présents, avertissements `NU1608` (erreurs dès le module 22), erreur `NU1107` à l'ajout, ou échec de compilation `NU1605`. Pour `Microsoft.AspNetCore.*`, au contraire, la 11.0.0 est la bonne. | Ajouter `--version 10.0.15` pour tout ce qui touche à EF Core. |
 | `Version="…"` dans un `.csproj` alors que `Directory.Packages.props` existe | La restauration échoue avec l'erreur `NU1008`. | La version va dans `Directory.Packages.props`, sur un élément `PackageVersion`. |
 | `AddSwaggerGen()`, `UseSwagger()`, `UseSwaggerUI()` | Swashbuckle n'est plus fourni par les modèles depuis .NET 9. | `AddOpenApi()`, `MapOpenApi()`, et Scalar pour l'interface. |
-| `.WithOpenApi()` sur un endpoint | Obsolète en .NET 10. | Le supprimer : il n'est plus nécessaire. |
+| `.WithOpenApi()` sur un endpoint | Obsolète depuis .NET 10 ; en .NET 11, avertissement `ASPDEPR002` (rejoué). | Le supprimer : il n'est plus nécessaire. |
 | `Results.Ok(projet)` avec un retour `IResult` | Fonctionne, mais le document OpenAPI ignore alors la forme de la réponse, et rien ne vérifie les `return`. | `TypedResults.Ok(projet)` et un type de retour `Results<…>`. |
 | Une classe `Startup` avec `ConfigureServices` et `Configure` | Style antérieur à .NET 6, que la documentation ne propose plus pour du code neuf. | Tout dans `Program.cs`, avec `WebApplication.CreateBuilder`. |
 | `app.UseHttpsRedirection()` avec le seul profil `http` | Avertissement à chaque lancement : `Failed to determine the https port for redirect`. | Créer le projet avec `--no-https` quand un serveur frontal porte le HTTPS, ou lancer le profil `https`. |
@@ -555,7 +556,7 @@ Documentation : [Fichiers `.http`](https://learn.microsoft.com/en-us/aspnet/core
 | Chercher `/swagger`, ou `/scalar/v1` comme l'indiquent certains tutoriels | La première adresse n'existe pas ; l'adresse documentée de Scalar est `/scalar`. | `http://localhost:5080/scalar`. |
 | Une énumération renvoyée sous forme de nombre | Illisible, et fragile si l'énumération évolue. | `JsonStringEnumConverter`, réglé une fois dans `ConfigureHttpJsonOptions`. |
 
-Les sources de ces constats sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
+Les sources de ces constats sont dans le [référentiel .NET 11](../docs/references/dotnet-11.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
 
 ## Pour la séance
 
@@ -568,10 +569,10 @@ Les sources de ces constats sont dans le [référentiel .NET 10](../docs/referen
 
 ## Pour aller plus loin
 
-- [Tutoriel officiel : créer une Minimal API](https://learn.microsoft.com/en-us/aspnet/core/tutorials/min-web-api?view=aspnetcore-10.0) : le même parcours sur un autre exemple, avec une base de données.
+- [Tutoriel officiel : créer une Minimal API](https://learn.microsoft.com/en-us/aspnet/core/tutorials/min-web-api?view=aspnetcore-11.0) : le même parcours sur un autre exemple, avec une base de données.
 - [`dotnet watch`](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-watch) : relancer l'API automatiquement à chaque modification du code.
-- [Environnements d'exécution](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments?view=aspnetcore-10.0) : ce que change `Development`, et comment `launchSettings.json` le fixe.
-- [Configuration](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-10.0) : comment `appsettings.json`, les variables d'environnement et la ligne de commande se combinent.
-- [Routage](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/routing?view=aspnetcore-10.0) : toutes les contraintes de route.
-- [API avec contrôleurs](https://learn.microsoft.com/en-us/aspnet/core/web-api/?view=aspnetcore-10.0) : pour lire du code existant.
+- [Environnements d'exécution](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments?view=aspnetcore-11.0) : ce que change `Development`, et comment `launchSettings.json` le fixe.
+- [Configuration](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-11.0) : comment `appsettings.json`, les variables d'environnement et la ligne de commande se combinent.
+- [Routage](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/routing?view=aspnetcore-11.0) : toutes les contraintes de route.
+- [API avec contrôleurs](https://learn.microsoft.com/en-us/aspnet/core/web-api/?view=aspnetcore-11.0) : pour lire du code existant.
 - Suite dans le cours : le module 04 écrit les règles des projets, le module 06 remplace la liste en mémoire par une base, le module 08 valide les entrées et pagine la liste.

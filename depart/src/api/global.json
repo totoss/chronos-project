@@ -3,6 +3,6 @@
   //    — cours/04-modeliser-le-domaine.md, Pas à pas, étape 4 « Créer le projet de tests »
   "sdk": {
     "rollForward": "latestFeature",
-    "version": "10.0.400"
+    "version": "11.0.100"
   }
 }

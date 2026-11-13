@@ -3,10 +3,13 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Les versions s'inscrivent ici, module après module ; chaque projet ne porte ensuite que le nom du paquet. Un paquet « Microsoft.AspNetCore.* » ou
-         « Microsoft.EntityFrameworkCore.* » s'installe toujours avec l'option de version : sans elle, la commande prend une 11.x qui exige .NET 11
+    <!-- Les versions s'inscrivent ici, module après module ; chaque projet ne porte ensuite que le nom du paquet. Le piège des versions est du côté d'EF Core :
+         le projet cible .NET 11, mais le fournisseur PostgreSQL d'EF Core 11 n'existe qu'en préversion, qui exige une préversion d'EF Core. EF Core reste donc en 10.0.15
+         (version à prise en charge à long terme, utilisable sous .NET 11), ainsi que tout paquet qui en dépend (Identity.EntityFrameworkCore, HealthChecks.EntityFrameworkCore, outil « dotnet-ef »).
+         Ces paquets s'installent toujours avec l'option de version : sans elle, la commande prend une 11.0.0, incompatible avec le fournisseur PostgreSQL. Les paquets
+         Microsoft.AspNetCore.OpenApi et Microsoft.AspNetCore.Mvc.Testing se prennent en 11.0.0
          (cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions »). -->
-    <!-- TODO [module 03] Inscrire la version de Microsoft.AspNetCore.OpenApi (10.0.15), puis celle de Scalar.AspNetCore (2.21.0) ; leurs références sont annotées dans Chronos.Api.csproj
+    <!-- TODO [module 03] Inscrire la version de Microsoft.AspNetCore.OpenApi (11.0.0), puis celle de Scalar.AspNetCore (2.21.0) ; leurs références sont annotées dans Chronos.Api.csproj
          — cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions » -->
     <!-- TODO [module 04] Inscrire xunit.v3.mtp-v2 (4.0.3), la version indiquée par le cours pour le modèle de projet de tests
          — cours/04-modeliser-le-domaine.md, Pas à pas, étape 4 « Créer le projet de tests » -->
@@ -16,7 +19,7 @@
          — cours/07-deux-sgbd-un-seul-code.md, Pas à pas, étape 2 « Ajouter le fournisseur SQL Server » -->
     <!-- TODO [module 09] Inscrire Microsoft.Extensions.TimeProvider.Testing (10.11.0), pour l'horloge factice des tests
          — cours/09-affectations-et-calcul-de-charge.md, Pas à pas, étape 7 « « La semaine en cours » » -->
-    <!-- TODO [module 11] Inscrire Microsoft.AspNetCore.Mvc.Testing (10.0.15) et Testcontainers.PostgreSql (4.16.0) ; le module 11 ajoute Testcontainers.MsSql (4.16.0) à l'exercice 5 « Les mêmes tests sur SQL Server. »
+    <!-- TODO [module 11] Inscrire Microsoft.AspNetCore.Mvc.Testing (11.0.0) et Testcontainers.PostgreSql (4.16.0) ; le module 11 ajoute Testcontainers.MsSql (4.16.0) à l'exercice 5 « Les mêmes tests sur SQL Server. »
          — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
     <!-- TODO [module 12] Inscrire Microsoft.AspNetCore.Identity.EntityFrameworkCore (10.0.15)
          — cours/12-securite-et-tracabilite.md, Pas à pas, étape 1 « Le compte utilisateur et ses tables » -->

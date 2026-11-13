@@ -40,8 +40,9 @@ L'état de départ compile. Vérifiez-le une fois le module 00 terminé :
 | **D'assemblage** | Une version minimale qui compile, avec une annotation par ajout, **à l'endroit où le code ira**. | `Program.cs`, `ChronosDbContext.cs`, `app.config.ts`, `app.routes.ts`, `compose.yaml` |
 | **À écrire** | L'en-tête d'annotations, puis le type déclaré sans aucun membre — ou rien d'autre quand une déclaration vide serait trompeuse (garde, intercepteur, endpoints). | `Collaborateur.cs`, `CollaborateursEndpoints.cs`, `session.ts`, `auth-guard.ts` |
 
-Trois choses à savoir sur la plomberie .NET :
+Quatre choses à savoir sur la plomberie .NET :
 
+- Le **SDK .NET 11** (`11.0.100`) est fixé par `global.json` et le cadre cible, `net11.0`, par `Directory.Build.props`. Les paquets `Microsoft.AspNetCore.OpenApi` et `Microsoft.AspNetCore.Mvc.Testing` se prennent en `11.0.0`, mais **EF Core reste en `10.0.15`**, avec les paquets qui en dépendent (dont `Microsoft.AspNetCore.Identity.EntityFrameworkCore`) et l'outil `dotnet ef` : le fournisseur PostgreSQL d'EF Core 11 n'existe qu'en préversion. Chaque annotation de paquet donne la version à employer.
 - Les **références entre projets** sont posées : c'est l'architecture (`Chronos.Api` → `Chronos.Infrastructure` → `Chronos.Domain`, un projet de migrations par SGBD, deux projets de tests).
 - Les **paquets NuGet ne sont pas installés**. Chaque `dotnet package add` du cours reste à faire, et s'annote dans le `.csproj` concerné et dans `Directory.Packages.props`.
 - Les deux projets de tests compilent à vide. Le module 04 (tests du domaine) et le module 11 (tests d'intégration) en font des projets xUnit ; leur `.csproj` dit exactement quoi y écrire.
@@ -150,7 +151,7 @@ Chaque fichier qui a un test dans la solution porte une annotation « Test, `x.s
 | 04, étape 10 « Brancher l'API sur le domaine » | La référence existe, par l'intermédiaire de `Chronos.Infrastructure` | Le code |
 | 06, étape 1 « Créer le projet d'infrastructure » | Le projet et ses références | Les paquets EF Core |
 | 07, étape 4 « Un projet par jeu de migrations » | Les deux projets et leurs références | Les migrations |
-| 11, étape 1 « Créer le projet de tests » | `Chronos.Api.Tests.csproj`, sa référence à l'API, `xunit.runner.json` | Le SDK Web, le type de sortie, les paquets — à la main |
+| 11, étape 1 « Créer le projet de tests » | `Chronos.Api.Tests.csproj`, sa référence à l'API, `xunit.runner.json` | Le SDK Web, le type de sortie, les paquets — à la main ; le contournement d'un défaut du SDK 11.0.100, qui n'apparaît qu'une fois le SDK Web posé |
 | 13, étape 2 « Créer l'application » | L'espace de travail Angular, un composant racine minimal | Rien |
 | 13, étape 5 « Remplacer la page d'accueil » | `index.html` en français, titré « Chronos » | Le signal `titre`, le gabarit ; **ajouter** le test « affiche le nom de l'application » (le test généré que l'étape fait corriger n'existe pas ici) |
 | 13, étape 10 « Fixer les versions de Node.js et de TypeScript » | Le bloc `devEngines` et la version de TypeScript dans `package.json` | Rien |
@@ -197,9 +198,10 @@ Trois fichiers sont en JSON strict : un commentaire les rendrait illisibles pour
 
 ## Ce qui a été vérifié
 
-- L'état de départ : compilation de la solution sans avertissement, démarrage de l'API (aucune route : 404 partout), `npm ci`, `ng build`, `ng test`.
-- La cohabitation avec chaque étape du parcours : le code de la solution aux tags `module-03` à `module-25`, posé sur le squelette, compile ; les coquilles des modules à venir ne gênent aucun état intermédiaire. Côté interface, les tests des tags `module-13`, `16`, `18`, `19` et `20` passent dans les mêmes conditions.
-- La plomberie : complétée d'après ses seules annotations, puis chargée du code du tag `module-25`, la solution .NET compile sans avertissement, avertissements traités en erreurs.
-- Chaque annotation cite un titre d'étape ou d'exercice qui existe mot pour mot dans le module.
+- L'état de départ : compilation de la solution sans avertissement, démarrage de l'API (aucune route : 404 partout), `npm ci`, `ng build`, `ng test`. **Revérifié en .NET 11 le 13 novembre 2026** : `dotnet build` du squelette, avec le seul SDK 11.0.100, donne 0 erreur et 0 avertissement. Le démarrage de l'API et la partie Angular n'ont pas été relancés pour ce changement (l'interface n'est pas concernée).
+- La cohabitation avec chaque étape du parcours (vérifiée en .NET 10) : le code de la solution aux tags `module-03` à `module-25`, posé sur le squelette, compile ; les coquilles des modules à venir ne gênent aucun état intermédiaire. Côté interface, les tests des tags `module-13`, `16`, `18`, `19` et `20` passent dans les mêmes conditions.
+- **En .NET 11**, un seul état a été revérifié : l'état final de la solution (les fichiers de `src/api` à la racine du dépôt du cours) posé sur le squelette compile, en Debug (avertissements en erreurs) et en Release, sans avertissement. La cohabitation avec les tags intermédiaires n'a pas été rejouée : les tags `module-NN` restent des états de la construction en .NET 10, et ne compilent pas tels quels avec le seul SDK 11. Le défaut du SDK 11.0.100 annoncé dans `Chronos.Api.Tests.csproj` a été reproduit : une fois le SDK Web posé, la compilation en Debug échoue, et la propriété indiquée la corrige.
+- La plomberie : complétée d'après ses seules annotations, puis chargée du code du tag `module-25`, la solution .NET compile sans avertissement, avertissements traités en erreurs. (Vérifié en .NET 10 ; en .NET 11, rejoué jusqu'au module 11 : plomberie complétée d'après les annotations des modules 03 à 11, code du tag `module-11`, compilation Debug et Release sans avertissement, 225 tests du domaine. Les modules suivants n'ont pas été rejoués.)
+- Chaque annotation cite un titre d'étape ou d'exercice qui existe mot pour mot dans le module. Revérifié par un script le 13 novembre 2026, au moment de ce changement : les références des annotations existent toutes dans les modules, aucun titre n'a été modifié par l'alignement sur .NET 11.
 
 Ce qui ne l'a pas été : personne n'a encore suivi le cours de bout en bout à partir de ce squelette, et tout a tourné dans des conteneurs Linux, pas directement sous Windows.

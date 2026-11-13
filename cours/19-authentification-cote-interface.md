@@ -2,6 +2,7 @@
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel Angular 22](../docs/references/angular-22.md).
 > Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (Angular 22.2.6, CLI 22.2.7, Angular Material 22.2.7, TypeScript 6.0.3, Vitest 5.1.0, Node.js 24.22.3), à la suite des modules 15 à 18 : `ng build` réussit (avec l'avertissement de budget) et les tests passent. Il a été parcouru dans Chromium (Playwright 1.65) contre la **véritable API .NET** du module 12, avec les quatre comptes de démonstration (collaboratrice, manager, gestionnaire RH, administrateur sans fiche) : gardes et retour à l'adresse demandée, session qui survit au rechargement sans rien stocker, en-tête `X-XSRF-TOKEN`, session expirée, déconnexion, menus par rôle, appels directs à l'API refusés. Les corrections apportées après cet essai sont signalées dans le texte (étapes 2, 6, 7 et 8). Signalez au mentor tout écart constaté.
+> **Aligné sur .NET 11 le 13 novembre 2026.** L'interface n'a pas changé (Angular 22, Node.js 24) et n'a pas été rejouée : seul le côté API de ce module est concerné. Ce qui a été rejoué en .NET 11, c'est le comportement de l'API décrit ici — cookies `chronos.session` et `XSRF-TOKEN`, `400` sans jeton, `401` sans cookie — par des appels `curl` sur l'état final de la solution (voir le module 12). Aucune étape de ce module n'a été rejouée avec Angular depuis cet alignement.
 
 Depuis le module 12, l'API sait qui l'appelle : elle répond `401` à un inconnu et `403` à quelqu'un qui n'a pas le droit. L'interface, elle, n'en sait rien : depuis le module 16, vous ouvrez la session à la main dans la console du navigateur, et l'identifiant du collaborateur est écrit en dur. Ce module la met à niveau : un écran de connexion, des routes qui exigent d'être connecté, et des menus qui ne proposent à chacun que ce qu'il peut faire.
 
@@ -46,7 +47,7 @@ Ce cookie porte l'attribut `HttpOnly` : le code JavaScript de la page ne peut pa
 
 Cela fonctionne parce que l'interface et l'API ont la **même origine** : en développement grâce au proxy du module 16, en production grâce au serveur web du module 23.
 
-Documentation : [Identity pour une API appelée par une SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0), [cookies HTTP (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies)
+Documentation : [Identity pour une API appelée par une SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-11.0), [cookies HTTP (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies)
 
 ### L'interface ne protège rien
 
@@ -92,6 +93,8 @@ Le module 12 lui oppose deux barrières. La première est l'attribut `SameSite=S
 
 Un site tiers peut provoquer l'envoi des cookies, mais il ne peut ni les lire ni ajouter un en-tête : sa requête est rejetée.
 
+Avec .NET 11, le framework ajoute de lui-même une vérification fondée sur l'origine de la requête (`Sec-Fetch-Site`, `Origin`). Mais il ne fait refuser que les requêtes adressées à un endpoint qui lit un formulaire. Les écritures de Chronos sont du JSON : si l'API ne vérifiait pas elle-même le jeton (le filtre du module 12), une écriture forgée venue d'un autre site passerait (constaté au module 12, sur une copie sans le filtre). Rien ne change donc côté interface : le cookie `XSRF-TOKEN` et l'en-tête `X-XSRF-TOKEN` restent indispensables, et les règles de l'étape 8 aussi.
+
 **Angular fait l'étape 2 tout seul.** `HttpClient` contient un intercepteur qui lit le cookie `XSRF-TOKEN` et pose l'en-tête `X-XSRF-TOKEN`. Voici son comportement, relevé dans des tests et dans Chromium :
 
 | Requête | En-tête `X-XSRF-TOKEN` |
@@ -103,7 +106,7 @@ Un site tiers peut provoquer l'envoi des cookies, mais il ne peut ni les lire ni
 
 Les étapes 1 et 3 reviennent à l'API : le module 12 les a écrites. Les deux noms, `XSRF-TOKEN` et `X-XSRF-TOKEN`, sont les valeurs par défaut d'Angular, celles que montre la documentation d'ASP.NET Core, et celles que le module 12 a retenues : il n'y a **rien à configurer** dans l'interface. Seule la connexion échappe à la vérification — avant elle, il n'y a pas de session à détourner.
 
-Documentation : [protection XSRF de `HttpClient`](https://angular.dev/best-practices/security#httpclient-xsrf-csrf-security), [prévenir les attaques CSRF dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0)
+Documentation : [protection XSRF de `HttpClient`](https://angular.dev/best-practices/security#httpclient-xsrf-csrf-security), [prévenir les attaques CSRF dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-11.0)
 
 ## Pas à pas
 
@@ -777,5 +780,5 @@ La liste complète des pratiques obsolètes est dans le [référentiel Angular 2
 
 - [Sécurité d'une application Angular](https://angular.dev/best-practices/security) : XSS, politique de sécurité du contenu, et la section XSRF en entier.
 - [`HttpContextToken`](https://angular.dev/guide/http/interceptors) : transmettre une information d'une requête à un intercepteur.
-- [Prévenir les attaques CSRF dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0) : le côté serveur du mécanisme, et le rôle de l'attribut `SameSite` des cookies.
+- [Prévenir les attaques CSRF dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-11.0) : le côté serveur du mécanisme, et le rôle de l'attribut `SameSite` des cookies.
 - Suite dans le cours : le [module 20](20-tester-l-interface.md) teste la session, les gardes et l'intercepteur ; le [module 21](21-accessibilite-et-finitions.md) rend l'écran de connexion utilisable au lecteur d'écran.

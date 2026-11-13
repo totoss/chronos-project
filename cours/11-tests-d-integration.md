@@ -1,7 +1,8 @@
 # Module 11 — Tests d'intégration
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md) et le [référentiel GitHub Actions](../docs/references/github-actions.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md) et le [référentiel GitHub Actions](../docs/references/github-actions.md).
 > Le code de ce module a été **rejoué le 12 novembre 2026 sur la solution de référence** (état du module 10, SDK 10.0.404, `xunit.v3.mtp-v2` 4.0.3, `Microsoft.AspNetCore.Mvc.Testing` 10.0.15, Testcontainers 4.16.0, EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18, SQL Server 2025) : la fabrique applique les migrations de `Chronos.Migrations.PostgreSql` ou de `Chronos.Migrations.SqlServer` (module 07) et les données initiales du module 06 ; les tests du pas à pas et des exercices 1 à 5 passent (15 tests, environ 6 s sur PostgreSQL et 9 s sur SQL Server), deux fois de suite et classe par classe ; les deux commandes de l'étape 9 aussi, et `actionlint` accepte le workflow. Les essais ont été lancés depuis un conteneur du SDK relié au moteur Docker du poste, et non depuis PowerShell. **Non exécuté** : le workflow modifié, sur GitHub. Signalez au mentor tout écart constaté.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100 ; `Microsoft.AspNetCore.Mvc.Testing` 11.0.0 ; EF Core et Npgsql restés en 10). Ont été rejoués en .NET 11, à partir de l'état du tag `module-10` dont on a remplacé la plomberie (SDK, cadre cible, `Microsoft.AspNetCore.OpenApi` 11.0.0) : l'étape 1 en entier (`dotnet new xunit3`, `NU1008`, ajout du projet à la solution, paquets, forme du `.csproj`), puis `dotnet build` du projet de tests en Debug (l'erreur du SDK décrite à l'étape 3, et son contournement) et en Release ; `dotnet package add Microsoft.AspNetCore.Mvc.Testing` sans version. Les 144 tests d'intégration de l'état final passent en .NET 11 sur PostgreSQL et SQL Server (vérifié par le coordinateur ; non rejoué dans ce module). **N'ont pas été rejoués** : les étapes 2 à 9 écrites pas à pas depuis le tag `module-10`, le workflow sur GitHub.
 
 Les tests des modules 04 et 09 vérifient les règles du domaine en quelques millisecondes, sans base ni réseau. Ils ne disent rien de ce qui entoure le domaine : une route mal écrite, une annotation de validation oubliée, une date mal sérialisée, une requête LINQ que PostgreSQL refuse, un index unique absent de la migration. Ces erreurs-là ne se voient qu'en faisant ce que fera l'interface Angular : envoyer une requête HTTP à l'API, branchée sur une vraie base.
 
@@ -45,9 +46,9 @@ Cette classe du paquet `Microsoft.AspNetCore.Mvc.Testing` démarre votre applica
 
 La fabrique permet aussi de modifier l'application avant son démarrage : changer un réglage, remplacer un service. C'est ainsi qu'on lui donnera la base de test et une horloge pilotée.
 
-`Program` est la classe que le compilateur génère à partir des instructions de `Program.cs`. Jusqu'à .NET 9, elle était `internal`, et tous les tutoriels ajoutent `public partial class Program { }` à la fin du fichier pour que le projet de tests y accède. **En .NET 10, c'est inutile** : un générateur de source la déclare publique. Vous le constaterez à l'étape 3.
+`Program` est la classe que le compilateur génère à partir des instructions de `Program.cs`. Jusqu'à .NET 9, elle était `internal`, et tous les tutoriels ajoutent `public partial class Program { }` à la fin du fichier pour que le projet de tests y accède. **Depuis .NET 10, c'est inutile** (et cela le reste en .NET 11) : un générateur de source la déclare publique. Vous le constaterez à l'étape 3.
 
-Documentation : [Tests d'intégration dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0), [nouveautés d'ASP.NET Core 10](https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0?view=aspnetcore-10.0)
+Documentation : [Tests d'intégration dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-11.0), [nouveautés d'ASP.NET Core 10](https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-10.0?view=aspnetcore-10.0)
 
 ### Testcontainers
 
@@ -108,6 +109,8 @@ dotnet new xunit3 -f net10.0 --name Chronos.Api.Tests
 
 Comme au [module 04](04-modeliser-le-domaine.md), la commande se termine par l'erreur `NU1008` : le modèle a écrit une version de paquet dans le `.csproj`, ce que la gestion centralisée refuse. La correction est la même (étape 4 du module 04) ; la version de `xunit.v3.mtp-v2` est déjà dans `Directory.Packages.props`. La commande affiche aussi `Successfully modified global.json` : le fichier contient déjà la section `test` depuis le module 04, et le modèle ne fait qu'en retirer le saut de ligne final. Annulez cette modification (`git restore global.json`).
 
+> **`-f net10.0`, et pas `net11.0`.** Avec le SDK 11.0.100, `dotnet new xunit3 -f net11.0` est refusé : « 'net11.0' is not a valid value for -f », et la liste des valeurs permises s'arrête à `net10.0` (le modèle vient du paquet `xunit.v3.templates` 4.0.3, installé au module 04 par `dotnet new install xunit.v3.templates` ; sans `-f`, il écrit `net8.0`). La valeur ne compte pas : la ligne `<TargetFramework>` du `.csproj` est supprimée un peu plus bas, le cadre cible venant de `Directory.Build.props` (`net11.0`). Prenez donc la valeur la plus haute que le modèle accepte. **Si vous oubliez de supprimer la ligne**, la restauration échoue (rejoué) : `NU1201` « Project Chronos.Api is not compatible with net10.0 » et `NU1202` pour `Mvc.Testing` 11.0.0.
+
 ```powershell
 dotnet sln add Chronos.Api.Tests
 ```
@@ -115,7 +118,7 @@ dotnet sln add Chronos.Api.Tests
 Supprimez `UnitTest1.cs`. Ajoutez les versions des nouveaux paquets dans `Directory.Packages.props` (ne dupliquez pas `Microsoft.Extensions.TimeProvider.Testing` si le module 09 l'y a déjà mise) :
 
 ```xml
-<PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
+<PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
 <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
 <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
 ```
@@ -159,7 +162,7 @@ Trois différences avec le fichier produit par le modèle :
 
 La référence au projet de l'API peut aussi s'ajouter par `dotnet reference add Chronos.Api --project Chronos.Api.Tests`, comme au module 04.
 
-> **Les versions 11.x de ces paquets exigent .NET 11.** `Microsoft.AspNetCore.Mvc.Testing` 11.0.0 existe déjà : c'est la raison pour laquelle on écrit le numéro de version soi-même.
+> **Les numéros de version de ces paquets ne sont pas tous les mêmes.** `Microsoft.AspNetCore.Mvc.Testing` suit ASP.NET Core : **11.0.0**, la même que `Microsoft.AspNetCore.OpenApi` (rejoué : `dotnet package add Microsoft.AspNetCore.Mvc.Testing --project Chronos.Api.Tests`, sans `--version`, écrit bien `11.0.0`). `Microsoft.Extensions.TimeProvider.Testing` reste en `10.11.0` et Testcontainers en `4.16.0`, qui ne suivent pas le numéro du SDK. Écrire les numéros soi-même, dans `Directory.Packages.props`, évite qu'une commande sans `--version` n'en choisisse un autre le jour où une version plus récente paraît.
 
 ### 2. Un serveur PostgreSQL pour tous les tests
 
@@ -251,11 +254,30 @@ Compilez :
 dotnet build
 ```
 
+Avec le SDK 11.0.100, **en `Debug`, la compilation échoue sur le projet de tests** (c'est la configuration par défaut de `dotnet build` ; un éditeur qui compile tout seul vous la montrera dès l'étape 1) :
+
+```text
+Microsoft.NET.Sdk.StaticWebAssets.JSModules.targets(233,3): error : The following scoped css bundles do not have matching endpoints: _framework/Microsoft.NET.Sdk.BlazorWeb.HotReload#[.{fingerprint}]!.lib.module.js [.../Chronos.Api.Tests/Chronos.Api.Tests.csproj]
+```
+
+Ce n'est pas votre code : c'est un défaut du SDK (dotnet/sdk, [ticket 56656](https://github.com/dotnet/sdk/issues/56656), ouvert à la date de ce cours). Il touche tout projet du SDK Web qui en référence un autre — exactement le cas de `Chronos.Api.Tests`, qui doit être du SDK Web (étape 1) et référence `Chronos.Api`. En `Release`, l'erreur n'apparaît pas (rejoué : `dotnet build -c Release` réussit). Le contournement tient en une ligne dans `Chronos.Api.Tests.csproj`, dans le premier `PropertyGroup` :
+
+```xml
+<!-- Contournement d'un défaut du SDK 11.0.100 : en Debug, un projet du SDK Web qui en référence un autre échoue sur -->
+<!-- « scoped css bundles do not have matching endpoints » (dotnet/sdk, ticket 56656). Ce projet ne sert aucun fichier -->
+<!-- statique : la ligne est sans effet sur les tests. À retirer quand le SDK est corrigé. -->
+<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+```
+
+`StaticWebAssetsEnabled` à `false` désactive la machinerie des « ressources web statiques » du SDK (le manifeste qui permet à une application web de servir les fichiers de `wwwroot` et des bibliothèques de classes Razor), et avec elle la vérification qui échoue. Elle est sans risque ici : le projet de tests est un hôte pour `WebApplicationFactory`, il ne sert aucun fichier statique, et l'API de Chronos n'en sert pas non plus (les 144 tests de la solution de référence passent avec cette ligne). **Elle se retirera** quand le SDK sera corrigé : essayez de la supprimer à chaque mise à jour du SDK, et gardez le commentaire pour que le prochain lecteur sache pourquoi elle est là. Recompilez : la compilation réussit.
+
 La compilation réussit alors que `Program.cs` ne contient aucune ligne `public partial class Program { }` : la classe est bien publique. Si cette ligne traîne dans votre `Program.cs`, supprimez-la ; l'analyseur [ASP0027](https://learn.microsoft.com/en-us/aspnet/core/diagnostics/asp0027) le suggère dans l'éditeur.
 
 > **Pourquoi `UseSetting` et pas `ConfigureAppConfiguration` ?** La documentation décrit plusieurs façons de fournir une configuration de test. Celle qu'on trouve dans la plupart des tutoriels, `builder.ConfigureAppConfiguration(...)`, n'est appliquée qu'**après** `builder.Build()`. Or `Program.cs` lit `Chronos:Fournisseur` et la chaîne de connexion avant, dans deux variables, pour choisir entre `UseNpgsql` et `UseSqlServer` (module 07). L'essai le confirme : avec `ConfigureAppConfiguration`, `Program.cs` lit encore la valeur du fichier de développement ; avec `UseSetting`, il lit celle du test.
 
-Documentation : [Personnaliser `WebApplicationFactory`](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0), [Testcontainers avec ASP.NET Core](https://dotnet.testcontainers.org/examples/aspnet/)
+Depuis .NET 11, la documentation décrit aussi `ConfigureWebApplicationBuilder`, dont la configuration est visible dès `WebApplication.CreateBuilder` ; `UseSetting` suffit à Chronos (non essayé ici).
+
+Documentation : [Personnaliser `WebApplicationFactory`](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-11.0), [Testcontainers avec ASP.NET Core](https://dotnet.testcontainers.org/examples/aspnet/)
 
 ### 4. Un premier test : créer puis relire
 
@@ -502,7 +524,9 @@ Documentation : [Testcontainers en intégration continue](https://dotnet.testcon
 
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
-| `public partial class Program { }` à la fin de `Program.cs` | Inutile en .NET 10 : un générateur de source rend `Program` publique. | Supprimer la ligne. |
+| `public partial class Program { }` à la fin de `Program.cs` | Inutile depuis .NET 10 (et en .NET 11) : un générateur de source rend `Program` publique. | Supprimer la ligne. |
+| `dotnet build` du projet de tests en `Debug` : « scoped css bundles do not have matching endpoints » | Défaut du SDK 11.0.100 (dotnet/sdk, ticket 56656) : un projet du SDK Web qui en référence un autre échoue en Debug. Constaté ; absent en Release. | `<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>` dans `Chronos.Api.Tests.csproj`, avec son commentaire ; à retirer quand le SDK sera corrigé. |
+| `dotnet new xunit3 -f net11.0` | Refusé par le SDK 11.0.100 : le modèle s'arrête à `net10.0`. Constaté. | `-f net10.0` ; la ligne `<TargetFramework>` du modèle est supprimée de toute façon. |
 | `UseInMemoryDatabase(...)` dans la fabrique | Pas de SQL, pas de transactions, pas d'index : les tests passent sans rien prouver. Fortement déconseillé par la documentation d'EF Core. | Le vrai SGBD, avec Testcontainers. |
 | SQLite en mémoire « pour aller vite » | Un autre SGBD, avec un autre dialecte et d'autres comparaisons. | Le vrai SGBD ; un PostgreSQL local démarre en quelques secondes. |
 | `new PostgreSqlBuilder()` sans argument | Refusé depuis Testcontainers 4.10 : l'image doit être nommée. | `new PostgreSqlBuilder("postgres:18")`. |

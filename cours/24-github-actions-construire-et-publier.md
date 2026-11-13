@@ -1,8 +1,8 @@
 # Module 24 — GitHub Actions : construire et publier
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
-> **Les workflows de ce module n'ont pas été exécutés sur GitHub.** Ils ont été relus contre la documentation du jour et le fichier README de chaque action, puis contrôlés par `actionlint` 1.7.12 (syntaxe, expressions, scripts), sans erreur. Ont été exécutés localement, le 12 novembre 2026 : la construction des deux images à partir des Dockerfile du module 23, et la fabrication puis l'exécution du bundle de migrations (EF Core 10.0.15, sur PostgreSQL 18 et SQL Server 2025). Tout le reste — publication, attestation, environnement, Dependabot — est à confirmer à la première exécution : signalez au mentor tout écart constaté.
-> Rejoué le 13 novembre 2026 sur la solution de référence. **Vérifié localement** : `actionlint` sans erreur sur `ci.yml` et `publication.yml` ; `gh actions-lock --verify` ; construction des deux images avec les contextes et les tags du workflow, et l'erreur réelle quand `build-contexts` manque ; bundle de migrations (SDK 10.0.404, EF Core 10.0.15, `linux-x64`) appliqué sur des bases PostgreSQL 18 et SQL Server 2025 neuves, avec et sans `DOTNET_ENVIRONMENT`. **Relu seulement** (documentation GitHub et README des actions du jour) : connexion à `ghcr.io`, tags publiés, cache, SBOM, provenance, attestation, sorties de la matrice, concurrence, environnements, Dependabot.
+> **Le workflow de publication a tourné une première fois sur GitHub le 13 novembre 2026** : c'était la première exécution de `publication.yml`, sur `main`. Les vérifications `API` et `Web` ont réussi ; les deux images, `api` et `web`, ont été construites ; le job du bundle de migrations a échoué (`NETSDK1004`) ; le job de déploiement n'a pas été déclenché (pas de tag `v*`). Le workflow corrigé n'a pas encore tourné. Les workflows ont été relus contre la documentation du jour et le fichier README de chaque action, puis contrôlés par `actionlint` 1.7.12 (syntaxe, expressions, scripts), sans erreur. Ont été exécutés localement, le 12 novembre 2026 : la construction des deux images à partir des Dockerfile du module 23, et la fabrication puis l'exécution du bundle de migrations (EF Core 10.0.15, sur PostgreSQL 18 et SQL Server 2025). Tout le reste — publication, attestation, environnement, Dependabot — est à confirmer à la prochaine exécution : signalez au mentor tout écart constaté.
+> Rejoué le 13 novembre 2026 sur la solution de référence. **Aligné sur .NET 11 le même jour** (SDK 11.0.100, EF Core 10.0.15 inchangé) : **rejoués en .NET 11** pour cet alignement, sur l'état final de la solution, la fabrication du bundle sans restauration préalable (erreur `NETSDK1004`, `project.assets.json` absent), avec `dotnet restore --locked-mode` puis le bundle (réussite), la réécriture des cinq fichiers `packages.lock.json` par le bundle et leur remise en état par `dotnet restore --force-evaluate`, et l'application du bundle sur une base PostgreSQL 18 neuve, avec `DOTNET_ENVIRONMENT` et `Chronos__Fournisseur`. **Non rejoués en .NET 11** par cette partie : `actionlint`, `gh actions-lock --verify`, la construction des images (faite par le coordinateur, qui a construit les deux images en `11.0`) et l'application du bundle sur SQL Server. La suite de ce paragraphe décrit le premier passage, en SDK 10.0.404. **Vérifié localement** : `actionlint` sans erreur sur `ci.yml` et `publication.yml` ; `gh actions-lock --verify` ; construction des deux images avec les contextes et les tags du workflow, et l'erreur réelle quand `build-contexts` manque ; bundle de migrations (SDK 10.0.404, EF Core 10.0.15, `linux-x64`) appliqué sur des bases PostgreSQL 18 et SQL Server 2025 neuves, avec et sans `DOTNET_ENVIRONMENT`. **Relu seulement** (documentation GitHub et README des actions du jour) : connexion à `ghcr.io`, tags publiés, cache, SBOM, provenance, attestation, sorties de la matrice, concurrence, environnements, Dependabot.
 
 Au module 23, vous avez construit les images de Chronos sur votre poste. Une image construite sur un poste a un défaut : personne ne peut dire de quel code elle vient, ni si ce code avait passé les tests. Ce module confie la construction à GitHub Actions : chaque version donne deux images, construites à partir d'un commit vérifié, rangées dans un registre, accompagnées d'une preuve de leur origine, et déployées après un accord explicite.
 
@@ -401,6 +401,9 @@ Une nouvelle version peut exiger un nouveau schéma. Le [module 25](25-exploiter
       - name: Restaurer les outils
         run: dotnet tool restore
 
+      - name: Restaurer les paquets
+        run: dotnet restore --locked-mode
+
       - name: Construire le bundle
         run: >
           dotnet ef migrations bundle
@@ -418,7 +421,7 @@ Une nouvelle version peut exiger un nouveau schéma. Le [module 25](25-exploiter
           if-no-files-found: error
 ```
 
-`dotnet tool restore` installe `dotnet-ef` dans la version fixée par `dotnet-tools.json` (module 07). Le signe `>` replie la commande sur une ligne.
+`dotnet tool restore` installe `dotnet-ef` dans la version fixée par `dotnet-tools.json` (module 06). Le signe `>` replie la commande sur une ligne. `dotnet restore --locked-mode` est nécessaire : sur une machine neuve, `dotnet ef migrations bundle` échoue avec `NETSDK1004` (fichier `project.assets.json` introuvable) parce que la commande ne restaure pas les paquets ; le mode verrouillé vérifie en plus que les paquets sont ceux des fichiers `packages.lock.json`.
 
 Le bundle contient en réalité **les deux** jeux de migrations, que l'API référence ; `--project` et `-- --Chronos:Fournisseur PostgreSql` ne servent qu'à le fabriquer. Le fournisseur se choisit à l'exécution (étape 9).
 
@@ -503,7 +506,7 @@ Documentation : [Déployer avec GitHub Actions](https://docs.github.com/en/actio
 
 3. **Deux exécutions pour une fusion.** Une fusion dans `main` exécute les tests deux fois : par le workflow `CI` et par `Publication`. Proposez deux façons de l'éviter, et dites ce que chacune change pour la vérification obligatoire du module 05.
 
-4. **Une image de base vulnérable.** Une faille est corrigée dans l'image `aspnet:10.0`, sans que son tag change. Vos images publiées contiennent-elles le correctif ? Dependabot vous préviendra-t-il ? Que faudrait-il écrire dans les Dockerfile pour qu'il le fasse, et qu'y perdriez-vous en lisibilité ? Proposez un déclencheur qui reconstruise les images chaque semaine.
+4. **Une image de base vulnérable.** Une faille est corrigée dans l'image `aspnet:11.0`, sans que son tag change. Vos images publiées contiennent-elles le correctif ? Dependabot vous préviendra-t-il ? Que faudrait-il écrire dans les Dockerfile pour qu'il le fasse, et qu'y perdriez-vous en lisibilité ? Proposez un déclencheur qui reconstruise les images chaque semaine.
 
 5. **Revenir en arrière.** La version `0.3.0` est en production et pose un problème. Décrivez, commande par commande, comment remettre la `0.2.1` : quelle image, désignée comment, et par quel workflow ? Que devient la base si la `0.3.0` avait ajouté une colonne ?
 
@@ -541,6 +544,7 @@ Documentation : [Déployer avec GitHub Actions](https://docs.github.com/en/actio
 | Secrets de production au niveau du dépôt | Tout workflow, depuis toute branche, peut les lire. | Secrets d'environnement. |
 | `cancel-in-progress: true` sur un déploiement | Un déploiement interrompu à mi-chemin : migrations appliquées, application non mise à jour. | `false`. |
 | Exécuter le bundle sans `DOTNET_ENVIRONMENT` | Il démarre l'application en `Development` et insère les données de démonstration dans la base visée (constaté ; le module 25 les place sous un réglage explicite, la variable reste une défense en profondeur). | `DOTNET_ENVIRONMENT: Production`. |
+| Fabriquer le bundle sur une machine neuve sans `dotnet restore` d'abord | `dotnet ef migrations bundle` échoue : `NETSDK1004`, `project.assets.json` introuvable (constaté en SDK 11.0.100, et lors de la première exécution du workflow sur GitHub). | `dotnet restore --locked-mode` avant le bundle. |
 | Versionner les `packages.lock.json` réécrits par un bundle fabriqué sur le poste | Ils mentionnent `linux-x64` : la restauration verrouillée suivante échoue. | `dotnet restore --force-evaluate`. |
 | Exécuter le bundle sans `Chronos__Fournisseur` sur SQL Server | Le bundle emploie le fournisseur par défaut, PostgreSQL, et échoue sur la chaîne de connexion (constaté). | Toujours fournir la variable. |
 

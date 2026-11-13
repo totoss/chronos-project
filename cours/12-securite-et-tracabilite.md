@@ -1,7 +1,8 @@
 # Module 12 — Sécurité et traçabilité
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
 > Le module a été **rejoué le 12 novembre 2026 sur la solution de référence** (SDK 10.0.404, ASP.NET Core Identity et EF Core 10.0.15, Npgsql 10.0.3, PostgreSQL 18 et SQL Server 2025) : l'extrait de l'étape 9 dans le `switch` du module 07, les deux commandes `dotnet ef migrations add`, et 110 tests d'intégration verts sur chacun des deux SGBD. Le contrat de l'étape 5 (cookies, jeton anti-CSRF, 401, 403, 404, déconnexion) et le périmètre sur trois niveaux hiérarchiques ont en outre été vérifiés par des appels `curl` sur l'API lancée. **Non exécuté** : le dialogue avec un vrai navigateur et avec Angular, le passage par un serveur frontal en HTTPS (seul l'attribut `Secure` du cookie de session a été constaté, en environnement `Production`), la commande `dotnet user-secrets` (le mot de passe de démonstration a été passé par la configuration). Signalez au mentor tout écart constaté.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100, ASP.NET Core 11.0, EF Core et Identity restés en 10.0.15). Ont été rejoués en .NET 11 : `dotnet package add Microsoft.AspNetCore.Identity.EntityFrameworkCore` sans version (étape 1 : `NU1605`) ; un endpoint JSON marqué `RequireAntiforgeryTokenAttribute`, appelé sans jeton, avec et sans `UseAntiforgery()` (encadré de l'étape 5) ; l'état final de la solution lancé sur PostgreSQL 18, avec les appels `curl` de la rubrique « CSRF » (écriture par cookie sans jeton, avec un `Origin` étranger, avec un jeton valide, sans cookie) ; les mêmes appels sur une copie de travail **sans** le filtre de l'étape 5, avec et sans `UseAntiforgery()`, pour savoir ce que le framework fait seul ; l'absence de redirection vers une page de connexion (401). Les 144 tests d'intégration de l'état final passent en .NET 11 (vérifié par le coordinateur, non rejoué ici). La matrice CSRF a en outre été rejouée une seconde fois, indépendamment, à la relecture du 13 novembre 2026 (avec et sans le filtre, méthodes `POST`, `PUT`, `DELETE`, en-têtes `same-origin`, `same-site`, `cross-site`). **N'ont pas été rejoués** : l'écriture pas à pas des étapes 1 à 4 et 6 à 9 depuis le tag `module-11`, ni SQL Server, ni le dialogue avec un vrai navigateur (le comportement décrit pour `Sec-Fetch-Site` vient de la documentation et d'en-têtes posés à la main avec `curl`, pas d'un navigateur).
 
 Jusqu'ici, n'importe qui peut appeler l'API et lire toutes les fiches. Chronos contient des données RH : le cahier des charges exige que chacun ne voie que ce qui le concerne, que les actions soient tracées, et qu'on ne collecte que le nécessaire. Ce module donne à l'API des utilisateurs, et lui apprend à leur dire non.
 
@@ -48,7 +49,7 @@ Presque tous les tutoriels font écrire un endpoint `login` qui vérifie un mot 
 
 Pour une application qui tourne dans le navigateur, elle recommande le **cookie** : le navigateur le renvoie tout seul, et marqué `HttpOnly`, il est illisible par JavaScript — un script malveillant injecté dans la page ne peut pas le voler.
 
-Documentation : [Identity pour une SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0), [Authentification par jeton JWT](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0)
+Documentation : [Identity pour une SPA](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-11.0), [Authentification par jeton JWT](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-11.0)
 
 ### ASP.NET Core Identity
 
@@ -62,7 +63,7 @@ Identity est la brique d'ASP.NET Core qui gère les comptes : hachage des mots d
 
 `POST /login` reçoit `{ "email", "password" }`. Avec `?useCookies=true`, il pose un cookie persistant ; avec `?useSessionCookies=true`, un cookie qui disparaît à la fermeture du navigateur ; sans paramètre, il renvoie un jeton propre à Identity — qui n'est pas un JWT, et que Chronos n'utilise pas.
 
-Documentation : [Introduction à Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity?view=aspnetcore-10.0), [Personnaliser le modèle d'Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/customize-identity-model?view=aspnetcore-10.0), [Passkeys](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-10.0)
+Documentation : [Introduction à Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity?view=aspnetcore-11.0), [Personnaliser le modèle d'Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/customize-identity-model?view=aspnetcore-11.0), [Passkeys](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-11.0)
 
 ### CSRF : la contrepartie du cookie
 
@@ -75,9 +76,20 @@ Deux protections se complètent :
 
 Les deux documentations s'accordent sur le mécanisme. Côté ASP.NET Core : écrire le jeton dans un cookie `XSRF-TOKEN` lisible par JavaScript, et l'attendre dans l'en-tête `X-XSRF-TOKEN`. Côté Angular : `HttpClient` lit par défaut le cookie `XSRF-TOKEN` et ajoute l'en-tête `X-XSRF-TOKEN` aux requêtes d'écriture vers une URL relative. Avec ces noms, l'interface n'a rien à configurer.
 
-> **.NET 11 change la donne.** ASP.NET Core 11 ajoute une protection automatique, fondée sur l'origine de la requête. Elle n'existe pas en .NET 10 : tout ce que vous lirez à son sujet ne s'applique pas à Chronos.
+> **.NET 11 ajoute une protection automatique, et elle ne couvre pas l'API JSON de Chronos.** ASP.NET Core 11 enregistre de lui-même, dans toute application créée par `WebApplication.CreateBuilder`, un middleware qui compare les en-têtes `Sec-Fetch-Site` et `Origin` de la requête à son destinataire, sans jeton. Une écriture venue d'un autre site est marquée « invalide » ; mais le middleware ne répond pas lui-même : le refus (400) n'est prononcé que par un composant qui **lit un formulaire** (endpoint Minimal API qui lie un formulaire, action MVC protégée par antiforgery, Blazor SSR, ou tout code qui lit le formulaire de la requête). Un endpoint qui lit un corps JSON, comme tous ceux de Chronos, s'exécute malgré un verdict invalide. Une requête qui ne porte ni `Sec-Fetch-Site` ni `Origin` (`curl`, appel d'un serveur) est acceptée ; `same-site` est traité comme `cross-site`. Le mécanisme se désactive globalement par la clé `DisableCsrfProtection`, ou par endpoint avec `.DisableAntiforgery()` ou `[IgnoreAntiforgeryToken]` ; il n'y a aucune raison de le faire ici. Vous lirez donc, à propos de cette protection, des phrases vraies pour un formulaire et trompeuses pour Chronos. Le détail, constaté, est dans le tableau ci-dessous.
 
-Documentation : [Prévenir les attaques CSRF](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0), [Sécurité dans Angular](https://angular.dev/best-practices/security), [cookies `SameSite`](https://learn.microsoft.com/en-us/aspnet/core/security/samesite?view=aspnetcore-10.0)
+Ce que cela donne sur l'API de Chronos en .NET 11 (cookie de session valide ; les en-têtes `Origin` et `Sec-Fetch-Site` étrangers sont posés à la main avec `curl`, comme le ferait un navigateur sur une page piégée) :
+
+| Écriture `POST /api/clients` | Avec le filtre de l'étape 5 | Sans le filtre (essai) |
+| --- | --- | --- |
+| cookie, sans jeton, sans `Origin` | 400 | 201 |
+| cookie, sans jeton, `Origin` étranger et `Sec-Fetch-Site: cross-site` | 400 | **201** |
+| cookie, jeton `X-XSRF-TOKEN` valide, `Origin` étranger | 201 | — |
+| sans cookie | 401 | — |
+
+La dernière colonne est celle qui compte : **sans le filtre, une écriture JSON venue d'un autre site passe**. Le middleware d'origine du framework n'y change rien, et la même requête envoyée à un endpoint qui lie un formulaire reçoit 400 (constaté aussi, avec et sans `UseAntiforgery()`). Quand `UseAntiforgery()` est présent, son verdict l'emporte sur celui du middleware d'origine : un formulaire sans jeton est refusé même s'il vient de la même origine. Chronos garde donc sa vérification : elle n'est pas redondante, c'est elle (avec `SameSite=Strict`, qui retient déjà le cookie sur les requêtes d'un autre site dans un navigateur) qui protège les écritures JSON. Ce que le framework fait en plus de lui-même ne concerne, dans Chronos, que les éventuels endpoints à formulaire, et il n'y en a aucun.
+
+Documentation : [Prévenir les attaques CSRF](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-11.0) (section « Automatic CSRF protection in ASP.NET Core »), [Sécurité dans Angular](https://angular.dev/best-practices/security), [cookies `SameSite`](https://learn.microsoft.com/en-us/aspnet/core/security/samesite?view=aspnetcore-11.0)
 
 ### Le rôle ouvre la fonction, le périmètre dit sur qui
 
@@ -87,7 +99,7 @@ Mais RG-50 et RG-51 posent une autre question : « sur **quelles données** ? »
 
 Ce qui est hors périmètre n'apparaît pas dans les listes, et sa lecture directe renvoie 404 : la même requête filtrée sert aux deux, et l'API ne révèle pas qu'une fiche existe.
 
-Documentation : [Sécurité des Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/security?view=aspnetcore-10.0), [Autorisation par politiques](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies?view=aspnetcore-10.0)
+Documentation : [Sécurité des Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/security?view=aspnetcore-11.0), [Autorisation par politiques](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies?view=aspnetcore-11.0)
 
 ### Tracer sans y penser
 
@@ -99,7 +111,7 @@ Documentation : [Intercepteurs](https://learn.microsoft.com/en-us/ef/core/loggin
 
 ### 1. Le compte utilisateur et ses tables
 
-Ajoutez à `Directory.Packages.props` le paquet `Microsoft.AspNetCore.Identity.EntityFrameworkCore` en version 10.0.15, et référencez-le dans `Chronos.Infrastructure`. Créez-y `Identite/Utilisateur.cs` :
+Ajoutez à `Directory.Packages.props` le paquet `Microsoft.AspNetCore.Identity.EntityFrameworkCore` en version 10.0.15, et référencez-le dans `Chronos.Infrastructure`. La version est celle d'EF Core, pas celle d'ASP.NET Core 11 : sans version, `dotnet package add` prend la `11.0.0`, et la compilation échoue sur `NU1605` (« Detected package downgrade: Microsoft.EntityFrameworkCore.Relational from 11.0.0 to 10.0.15 », rejoué avec le SDK 11.0.100). Créez-y `Identite/Utilisateur.cs` :
 
 ```csharp
 public class Utilisateur : IdentityUser<int>
@@ -192,7 +204,7 @@ public sealed class FabriqueDeClaims(UserManager<Utilisateur> userManager,
 
 `ClaimsChronos.CollaborateurId` est une constante (`"chronos:collaborateur_id"`). Créez de même une classe `Roles` qui porte les quatre noms de rôles en constantes, et un tableau `Roles.Tous` : un nom de rôle ne s'écrit jamais deux fois à la main.
 
-Documentation : [Claims](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims?view=aspnetcore-10.0), [Configurer Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration?view=aspnetcore-10.0)
+Documentation : [Claims](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims?view=aspnetcore-11.0), [Configurer Identity](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration?view=aspnetcore-11.0)
 
 ### 3. Tout protéger, n'exposer que la connexion
 
@@ -289,7 +301,7 @@ public static class CompteEndpoints
 ```
 
 - **`/moi`** dit à l'interface qui est connecté et avec quels rôles. Il remet aussi le jeton anti-CSRF (étape 5) : l'interface appelle `/moi` à son démarrage et juste après la connexion, c'est-à-dire exactement aux moments où ce jeton doit être émis. `IUtilisateurCourant` arrive à l'étape 7.
-- **`Secure = contexte.Request.IsHttps`** : le cookie du jeton suit le schéma de la requête **tel que l'API le voit**. En développement, c'est HTTP. En production, ce sera HTTPS à condition que nginx transmette le schéma d'origine (`X-Forwarded-Proto`) et que l'API le lise (`UseForwardedHeaders`, qui n'est pas actif par défaut) : c'est le travail du [module 23](23-conteneuriser-l-application.md). Voir [ASP.NET Core derrière un serveur frontal](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-10.0).
+- **`Secure = contexte.Request.IsHttps`** : le cookie du jeton suit le schéma de la requête **tel que l'API le voit**. En développement, c'est HTTP. En production, ce sera HTTPS à condition que nginx transmette le schéma d'origine (`X-Forwarded-Proto`) et que l'API le lise (`UseForwardedHeaders`, qui n'est pas actif par défaut) : c'est le travail du [module 23](23-conteneuriser-l-application.md). Voir [ASP.NET Core derrière un serveur frontal](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-11.0).
 - **`/logout`** reprend la forme recommandée par la documentation : la requête doit porter un corps JSON, même vide (`{}`).
 - `MapCompte` suit la forme du module 03 : il renvoie son groupe, et ses gestionnaires sont des méthodes privées.
 
@@ -394,7 +406,7 @@ api.MapProjets();
 
 Toute requête d'écriture (`POST`, `PUT`, `PATCH`, `DELETE`) doit désormais porter l'en-tête. La connexion reste hors du groupe : avant elle, il n'y a pas de session à détourner.
 
-> **Pourquoi un filtre écrit à la main ?** `app.UseAntiforgery()` ne valide automatiquement que les endpoints qui lisent un **formulaire**, et seulement pour `POST`, `PUT` et `PATCH`. L'essai le confirme : un endpoint JSON marqué comme exigeant le jeton s'exécute quand même sans lui. Pour les autres cas, la documentation renvoie à l'appel explicite de `ValidateRequestAsync` ; c'est ce que fait le filtre, pour toutes les écritures.
+> **Pourquoi un filtre écrit à la main ?** `app.UseAntiforgery()` ne valide automatiquement que les endpoints qui lisent un **formulaire**, et seulement pour `POST`, `PUT` et `PATCH`. L'essai le confirme, en .NET 11 comme avant : un endpoint JSON marqué comme exigeant le jeton s'exécute quand même sans lui. Pour les autres cas, la documentation renvoie à l'appel explicite de `ValidateRequestAsync` ; c'est ce que fait le filtre, pour toutes les écritures. Le middleware d'origine de .NET 11 (voir « CSRF : la contrepartie du cookie ») ne le remplace pas : il ne fait refuser que les requêtes dont l'endpoint lit un formulaire. Le filtre s'ajoute donc à ce que le framework fait seul, il ne le double pas.
 
 **Ce que l'interface devra faire** (module 19) tient en cinq lignes :
 
@@ -406,7 +418,7 @@ Toute requête d'écriture (`POST`, `PUT`, `PATCH`, `DELETE`) doit désormais po
 | Déconnexion | `POST /api/compte/logout`, corps `{}` | 204 ; les deux cookies sont supprimés |
 | Partout | — | 401 : renvoyer vers `/connexion` ; 403 : action interdite ; 404 : hors périmètre ou inexistant |
 
-Documentation : [Filtres d'endpoint](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/min-api-filters?view=aspnetcore-10.0)
+Documentation : [Filtres d'endpoint](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/min-api-filters?view=aspnetcore-11.0)
 
 ### 6. Autoriser par rôle (RG-52)
 
@@ -713,7 +725,7 @@ Il doit respecter les règles par défaut d'Identity : six caractères au moins,
 > builder.UseSetting("Chronos:Demo:MotDePasse", "");
 > ```
 
-Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-10.0)
+Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-11.0)
 
 ## À vous
 
@@ -725,7 +737,7 @@ Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/as
 
 4. **L'administrateur.** `VoitTout` donne aujourd'hui toutes les fiches à l'administrateur. Est-ce conforme à son rôle dans le cahier des charges, et à la minimisation ? Décidez, corrigez, et écrivez le test qui fixe votre décision.
 
-5. **Les comptes.** L'inscription est neutralisée : il faut donc un endpoint `POST /api/comptes`, réservé à l'administrateur, qui crée un compte pour un collaborateur et lui attribue des rôles. Quel mot de passe initial ? Lisez ce qu'Identity propose pour [confirmer un compte et réinitialiser un mot de passe](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/accconfirm?view=aspnetcore-10.0) avant de choisir.
+5. **Les comptes.** L'inscription est neutralisée : il faut donc un endpoint `POST /api/comptes`, réservé à l'administrateur, qui crée un compte pour un collaborateur et lui attribue des rôles. Quel mot de passe initial ? Lisez ce qu'Identity propose pour [confirmer un compte et réinitialiser un mot de passe](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/accconfirm?view=aspnetcore-11.0) avant de choisir.
 
 6. **Session ou cookie persistant ?** Le contrat de l'API retient `useCookies=true`. Sur un poste partagé, que se passe-t-il quand le navigateur est fermé sans déconnexion ? Comparez avec `useSessionCookies=true` et proposez un choix argumenté pour un outil RH.
 
@@ -749,9 +761,10 @@ Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/as
 | Un endpoint `login` qui fabrique un JWT, rangé dans le `localStorage` | Explicitement déconseillé ; le jeton est lisible par tout script de la page. | Cookie `HttpOnly` avec Identity, ou un fournisseur OpenID Connect. |
 | `MapIdentityApi` tel quel | L'inscription, la réinitialisation et la gestion du compte sont ouvertes à tous. | Neutraliser tout sauf la connexion, ou écrire sa propre connexion. |
 | `.AllowAnonymous()` sur le résultat de `MapIdentityApi`, sans filtre | Ouvre aussi `/manage/info` aux anonymes. | La liste d'autorisation de l'étape 3. |
-| Intercepter `OnRedirectToLogin` pour renvoyer 401 | Inutile en .NET 10 : une API répond déjà 401 ou 403. | Supprimer ce code. |
+| Intercepter `OnRedirectToLogin` pour renvoyer 401 | Inutile depuis .NET 10 : une API répond déjà 401 ou 403 (constaté en .NET 11 : 401 sans redirection). | Supprimer ce code. |
 | `RequireAuthorization()` ajouté endpoint par endpoint | Le jour où on l'oublie, l'endpoint est public. | Politique de repli, et `AllowAnonymous()` sur les exceptions. |
 | Croire que `UseAntiforgery()` protège une API JSON | Il ne valide que les endpoints à formulaire, et pas `DELETE`. | Valider explicitement, comme le filtre de l'étape 5. |
+| Croire que la protection automatique de .NET 11 protège une API JSON à cookie | Elle ne refuse que ce qui lit un formulaire : constaté, une écriture JSON `cross-site` passe sans le filtre. | Garder le filtre de l'étape 5. |
 | `CookieSecurePolicy.SameAsRequest` pour le cookie de session en production | Derrière nginx, l'API ne voit que du HTTP : le cookie part sans `Secure`. | `Always` hors développement. |
 | `app.UseHttpsRedirection()` ajouté « pour sécuriser » | L'API n'écoute qu'en HTTP (`--no-https`) ; c'est le serveur frontal qui porte le HTTPS. | Ne pas l'ajouter ; régler le HTTPS au module 23. |
 | `SameSite=None` « pour que ça marche » | Le cookie accompagne les requêtes de n'importe quel site. | Même origine pour l'interface et l'API, et `Strict`. |
@@ -775,10 +788,10 @@ Documentation : [Secrets de développement](https://learn.microsoft.com/en-us/as
 
 ## Pour aller plus loin
 
-- [Autorisation fondée sur la ressource](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/resourcebased?view=aspnetcore-10.0) : exprimer « peut valider cette feuille » comme une exigence d'autorisation, évaluée par `IAuthorizationService`.
+- [Autorisation fondée sur la ressource](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/resourcebased?view=aspnetcore-11.0) : exprimer « peut valider cette feuille » comme une exigence d'autorisation, évaluée par `IAuthorizationService`.
 - Requêtes récursives : calculer l'équipe indirecte dans la base, avec `WITH RECURSIVE` sur [PostgreSQL](https://www.postgresql.org/docs/18/queries-with.html) et `WITH` sur [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql) — deux syntaxes différentes, à passer par [`FromSql`](https://learn.microsoft.com/en-us/ef/core/querying/sql-queries).
-- [Authentification multifacteur](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/mfa?view=aspnetcore-10.0) et [passkeys](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-10.0) : ce qu'Identity sait faire au-delà du mot de passe.
-- [Rôles](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/roles?view=aspnetcore-10.0) dans ASP.NET Core.
+- [Authentification multifacteur](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/mfa?view=aspnetcore-11.0) et [passkeys](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-11.0) : ce qu'Identity sait faire au-delà du mot de passe.
+- [Rôles](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/roles?view=aspnetcore-11.0) dans ASP.NET Core.
 - [CSRF, vu par l'OWASP](https://owasp.org/www-community/attacks/csrf), et les [principes du RGPD](https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre2) (article 5 : minimisation des données).
 - [Disparition des redirections de connexion pour les API](https://learn.microsoft.com/en-us/aspnet/core/breaking-changes/10/cookie-authentication-api-endpoints) en .NET 10.
 - Suite dans le cours : le module 19 construit la connexion côté Angular à partir du tableau de l'étape 5 ; le module 25 revient sur la journalisation.

@@ -1,8 +1,9 @@
 # Module 07 — Deux SGBD, un seul code
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md) et le [référentiel Docker](../docs/references/docker.md).
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md) et le [référentiel Docker](../docs/references/docker.md).
 > L'organisation décrite ici a été **exécutée le 12 novembre 2026** dans le conteneur `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, EF Core 10.0.15, Npgsql 10.0.3, `Microsoft.EntityFrameworkCore.SqlServer` 10.0.15) contre PostgreSQL 18.6 et SQL Server 2025 (17.0.5045.3) : deux jeux de migrations créés et appliqués, la même API démarrée sur l'une puis l'autre base. Les extraits SQL, les messages d'erreur et les tableaux de comportement sont ceux réellement obtenus ; les types de date et les jetons de concurrence l'ont été sur une entité d'essai. **Non exécutés** : la saisie des commandes dans PowerShell sous Windows (elles l'ont été dans un terminal Linux, et les variables d'environnement de l'étape 8 y ont été posées autrement), le projet Compose du dépôt (les bases d'essai étaient des conteneurs isolés, de mêmes images) et l'exercice sur l'intégration continue. Signalez au mentor tout écart constaté.
 > **Rejoué le 12 novembre 2026 sur la solution de référence** (état du tag `module-06`, mêmes versions ; PostgreSQL 18 et SQL Server 2025 en conteneurs) : pas à pas, exercices 1 à 4, `database update` sur deux bases vides, `migrations list` et `has-pending-model-changes` pour les deux fournisseurs, appels HTTP aux trois ressources sur chaque base, `409` pour `bdl-refonte` sur les deux. Corrigés à cette occasion : la vérification du fournisseur (étape 3), qui ne s'exécutait qu'à la première requête ; le contrôle préalable de `Creer` (exercice 1) ; `has-pending-model-changes` sans l'argument (étape 10). Le workflow GitHub Actions lui-même n'a pas été exécuté.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100 ; EF Core, Npgsql et `dotnet-ef` restés en 10). Ont été rejoués en .NET 11 : `dotnet package add Microsoft.EntityFrameworkCore.SqlServer` sans et avec `--version 10.0.15` (à partir de l'état du tag `module-05` complété du fournisseur PostgreSQL), puis, sur l'état final de la solution avec l'outil `dotnet-ef` 10.0.15 : `dotnet ef database update` sur une base SQL Server 2025 vide et sur une base PostgreSQL 18 vide, `migrations list` et `has-pending-model-changes` pour les deux fournisseurs. **N'ont pas été rejoués** : le pas à pas depuis le tag `module-06` (écriture du `switch`, des migrations SQL Server, des tests de comportement des tableaux), les exercices, le projet Compose et le workflow.
 
 Chronos doit pouvoir s'installer chez un client équipé de SQL Server comme chez un client équipé de PostgreSQL. Depuis le module 06, l'application tourne sur PostgreSQL. Que faut-il changer pour qu'elle tourne aussi sur SQL Server ? Presque rien dans le code — et c'est justement ce « presque » qu'il faut connaître : les migrations, les dates, la casse des textes, la concurrence.
 
@@ -153,6 +154,8 @@ Documentation : [Éditions de SQL Server 2025](https://learn.microsoft.com/en-us
 ```powershell
 dotnet package add Microsoft.EntityFrameworkCore.SqlServer --project Chronos.Infrastructure --version 10.0.15
 ```
+
+Le `--version 10.0.15` reste obligatoire en .NET 11 (voir le module 06, étape 1, pour le pourquoi). Sans lui, la commande prend la `11.0.0`, et la compilation échoue sur `NU1605` (« Detected package downgrade: Microsoft.EntityFrameworkCore.Relational from 11.0.0 to 10.0.15 ») : le `Relational` de la version 10.0.15, posé au module 06, contredit celui que demande le fournisseur SQL Server 11. Rejoué avec le SDK 11.0.100.
 
 ### 3. Choisir le fournisseur par configuration
 
@@ -326,7 +329,7 @@ dotnet ef database update --project Chronos.Migrations.PostgreSql --startup-proj
 
 Ces deux formes laissent un mot de passe dans l'historique du terminal : réservez-les au mot de passe de développement.
 
-Documentation : [Configuration dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-10.0)
+Documentation : [Configuration dans ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-11.0)
 
 ### 9. Comparer le SQL, constater les différences
 
@@ -425,7 +428,7 @@ Elle ne se connecte à aucune base. Ici, l'argument est vital : sans lui, le con
 | Utiliser en développement une fonction de l'édition Enterprise | Le conteneur par défaut l'accepte ; le SQL Server Standard du client la refusera. | Connaître l'édition cible ; `MSSQL_PID=StandardDeveloper` au besoin. |
 | Comparer à l'égalité un horodatage écrit puis relu | PostgreSQL garde 6 décimales, .NET et SQL Server 7. | Comparer avec une tolérance, ou tronquer avant d'écrire. |
 
-Les sources sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md#3-sql-server-et-postgresql).
+Les sources sont dans le [référentiel .NET 11](../docs/references/dotnet-11.md#3-sql-server-et-postgresql).
 
 ## Pour la séance
 

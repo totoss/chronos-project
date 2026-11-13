@@ -2,7 +2,8 @@
 
 > Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel GitHub Actions](../docs/references/github-actions.md).
 > Le workflow complet de ce module a été **exécuté avec succès le 12 novembre 2026** sur une solution minimale (modèles `webapi` et `xunit3`, SDK 10.0.404). L'étape 8 (verrouillage des actions) l'a été aussi, avec l'extension `gh-actions-lock` 0.4.1. Restent vérifiés dans la documentation mais **non exécutés** : Dependabot (étape 8) et le *ruleset* (étape 9).
-> Rejoué le 12 novembre 2026 **localement** sur la solution de référence (SDK 10.0.404, conteneur Linux) : `dotnet restore --locked-mode`, compilation `Release` sans avertissement, `dotnet test --report-xunit-trx` (73 tests, rapport TRX produit) ; `gh actions-lock` 0.4.1 et `gh actions-lock --verify`. Le workflow de la solution de référence n'a **pas** été exécuté sur GitHub. Signalez au mentor tout écart constaté.
+> Rejoué le 12 novembre 2026 **localement** sur la solution de référence (SDK 10.0.404, conteneur Linux) : `dotnet restore --locked-mode`, compilation `Release` sans avertissement, `dotnet test --report-xunit-trx` (73 tests, rapport TRX produit) ; `gh actions-lock` 0.4.1 et `gh actions-lock --verify`. Le workflow de la solution de référence n'a **pas** été exécuté sur GitHub.
+> **Aligné sur .NET 11 le 13 novembre 2026.** Ont été rejoués en .NET 11 (SDK 11.0.100, conteneur Linux, état du tag `module-04` mis à niveau, puis fichiers de verrouillage de l'étape 7) : `dotnet restore`, création des `packages.lock.json` (un par projet, cadre `net11.0`), `dotnet restore --locked-mode`, `dotnet build --no-restore --configuration Release` sans avertissement, `dotnet test --no-build --configuration Release --report-xunit-trx --results-directory TestResults` (73 tests, rapport TRX produit), et le refus de `--logger trx`. La page de l'action `setup-dotnet` et la liste des logiciels de l'image `ubuntu-24.04` ont été relues. **Non rejoués** : le workflow sur GitHub (que `setup-dotnet` installe bien le SDK 11.0.100 demandé par `global.json` est une lecture de sa documentation, pas un essai), `gh actions-lock` et Dependabot en .NET 11, le *ruleset*. Signalez au mentor tout écart constaté.
 
 Au module 04, vous avez écrit vos premiers tests. Ils passent sur votre poste, à condition que vous pensiez à les lancer. L'**intégration continue** supprime cette condition : à chaque envoi de code, une machine neutre récupère le dépôt, le compile et exécute les tests. Si quelque chose casse, on le sait dans les minutes qui suivent, et non le jour de la livraison.
 
@@ -134,7 +135,7 @@ Les nouveautés :
 - **`timeout-minutes`** : sans cette ligne, un job bloqué tourne jusqu'à 6 heures. Quinze minutes suffisent largement ici.
 - **`defaults.run.working-directory`** : toutes les commandes `run` du job s'exécutent dans `src/api`. Cela ne concerne pas les étapes `uses`, dont les chemins partent toujours de la racine du dépôt.
 - **`actions/checkout`** : récupère le code du dépôt sur la machine.
-- **`actions/setup-dotnet`** : installe le SDK. `global-json-file` lui fait lire la version dans le `global.json` du projet : la version du SDK est ainsi définie à un seul endroit, le même pour votre poste et pour l'intégration continue.
+- **`actions/setup-dotnet`** : installe le SDK. `global-json-file` lui fait lire la version dans le `global.json` du projet : la version du SDK est ainsi définie à un seul endroit, le même pour votre poste et pour l'intégration continue. L'image `ubuntu-24.04` contient déjà le SDK 11.0.100 (version d'image 20261111, relevée le 13 novembre 2026), mais le workflow ne s'y fie pas : c'est `global.json` qui décide.
 - **Les trois commandes `dotnet`** s'enchaînent sans refaire le travail de la précédente : `--no-restore` et `--no-build` évitent de restaurer et de compiler deux fois.
 
 Poussez et vérifiez que le job passe au vert.
@@ -219,7 +220,7 @@ Activez-le pour toute la solution : dans le `src/api/Directory.Build.props` du m
 ```xml
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>

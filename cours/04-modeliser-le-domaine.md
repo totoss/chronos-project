@@ -1,7 +1,8 @@
 # Module 04 — Modéliser le domaine en C#
 
-> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 10](../docs/references/dotnet-10.md).
-> Le code et les commandes de ce module ont été **exécutés le 12 novembre 2026** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, C# 14, `xunit.v3.templates` et `xunit.v3.mtp-v2` 4.0.3) : les tests du pas-à-pas et ceux de l'exercice 2 passent avec `dotnet test` (17 tests). Les entités, celles des exercices comprises, ont été enregistrées puis relues par EF Core 10.0.15 sans retouche (essai avec le fournisseur SQLite). Le module a ensuite été **rejoué sur la solution de référence** (même SDK, `xunit.v3.mtp-v2` 4.0.3) : pas à pas et exercices compris, `dotnet build` sans avertissement et `dotnet test` à 73 tests verts ; l'API répond comme au module 03. **Non exécutés** : les commandes sous Windows même, et le lancement des tests depuis un éditeur. Signalez au mentor tout écart constaté.
+> Pratiques vérifiées le 12 novembre 2026 — voir le [référentiel .NET 11](../docs/references/dotnet-11.md).
+> Construit et rejoué le 12 novembre 2026 en .NET 10 (c'est l'état du tag `module-04`) : le code et les commandes de ce module ont été **exécutés** dans un conteneur Linux `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, C# 14, `xunit.v3.templates` et `xunit.v3.mtp-v2` 4.0.3) : les tests du pas-à-pas et ceux de l'exercice 2 passent avec `dotnet test` (17 tests). Les entités, celles des exercices comprises, ont été enregistrées puis relues par EF Core 10.0.15 sans retouche (essai avec le fournisseur SQLite). Le module a ensuite été **rejoué sur la solution de référence** (même SDK, `xunit.v3.mtp-v2` 4.0.3) : pas à pas et exercices compris, `dotnet build` sans avertissement et `dotnet test` à 73 tests verts ; l'API répond comme au module 03.
+> **Aligné sur .NET 11 le 13 novembre 2026** (SDK 11.0.100, C# 15, `xunit.v3.templates` et `xunit.v3.mtp-v2` 4.0.3, conteneur Linux). Ont été rejoués en .NET 11 : l'étape 1 (`dotnet new classlib`), l'étape 4 (`dotnet new install xunit.v3.templates`, `dotnet new xunit3` avec `-f net11.0` (refusé), avec `-f net10.0` et sans `-f`, l'erreur `NU1008`, les corrections, `dotnet sln add`, `dotnet reference add`, `global.json`), y compris l'oubli de supprimer `TargetFramework` : c'est alors `dotnet reference add` qui refuse (« cannot be added due to incompatible targeted frameworks … - net10.0 »), la référence n'est pas ajoutée et `dotnet build` réussit ; l'erreur `NU1201` n'apparaît que si l'on écrit le `ProjectReference` à la main, l'étape 5 (`dotnet test` sur le premier test : `total: 1`), `dotnet test --logger trx` et `--report-xunit-trx`, et l'état du tag `module-04` mis à niveau (compilation sans avertissement, `dotnet test` à 73 tests verts). **Non rejoués en .NET 11** : les étapes 2, 3 et 6 à 10 retapées à la main, les exercices, les commandes sous Windows même, et le lancement des tests depuis un éditeur. Signalez au mentor tout écart constaté.
 
 À la fin du module 03, l'API acceptait un projet facturable sans client, ou un projet qui se termine avant d'avoir commencé. Le cahier des charges interdit les deux. Où écrire ces interdictions ?
 
@@ -109,11 +110,11 @@ Le cours utilise **xUnit v3**. Un projet de tests v3 est un exécutable, et `dot
 
 Documentation : [Débuter avec xUnit v3](https://xunit.net/docs/getting-started/v3/getting-started), [`dotnet test`](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test)
 
-### Et C# 14 ?
+### Et C# 15 ?
 
-.NET 10 apporte C# 14. Ce module n'en a pas besoin : une entité s'écrit avec des constructions stables depuis plusieurs versions du langage. Ne cherchez pas à placer une nouveauté pour elle-même. Une seule touche au sujet, le mot-clé `field` ; elle est signalée dans « Pour aller plus loin ».
+.NET 11 apporte C# 15 (version par défaut d'un projet `net11.0`), avec notamment les types union et les hiérarchies fermées. Ce module n'en a pas besoin : une entité s'écrit avec des constructions stables depuis plusieurs versions du langage. Ne cherchez pas à placer une nouveauté pour elle-même. Une seule touche au sujet, le mot-clé `field`, arrivé avec C# 14 ; elle est signalée dans « Pour aller plus loin ».
 
-Documentation : [Nouveautés de C# 14](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-14)
+Documentation : [Nouveautés de C# 15](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-15)
 
 ## Pas à pas
 
@@ -235,7 +236,9 @@ dotnet new install xunit.v3.templates
 dotnet new xunit3 -f net10.0 --name Chronos.Domain.Tests
 ```
 
-`-f net10.0` est indispensable : sans lui, le modèle cible .NET 8, qui n'est plus pris en charge.
+Vous lisez bien `net10.0` dans un cours qui cible .NET 11, et c'est voulu. Le modèle (`xunit.v3.templates` 4.0.3) ne connaît pas encore `net11.0` : `-f net11.0` est refusé avec `'net11.0' is not a valid value for -f`, et la liste des valeurs acceptées s'arrête à `net10.0`. On demande donc la plus récente, `net10.0`, et l'on supprime la ligne `TargetFramework` du `.csproj` plus bas : c'est `Directory.Build.props` qui fixe `net11.0`. Si vous oubliez de la supprimer, `dotnet reference add` refuse plus bas d'ajouter le domaine (« cannot be added due to incompatible targeted frameworks … - net10.0 ») : le projet de tests, en `net10.0`, ne peut pas référencer le domaine, en `net11.0`. Supprimez la ligne, puis relancez la commande.
+
+`-f` reste nécessaire : sans lui, le modèle cible .NET 8, qui n'est plus pris en charge, et ajoute au `.csproj` une propriété de plus (`TestingPlatformDotnetTestSupport`) que la solution de référence n'a pas.
 
 La commande se termine par une erreur, et c'est attendu :
 
@@ -581,7 +584,7 @@ L'API ne crée pas encore d'entité `Projet` : sa liste en mémoire contient des
 | Ce qu'on voit / ce qu'on fait | Pourquoi c'est un problème | À faire à la place |
 | --- | --- | --- |
 | `dotnet new xunit` | Le modèle fourni avec le SDK génère encore du xUnit v2, en maintenance. | `dotnet new install xunit.v3.templates`, puis `dotnet new xunit3`. |
-| `dotnet new xunit3` sans `-f` | Le projet cible `net8.0`, hors support. | `dotnet new xunit3 -f net10.0`. |
+| `dotnet new xunit3` sans `-f` | Le projet cible `net8.0`, hors support. | `dotnet new xunit3 -f net10.0`, puis supprimer la ligne `TargetFramework` (le modèle n'offre pas `net11.0`). |
 | Erreur `NU1008` à la création du projet de tests | Le modèle écrit une version dans le `.csproj`, ce que la gestion centralisée refuse. | Déplacer la version dans `Directory.Packages.props`. |
 | Des propriétés `{ get; set; }` partout | N'importe quel code peut mettre l'entité dans un état interdit ; les règles se dispersent chez les appelants. | `private set`, un constructeur qui valide, des méthodes métier. |
 | Un constructeur sans paramètre « pour faire plaisir à EF Core » | Il rouvre la porte aux objets incomplets. EF Core sait appeler un constructeur dont les paramètres portent le nom des propriétés. | Un seul constructeur, complet. |
@@ -595,7 +598,7 @@ L'API ne crée pas encore d'entité `Projet` : sa liste en mémoire contient des
 | FluentAssertions pour « de plus jolies assertions » | Licence payante en usage commercial depuis la version 8. | `Assert` de xUnit. |
 | Ajouter au domaine un paquet d'ASP.NET Core ou d'EF Core | Le métier devient impossible à tester sans infrastructure. | Le domaine ne dépend de rien. |
 
-Les sources de ces constats sont dans le [référentiel .NET 10](../docs/references/dotnet-10.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
+Les sources de ces constats sont dans le [référentiel .NET 11](../docs/references/dotnet-11.md#4-pièges--ce-quon-trouve-encore-partout-et-quon-nécrit-plus).
 
 ## Pour la séance
 
@@ -609,7 +612,7 @@ Les sources de ces constats sont dans le [référentiel .NET 10](../docs/referen
 
 ## Pour aller plus loin
 
-- [Le mot-clé `field`](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/field) (C# 14) : valider dans un *setter* sans déclarer soi-même le champ associé. Utile quand une propriété reste modifiable ; nos entités préfèrent une méthode métier.
+- [Le mot-clé `field`](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/field) (C# 14, toujours disponible en C# 15) : valider dans un *setter* sans déclarer soi-même le champ associé. Utile quand une propriété reste modifiable ; nos entités préfèrent une méthode métier.
 - [Choisir entre classe et structure](https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/choosing-between-class-and-struct) : les critères de la documentation.
 - [Filtrage par motifs](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/functional/pattern-matching) : tout ce que permet `is`, dont `is … or …` et `is not null`.
 - [Bonnes pratiques des tests unitaires](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices) : nommage, structure, ce qu'il ne faut pas tester.

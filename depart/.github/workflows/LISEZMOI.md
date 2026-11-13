@@ -60,7 +60,7 @@ Fichier **généré** par `gh actions-lock` (extension `github/gh-actions-lock`)
   — cours/24-github-actions-construire-et-publier.md, Pas à pas, étape 4 « Deux images, un seul job : la matrice »
 - TODO [module 24] Attester la provenance des images (trois permissions de plus et une étape après la construction)
   — cours/24-github-actions-construire-et-publier.md, Pas à pas, étape 5 « Attester la provenance »
-- TODO [module 24] Ajouter le job `migrations`, qui fabrique le bundle de migrations à partir du même commit
+- TODO [module 24] Ajouter le job `migrations`, qui fabrique le bundle de migrations à partir du même commit : sur une machine neuve, les outils et les paquets doivent être restaurés (en mode verrouillé) avant la fabrication, faute de quoi elle échoue
   — cours/24-github-actions-construire-et-publier.md, Pas à pas, étape 8 « Préparer le déploiement : migrations et environnement »
 - TODO [module 24] Ajouter le job `deploiement`, réservé aux tags `v*`, dans l'environnement `production` protégé par une approbation
   — cours/24-github-actions-construire-et-publier.md, Pas à pas, étape 9 « Déployer après approbation »

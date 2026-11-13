@@ -1,6 +1,6 @@
 # Plan de cours — Chronos
 
-Ce cours accompagne un mentorat. Le mentoré y construit, module après module, une application complète de gestion du temps RH : une API en .NET 10, une base SQL Server ou PostgreSQL, une interface en Angular 22.
+Ce cours accompagne un mentorat. Le mentoré y construit, module après module, une application complète de gestion du temps RH : une API en .NET 11, une base SQL Server ou PostgreSQL, une interface en Angular 22.
 
 ## À qui s'adresse ce cours
 
@@ -56,6 +56,8 @@ Le code de référence vit dans ce dépôt. Il a été construit module par modu
 - `src/web/` — l'application Angular.
 - À la fin de chaque module, un **tag git** `module-NN` marque l'état attendu. `git diff module-03 module-04` montre exactement ce qu'un module ajoute ; `git switch --detach module-08` place le dépôt dans l'état de la fin du module 08.
 
+**Les tags et la branche principale n'ont pas la même version de .NET.** Les tags `module-NN` sont l'historique de la construction, faite en .NET 10 (SDK 10.0.404) : ils n'ont pas bougé. La branche principale, elle, est en .NET 11 (SDK 11.0.100), avec EF Core resté en 10. `git diff` entre deux tags reste la bonne façon de voir ce qu'un module ajoute — les lignes de version mises à part. En revanche, **l'état d'un tag ne compile pas tel quel avec le seul SDK 11** : son `global.json` demande un SDK 10. Pour l'exécuter, il faut soit installer un SDK 10 à côté (`winget install Microsoft.DotNet.SDK.10`), soit appliquer par-dessus la plomberie .NET 11 : `global.json` en `11.0.100`, `net11.0` dans `Directory.Build.props`, `Microsoft.AspNetCore.OpenApi` et `Microsoft.AspNetCore.Mvc.Testing` en `11.0.0` (quand ils sont présents ; les paquets EF Core restent en `10.0.15`, le fournisseur PostgreSQL en `10.0.3`), `dotnet restore --force-evaluate` pour régénérer les fichiers de verrouillage — et, à partir du module 11, le contournement du défaut du SDK 11.0.100 que ce module décrit ; à partir du module 23, les images `sdk:10.0` et `aspnet:10.0` du Dockerfile passent en `11.0`. C'est ce qui a été fait pour rejouer les commandes des modules en .NET 11 (état du tag mis à niveau, puis compilation et tests) ; l'en-tête de chaque module dit ce qui a été rejoué, et ce qui ne l'a pas été.
+
 La solution contient le pas à pas de chaque module et ceux de ses exercices qui ajoutent quelque chose à l'application — les modules suivants les supposent faits. Elle n'est pas un corrigé à recopier : comparez-la à votre travail **après** l'avoir fait.
 
 Ce que les modules font construire :
@@ -89,11 +91,11 @@ Le cours traite le back-end en premier, puis le front-end. Mener les deux de fro
 
 | N° | Module | Le mentoré saura… | Règles |
 | --- | --- | --- | --- |
-| 00 | [Environnement de travail](00-environnement-de-travail.md) | Installer et vérifier le SDK .NET 10, Node.js, Docker et son éditeur ; fixer les versions d'outils. | — |
+| 00 | [Environnement de travail](00-environnement-de-travail.md) | Installer et vérifier le SDK .NET 11, Node.js, Docker et son éditeur ; fixer les versions d'outils. | — |
 | 01 | [Docker : les bases](01-docker-les-bases.md) | Expliquer ce que sont une image, un conteneur et un volume ; démarrer, inspecter et arrêter un conteneur ; décrire les deux bases du projet dans un fichier Compose. | — |
 | 02 | [Comprendre le besoin](02-comprendre-le-besoin.md) | Lire un cahier des charges, en tirer un modèle de domaine et un découpage en lots. | toutes |
 
-### Partie 1 — L'API (.NET 10)
+### Partie 1 — L'API (.NET 11)
 
 | N° | Module | Le mentoré saura… | Règles |
 | --- | --- | --- | --- |
@@ -145,9 +147,9 @@ Ces deux outils ne sont pas relégués à la fin : ils sont introduits dès qu'i
 | Élément | État |
 | --- | --- |
 | Cahier des charges | Rédigé ; précisions de RG-23, RG-24 et RG-25 consignées en section 8 |
-| Référentiels .NET 10, Angular 22, Docker et GitHub Actions | Rédigés le 12 novembre 2026, complétés par les constats de la construction |
-| Plan de cours et les 26 modules | Rédigés le 12 novembre 2026, puis corrigés module par module pendant la construction |
-| Solution de référence | **Construite** les 12 et 13 novembre 2026 : tags `module-00` à `module-25` |
+| Référentiels .NET 11, Angular 22, Docker et GitHub Actions | Rédigés le 12 novembre 2026 (celui de .NET s'appelait alors « .NET 10 »), complétés par les constats de la construction ; **alignés sur .NET 11 le 13 novembre 2026** pour .NET, Docker et GitHub Actions (voir ci-dessous) |
+| Plan de cours et les 26 modules | Rédigés le 12 novembre 2026, puis corrigés module par module pendant la construction ; **alignés sur .NET 11 le 13 novembre 2026** (voir ci-dessous) |
+| Solution de référence | **Construite** les 12 et 13 novembre 2026 en .NET 10 : tags `module-00` à `module-25` (inchangés) ; **branche principale migrée en .NET 11 le 13 novembre 2026** |
 | Projet de départ | **Construit** le 13 novembre 2026 dans `depart/`, à partir de la solution ; relu indépendamment, compilation rejouée avec le code de dix tags posé dessus. Personne n'a encore suivi le cours de bout en bout à partir de lui |
 
 ### Comment la solution a été construite
@@ -162,6 +164,20 @@ Chaque module a été rejoué sur un seul et même code, dans l'ordre du cours :
 | Interface | 262 tests unitaires, 33 parcours Playwright dont un contrôle d'accessibilité sans violation sur chaque écran ; `ng build` sans avertissement |
 | Livraison | Deux images construites, pile Compose démarrée ; installation **à partir d'une base neuve** jouée en `Production` à travers nginx, jusqu'à la feuille de temps d'un collaborateur |
 
+### Alignement sur .NET 11 (13 novembre 2026)
+
+Le 13 novembre 2026, trois jours après la sortie de .NET 11, le propriétaire du cours a décidé de passer à cette version. Ce n'est pas un remplacement de « 10 » par « 11 » : le choix est argumenté dans le [référentiel](../docs/references/dotnet-11.md) (version courante, même date de fin de support que la LTS, mais une STS, un SDK tout neuf et un écosystème qui n'a pas fini de suivre) et plusieurs explications changent de sens.
+
+**Ce qui a été revérifié en .NET 11** (SDK 11.0.100, conteneurs Linux) :
+
+- l'**état final de la solution**, en entier : compilation sans avertissement (Debug et Release, avertissements traités en erreurs), `dotnet format --verify-no-changes`, 225 tests unitaires et 144 tests d'intégration sur PostgreSQL 18 et sur SQL Server 2025, aucun changement de modèle en attente, bundle de migrations, images construites, pile Compose saine derrière nginx. Les chiffres de tests donnés plus haut restent ceux de l'état final ;
+- les **commandes et les sorties** des modules 00, 03, 04 et 05 (`global.json`, `dotnet new`, `dotnet package add`, modèle `xunit3`, `dotnet test`, restauration verrouillée) ; les modules 06 à 12, 19 et 22 à 25 portent leur propre liste dans leur en-tête ;
+- les **liens de documentation** `?view=aspnetcore-11.0` : chaque page a été ouverte dans cette version avant le changement (elle existe, et propose la version 11.0) ; le contenu cité n'a été relu que pour quelques-unes.
+
+**Ce que l'alignement a changé de sens** : le piège des versions de paquets se déplace vers EF Core (EF Core reste en 10, car le fournisseur PostgreSQL d'EF Core 11 n'existe qu'en préversion ; un `dotnet package add` sans version prend une 11.0.0 incompatible, `NU1608`) ; le SDK 11.0.100 a un défaut connu qui touche le module 11 ; le modèle de projet `xunit3` n'offre pas `net11.0` ; le module 00 n'enseigne plus `global.json` par la cohabitation de deux SDK.
+
+**Ce qui n'a pas été revérifié** : l'interface Angular (inchangée, non concernée, ses 262 tests et ses 33 parcours n'ont pas été relancés dans ce cadre) ; l'installation du SDK 11 et les commandes du module 00 sous Windows  ; le workflow de publication corrigé sur GitHub (le workflow `CI` a réussi sur la pull request de la migration) ; les passages que le texte d'un module marque « non rejoué en .NET 11 » dans son en-tête et dans les constats du référentiel ; les lignes du référentiel dont la colonne « En .NET 11 » dit « à revérifier ».
+
 ### Ce que la construction a changé dans le cours
 
 Rédigés par groupes, les modules avaient chacun été validés sur un squelette d'essai. Les enchaîner a fait apparaître ce qu'aucun essai isolé ne pouvait montrer :
@@ -172,8 +188,8 @@ Rédigés par groupes, les modules avaient chacun été validés sur un squelett
 
 ### Ce qui n'est pas couvert
 
-- **Rien n'a été exécuté sur GitHub** depuis le module 05, dont le workflow a tourné lors de sa rédaction sur un code d'essai. Les workflows de la solution (jobs `api` et `web`, publication) sont vérifiés par `actionlint`, par le verrouillage des actions, et par le rejeu local de leurs commandes, dans l'ordre. Le module 24 — publication, attestation, environnements — n'est que relu contre la documentation.
-- **Hors module 01, tout a tourné dans des conteneurs Linux** (SDK .NET 10, Node.js 24), pas directement sous Windows ; les installations du module 00 n'ont pas été jouées.
+- **Sur GitHub, seule une partie a tourné** (relevé du 13 novembre 2026). Le workflow `CI` (jobs `API` et `Web`) a réussi sur les pull requests de la solution en .NET 10, sur `main` après fusion, puis sur la pull request de la migration vers .NET 11. `publication.yml` a tourné une fois sur `main` : images construites, mais le job du bundle de migrations a échoué (`NETSDK1004`), faute d'une étape de restauration ; le workflow corrigé n'a pas encore tourné. L'attestation de provenance et le déploiement par environnement (module 24) n'ont jamais été exécutés ; ils ne sont que relus contre la documentation.
+- **Hors module 01, tout a tourné dans des conteneurs Linux** (SDK .NET 10 pour la construction, SDK .NET 11 pour l'alignement ; Node.js 24), pas directement sous Windows ; les installations du module 00 n'ont pas été jouées.
 - **Pas de lecteur d'écran réel ni de Lighthouse** (module 21) ; l'AppHost Aspire est compilé, non lancé (module 25).
 - **L'interface ne couvre pas tout le cahier des charges** : il n'y a pas d'écran pour les absences (l'API les gère entièrement, l'écran reste un titre), ni pour la gestion des comptes et des jours fériés (par l'API seulement). Un utilisateur ne peut pas changer son mot de passe. Ces limites sont dites dans les modules 21 et 25.
 - **Les exercices d'exploration** (« provoquez », « comparez », « prédisez ») n'ont pas de trace dans la solution : ils sont signalés comme tels dans chaque module.

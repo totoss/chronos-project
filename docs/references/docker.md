@@ -3,6 +3,7 @@
 > **Vérifié le 12 novembre 2026** sur docs.docker.com, les fiches des images officielles, learn.microsoft.com, le dépôt `dotnet/dotnet-docker`, angular.dev et nginx.org.
 > Ce document fait foi pour le cours : en cas de doute entre un tutoriel trouvé en ligne et ce référentiel, c'est le référentiel — ou mieux, la documentation officielle du jour — qui a raison.
 > Les numéros de version de Docker changent presque chaque semaine : seules les versions majeures comptent ici.
+> **Aligné sur .NET 11 le 13 novembre 2026** pour ce qui touche aux images .NET (étiquettes `11.0`, distribution par défaut, variantes) : relevé sur les fiches du dépôt `dotnet/dotnet-docker`. Le reste du document n'a pas été revérifié ce jour-là.
 
 ## 1. Versions
 
@@ -13,7 +14,7 @@
 | Docker Compose | v5.7 | [versions](https://github.com/docker/compose/releases) |
 | Image PostgreSQL | `postgres:18` (18.6) | [fiche de l'image](https://hub.docker.com/_/postgres) |
 | Image SQL Server | `mcr.microsoft.com/mssql/server:2025-latest` | [démarrage rapide](https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker?view=sql-server-ver17) |
-| Images .NET | `mcr.microsoft.com/dotnet/sdk:10.0`, `mcr.microsoft.com/dotnet/aspnet:10.0` | [dotnet-docker](https://github.com/dotnet/dotnet-docker) |
+| Images .NET | `mcr.microsoft.com/dotnet/sdk:11.0`, `mcr.microsoft.com/dotnet/aspnet:11.0` | [dotnet-docker](https://github.com/dotnet/dotnet-docker) |
 | Image Node.js | `node:24` (LTS) | [versions de Node.js](https://nodejs.org/en/about/previous-releases) |
 | Image nginx | `nginx:1.30` (stable) | [fiche de l'image](https://hub.docker.com/_/nginx) |
 
@@ -57,19 +58,19 @@ Compose est passé directement de la v2 à la **v5** en 2025. Le changement est 
 | Secrets de construction | `--secret` et `RUN --mount=type=secret`. Jamais `ARG` ni `ENV`. | [secrets](https://docs.docker.com/build/building/secrets/) |
 | Contrôle du Dockerfile | `docker build --check .` | [build checks](https://docs.docker.com/build/checks/) |
 
-### Conteneuriser l'API .NET 10
+### Conteneuriser l'API .NET 11
 
-- **Images** : `sdk:10.0` pour compiler, `aspnet:10.0` pour exécuter. Le tag `latest` désigne .NET 11 : on écrit toujours `10.0`.
-- **Distribution** : Ubuntu 24.04 par défaut. Il n'existe plus d'image Debian pour .NET 10 ([rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/10.0/default-images-use-ubuntu)).
+- **Images** : `sdk:11.0` pour compiler, `aspnet:11.0` pour exécuter. Le tag `latest` désigne aujourd'hui la même image que `11.0` ; on écrit tout de même `11.0`, pour que le passage à la version suivante soit une décision et non un effet de bord.
+- **Distribution** : Ubuntu 26.04 (`resolute`) par défaut pour .NET 11 (relevé le 13 novembre 2026 sur les fiches [sdk](https://github.com/dotnet/dotnet-docker/blob/main/README.sdk.md) et [aspnet](https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md) ; l'image `sdk` utilisée pour rejouer le cours l'annonce aussi). Aucune image Debian n'est listée pour 11.0, et la variante *chiseled* n'existe qu'en `resolute` (`11.0-resolute-chiseled`, avec un suffixe `-extra` pour les données de fuseaux). Pour .NET 10, l'image par défaut restait Ubuntu 24.04 ([rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/10.0/default-images-use-ubuntu)).
 - **Port** : l'application écoute sur **8080**, et non 80, depuis .NET 8. On le change avec `ASPNETCORE_HTTP_PORTS` ([rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/8.0/aspnet-port)).
 - **Utilisateur** : les images fournissent un utilisateur non root `app` ; le Dockerfile se termine par `USER $APP_UID` ([introduction](https://learn.microsoft.com/en-us/dotnet/core/docker/introduction)).
 - **Sans Dockerfile** : `dotnet publish /t:PublishContainer` fabrique une image directement depuis le SDK ([publication](https://learn.microsoft.com/en-us/dotnet/core/containers/sdk-publish)). Microsoft ne recommande pas une approche plutôt que l'autre. Le cours enseigne le Dockerfile, parce qu'il vaut pour tous les langages, et présente la publication par le SDK en complément.
 
-Dockerfile de référence, adapté de l'[exemple officiel](https://github.com/dotnet/dotnet-docker/blob/main/samples/AspNetCoreRazorApp/Dockerfile) en remplaçant `11.0` par `10.0` :
+Dockerfile de référence, adapté de l'[exemple officiel](https://github.com/dotnet/dotnet-docker/blob/main/samples/AspNetCoreRazorApp/Dockerfile) (les étiquettes `11.0` y sont celles de la version courante) :
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG TARGETARCH
 WORKDIR /source
 COPY --link Chronos.Api/*.csproj .
@@ -77,7 +78,7 @@ RUN dotnet restore -a $TARGETARCH
 COPY --link Chronos.Api/. .
 RUN dotnet publish -a $TARGETARCH --no-restore -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 EXPOSE 8080
 WORKDIR /app
 COPY --link --from=build /app .
@@ -85,7 +86,7 @@ USER $APP_UID
 ENTRYPOINT ["./Chronos.Api"]
 ```
 
-> Ce Dockerfile suppose un projet unique et une restauration non verrouillée. **Essai du 12 novembre 2026 (module 23)** : avec les fichiers `packages.lock.json` du module 05 et `dotnet restore --locked-mode`, l'option `-a $TARGETARCH` fait échouer la restauration (`NU1004`). Le [module 23](../../cours/23-conteneuriser-l-application.md) contient le Dockerfile réellement construit pour la solution à plusieurs projets : publication portable, sans `-a`, et `ENTRYPOINT ["dotnet", "Chronos.Api.dll"]`. L'image `aspnet:10.0` ne contient pas `curl` : il faut l'installer, ou sonder autrement, pour un contrôle de santé.
+> Ce Dockerfile suppose un projet unique et une restauration non verrouillée. **Essai du 12 novembre 2026 (module 23)** : avec les fichiers `packages.lock.json` du module 05 et `dotnet restore --locked-mode`, l'option `-a $TARGETARCH` fait échouer la restauration (`NU1004`). Le [module 23](../../cours/23-conteneuriser-l-application.md) contient le Dockerfile réellement construit pour la solution à plusieurs projets : publication portable, sans `-a`, et `ENTRYPOINT ["dotnet", "Chronos.Api.dll"]`. Constat de la construction en .NET 10 : l'image `aspnet:10.0` ne contient pas `curl`, il faut l'installer ou sonder autrement pour un contrôle de santé. Rejoué le 13 novembre 2026 sur l'image `mcr.microsoft.com/dotnet/aspnet:11.0` : ni `curl` ni `wget` ; le Dockerfile de la solution l'installe.
 
 ### Conteneuriser l'interface Angular
 
@@ -118,7 +119,7 @@ ENTRYPOINT ["./Chronos.Api"]
 | Secret passé par `ARG` ou `ENV` | Déconseillé : il reste lisible dans l'image | `RUN --mount=type=secret` | [secrets](https://docs.docker.com/build/building/secrets/) |
 | `DOCKER_BUILDKIT=0` | Ancien constructeur, **déprécié** | Rien : BuildKit est le défaut | [fonctionnalités dépréciées](https://docs.docker.com/engine/deprecated/) |
 | `EXPOSE 80` pour une image .NET | Faux depuis .NET 8 | `EXPOSE 8080` | [rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/8.0/aspnet-port) |
-| `aspnet:10.0-bookworm-slim` | N'existe pas pour .NET 10 | `aspnet:10.0` | [rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/10.0/default-images-use-ubuntu) |
+| `aspnet:11.0-bookworm-slim` (ou `10.0-bookworm-slim`) | N'existe pas pour .NET 10, et n'est pas listé pour .NET 11 | `aspnet:11.0` | [rupture](https://learn.microsoft.com/en-us/dotnet/core/compatibility/containers/10.0/default-images-use-ubuntu), [fiche aspnet](https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md) |
 | `COPY dist/app /usr/share/nginx/html` | Incomplet | `dist/app/browser` | [déploiement](https://angular.dev/tools/cli/deployment) |
 | `nginxinc/nginx-unprivileged` | Dépôt archivé | `nginx/nginx-unprivileged` | [fiche de l'image](https://hub.docker.com/r/nginxinc/nginx-unprivileged) |
 | « Docker Desktop exige Hyper-V » | Dépassé | WSL 2 | [WSL](https://docs.docker.com/desktop/features/wsl/) |
@@ -146,7 +147,8 @@ ENTRYPOINT ["./Chronos.Api"]
 ### Constats de la construction de la solution de référence (12 et 13 novembre 2026)
 
 - **Contrôle de santé et autorisation.** Avec une politique d'autorisation de repli, `MapHealthChecks` répond `401` et le contrôle de santé de Compose échoue : `.AllowAnonymous()` (module 23).
-- **Fuseau horaire.** L'image `aspnet:10.0` est en UTC et contient les données de fuseaux : `TZ=Europe/Paris` suffit ; une valeur inconnue retombe sur UTC sans erreur. La variante *chiseled* n'a ces données qu'avec le suffixe `-extra` (module 23).
+- **Fuseau horaire.** (Constat en .NET 10, rejoué le 13 novembre 2026 sur `aspnet:11.0`, Ubuntu 26.04 : `tzdata` présent, `TZ=Europe/Paris` donne `CET`.) L'image `aspnet:10.0` est en UTC et contient les données de fuseaux : `TZ=Europe/Paris` suffit ; une valeur inconnue retombe sur UTC sans erreur. La variante *chiseled* n'a ces données qu'avec le suffixe `-extra` (module 23).
+- **Image `aspnet:11.0` (relevé du 13 novembre 2026).** Ubuntu 26.04 ; sans `USER`, le conteneur tourne sous `root` (`uid=0`) ; `APP_UID=1654` et `ASPNETCORE_HTTP_PORTS=8080` sont définis ; ni `curl` ni `wget` ; l'image pèse 390 Mo, l'image de l'API construite 532 Mo ; les variantes `11.0-resolute-chiseled` et `-chiseled-extra` existent, sans shell ; aucun tag `noble` ni `bookworm` en 11.0.
 - **Clés de protection des données.** Un `docker compose restart` les conserve ; une recréation du conteneur les perd. Un volume nommé prend le propriétaire du dossier de l'image : le créer avant `USER` (module 23).
 - **Contexte nommé.** Sans `--build-context racine=.`, `COPY --from=racine` est pris pour une image : l'erreur parle de « pull access denied », pas de contexte manquant (modules 23 et 24).
 - **Variables obligatoires.** `${VAR:?}` sur un service bloque **toutes** les commandes Compose, `down` compris, même si le service appartient à un profil inactif (module 25).

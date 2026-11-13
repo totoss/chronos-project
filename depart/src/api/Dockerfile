@@ -1,7 +1,7 @@
-# TODO [module 23] Dockerfile en deux étapes pour l'API. Étape « build » (image du SDK .NET 10) : copier d'abord les seuls fichiers qui décrivent les
+# TODO [module 23] Dockerfile en deux étapes pour l'API. Étape « build » (image du SDK .NET 11, étiquette « 11.0 ») : copier d'abord les seuls fichiers qui décrivent les
 #    dépendances (fichiers communs de la solution, .editorconfig pris dans le contexte nommé « racine », fichier de projet et fichier de
 #    verrouillage des cinq projets nécessaires à l'API, tests exclus), restaurer en mode verrouillé avec un cache NuGet monté ; puis copier les
-#    sources et publier sans restaurer dans /app. Étape finale (image ASP.NET .NET 10) : installer curl pour le contrôle de santé, exposer le
+#    sources et publier sans restaurer dans /app. Étape finale (image ASP.NET .NET 11, étiquette « 11.0 ») : installer curl pour le contrôle de santé, exposer le
 #    port 8080, copier /app, exécuter sous l'utilisateur non privilégié $APP_UID, point d'entrée en forme tableau. Première ligne : directive de
 #    syntaxe du Dockerfile. Ne pas restaurer avec l'option d'architecture : elle est incompatible avec le mode verrouillé.
 #    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 3 « Écrire le Dockerfile de l'API »
