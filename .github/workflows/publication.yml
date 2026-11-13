@@ -127,6 +127,9 @@ jobs:
       - name: Restaurer les outils
         run: dotnet tool restore
 
+      - name: Restaurer les paquets
+        run: dotnet restore --locked-mode
+
       - name: Construire le bundle
         run: >
           dotnet ef migrations bundle

@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Contournement d'un défaut du SDK 11.0.100 : en Debug, un projet du SDK Web qui en référence un autre échoue sur -->
+    <!-- « scoped css bundles do not have matching endpoints » (dotnet/sdk, ticket 56656). Ce projet ne sert aucun fichier -->
+    <!-- statique : la ligne est sans effet sur les tests. À retirer quand le SDK est corrigé. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
