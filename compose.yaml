@@ -7,10 +7,14 @@ services:
       POSTGRES_USER: chronos
       POSTGRES_DB: chronos
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant, voir .env.example}
+      # Lu par le script d'initialisation ci-dessous, qui crée le compte de l'application.
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD manquant, voir .env.example}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres-donnees:/var/lib/postgresql
+      # Exécuté seulement à la création du volume : un volume existant doit recevoir le compte à la main.
+      - ./docker/postgres/10-compte-applicatif.sh:/docker-entrypoint-initdb.d/10-compte-applicatif.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -41,19 +45,39 @@ services:
       additional_contexts:
         racine: .
     environment:
-      ConnectionStrings__Chronos: Host=postgres;Database=chronos;Username=chronos;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant, voir .env.example}
+      # Le compte de l'application, pas celui des migrations (« chronos », propriétaire du schéma).
+      ConnectionStrings__Chronos: Host=postgres;Database=chronos;Username=chronos_app;Password=${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD manquant, voir .env.example}
       Chronos__Fournisseur: PostgreSql
       # Seul le réseau de nginx est cru quand il écrit X-Forwarded-For et X-Forwarded-Proto.
       Chronos__ReseauDuRelais: 10.89.0.0/24
       # Les clés de protection des données (session, jeton anti-CSRF) survivent au conteneur dans un volume.
       Chronos__DossierDesCles: /cles
+      # Le premier administrateur : l'adresse vient d'ici, le mot de passe du secret ci-dessous (Chronos:Admin:MotDePasse). Les deux
+      # sont facultatifs ensemble : sans eux, aucun administrateur n'est créé (voir AdministrateurInitial).
+      Chronos__Admin__Email: ${ADMIN_EMAIL:-}
+      Chronos__DossierDesSecrets: /run/secrets
       # « Aujourd'hui » (Horloge.Aujourdhui) se lit dans le fuseau du serveur, UTC par défaut dans l'image.
       TZ: Europe/Paris
+      # Une ligne de JSON par message, avec les portées (identifiant du compte, TraceId).
+      Logging__Console__FormatterName: json
+      Logging__Console__FormatterOptions__IncludeScopes: "true"
+      Logging__Console__FormatterOptions__UseUtcTimestamp: "true"
+      Logging__Console__FormatterOptions__TimestampFormat: "yyyy-MM-ddTHH:mm:ss.fffZ"
+      # Journaux, traces et métriques partent par OTLP vers le tableau de bord (outil de développement).
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tableau-de-bord:18889
+      OTEL_SERVICE_NAME: chronos-api
     volumes:
       - cles-api:/cles
+    secrets:
+      - source: administrateur-mot-de-passe
+        target: Chronos__Admin__MotDePasse
     depends_on:
       postgres:
         condition: service_healthy
+    # ASP.NET Core laisse 30 secondes aux requêtes en cours à l'arrêt : Docker attend un peu plus longtemps.
+    stop_grace_period: 35s
+    # Disponibilité (la base répond), pas vivacité : Compose ne redémarre pas un conteneur « unhealthy », il
+    # s'en sert pour retarder le démarrage de web, qui n'a rien à faire d'une API sans base.
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
       interval: 10s
@@ -72,10 +96,24 @@ services:
         condition: service_healthy
         restart: true
 
+  # Outil de développement : aucune authentification, données temporaires.
+  tableau-de-bord:
+    profiles: [app]
+    image: mcr.microsoft.com/aspire/dashboard:13.6.5
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "127.0.0.1:18888:18888"
+
 volumes:
   postgres-donnees:
   sqlserver-donnees:
   cles-api:
+
+# Le mot de passe du premier administrateur : un fichier que vous créez, jamais versionné (dossier secrets/ ignoré).
+secrets:
+  administrateur-mot-de-passe:
+    file: ./secrets/administrateur-mot-de-passe.txt
 
 networks:
   default:

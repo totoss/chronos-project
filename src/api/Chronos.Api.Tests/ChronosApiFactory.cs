@@ -72,10 +72,16 @@ public sealed class ChronosApiFactory(ServeurDeBase serveur) : WebApplicationFac
             }
         }
 
+        return await SeConnecterAsync(email, MotDePasse);
+    }
+
+    /// <summary>Se connecte par le vrai endpoint à un compte qui existe déjà, et prépare le jeton anti-CSRF.</summary>
+    public async Task<HttpClient> SeConnecterAsync(string email, string motDePasse)
+    {
         var client = CreateClient();
         // useSessionCookies : l'horloge pilotée date le cookie persistant du 4 mai 2026, déjà périmé pour le client.
         var connexion = await client.PostAsJsonAsync("/api/compte/login?useSessionCookies=true",
-            new { email, password = MotDePasse });
+            new { email, password = motDePasse });
         connexion.EnsureSuccessStatusCode();
 
         var moi = await client.GetAsync("/api/compte/moi");

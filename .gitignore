@@ -28,3 +28,7 @@ Desktop.ini
 # Journaux et fichiers temporaires
 *.log
 *.tmp
+
+# Livrables de migration (module 25) : scripts SQL et bundles
+artifacts/
+secrets/

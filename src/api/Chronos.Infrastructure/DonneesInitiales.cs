@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Chronos.Infrastructure;
 
+/// <summary>
+/// Les données de <em>démonstration</em> : collaborateurs, client, projets, jour férié. Elles ne servent qu'au
+/// développement et aux tests. Les données de référence (types d'absence) sont dans les migrations.
+/// </summary>
 public static class DonneesInitiales
 {
     private const string MatriculeGestionnaireRh = "M0003";
@@ -17,12 +21,6 @@ public static class DonneesInitiales
             context.AddRange(CreerProjets(responsable.Id, client.Id));
             context.Add(CreerCamille(responsable.Id));
             context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
-            context.SaveChanges();
-        }
-
-        if (!context.Set<TypeAbsence>().Any())
-        {
-            context.AddRange(CreerTypesAbsence());
             context.SaveChanges();
         }
 
@@ -43,12 +41,6 @@ public static class DonneesInitiales
             context.AddRange(CreerProjets(responsable.Id, client.Id));
             context.Add(CreerCamille(responsable.Id));
             context.Add(new JourFerie(new DateOnly(2026, 5, 8), "Victoire 1945"));
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        if (!await context.Set<TypeAbsence>().AnyAsync(cancellationToken))
-        {
-            context.AddRange(CreerTypesAbsence());
             await context.SaveChangesAsync(cancellationToken);
         }
 
@@ -96,12 +88,5 @@ public static class DonneesInitiales
             new DateOnly(2026, 3, 2), new DateOnly(2026, 12, 18), 240, responsableId),
         new("INT-FORMATION", "Formation interne", NatureProjet.Interne, null,
             new DateOnly(2026, 1, 5), null, 60, responsableId),
-    ];
-
-    private static TypeAbsence[] CreerTypesAbsence() =>
-    [
-        new("CP", "Congés payés"),
-        new("RTT", "Réduction du temps de travail"),
-        new("MAL", "Maladie"),
     ];
 }

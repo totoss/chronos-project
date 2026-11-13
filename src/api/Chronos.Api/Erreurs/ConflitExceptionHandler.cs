@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Chronos.Api.Erreurs;
 
-internal sealed class ConflitExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
+internal sealed class ConflitExceptionHandler(
+    IProblemDetailsService problemDetailsService, ILogger<ConflitExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
@@ -25,6 +26,7 @@ internal sealed class ConflitExceptionHandler(IProblemDetailsService problemDeta
             return false;
         }
 
+        JournalErreurs.ConflitSignale(logger, exception is DbUpdateConcurrencyException);
         httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
 
         var probleme = new ProblemDetails

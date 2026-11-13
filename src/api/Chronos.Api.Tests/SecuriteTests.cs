@@ -24,6 +24,7 @@ public class SecuriteTests(ChronosApiFactory factory) : IClassFixture<ChronosApi
     [InlineData("/api/feuilles-de-temps/soumises")]
     [InlineData("/api/absences")]
     [InlineData("/api/types-absence")]
+    [InlineData("/api/comptes")]
     [InlineData("/api/compte/moi")]
     public async Task Sans_connexion_les_routes_repondent_401_sans_redirection(string route)
     {

@@ -179,7 +179,7 @@ public static class FeuillesDeTempsEndpoints
     // collaborateur dont on n'est pas le manager direct (403). Le valideur est l'utilisateur connecté.
     private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>> Valider(
         int id, ChronosDbContext db, IUtilisateurCourant utilisateur, PerimetreUtilisateur perimetre,
-        CancellationToken cancellationToken)
+        ILogger<Program> logger, MetriquesFeuillesDeTemps metriques, CancellationToken cancellationToken)
     {
         var proprietaire = await ProprietaireDeLaFeuille(db, id, cancellationToken);
         if (proprietaire is not { } collaborateurId || !await perimetre.PeutVoirAsync(collaborateurId, cancellationToken))
@@ -188,6 +188,7 @@ public static class FeuillesDeTempsEndpoints
         }
         if (!await perimetre.PeutValiderPourAsync(collaborateurId, cancellationToken))
         {
+            JournalFeuillesDeTemps.ValidationRefusee(logger, id, "RG-36");
             return TypedResults.Forbid();
         }
 
@@ -214,13 +215,21 @@ public static class FeuillesDeTempsEndpoints
             return feuille;
         }, cancellationToken);
 
-        return feuille is null ? TypedResults.NotFound() : TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
+        if (feuille is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        JournalFeuillesDeTemps.FeuilleValidee(logger, feuille.Id, utilisateur.Identifiant);
+        metriques.Validee();
+        return TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }
 
     // Même protection que la validation (RG-36).
     private static async Task<Results<Ok<FeuilleDeTempsDto>, NotFound, ForbidHttpResult>> Rejeter(
         int id, RejeterFeuilleRequete requete, ChronosDbContext db, IUtilisateurCourant utilisateur,
-        PerimetreUtilisateur perimetre, CancellationToken cancellationToken)
+        PerimetreUtilisateur perimetre, ILogger<Program> logger, MetriquesFeuillesDeTemps metriques,
+        CancellationToken cancellationToken)
     {
         var proprietaire = await ProprietaireDeLaFeuille(db, id, cancellationToken);
         if (proprietaire is not { } collaborateurId || !await perimetre.PeutVoirAsync(collaborateurId, cancellationToken))
@@ -229,6 +238,7 @@ public static class FeuillesDeTempsEndpoints
         }
         if (!await perimetre.PeutValiderPourAsync(collaborateurId, cancellationToken))
         {
+            JournalFeuillesDeTemps.ValidationRefusee(logger, id, "RG-36");
             return TypedResults.Forbid();
         }
 
@@ -238,6 +248,9 @@ public static class FeuillesDeTempsEndpoints
 
         feuille.Rejeter(utilisateur.CollaborateurId!.Value, requete.Motif);
         await db.SaveChangesAsync(cancellationToken);
+
+        JournalFeuillesDeTemps.FeuilleRejetee(logger, feuille.Id, utilisateur.Identifiant);
+        metriques.Rejetee();
 
         return TypedResults.Ok(FeuilleDeTempsDto.Depuis(feuille));
     }

@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Chronos.Api.Erreurs;
 
-internal sealed class RegleMetierExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
+internal sealed class RegleMetierExceptionHandler(
+    IProblemDetailsService problemDetailsService, ILogger<RegleMetierExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
@@ -14,6 +15,7 @@ internal sealed class RegleMetierExceptionHandler(IProblemDetailsService problem
             return false;
         }
 
+        JournalErreurs.RegleMetierRefusee(logger, regle.CodeRegle);
         httpContext.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext

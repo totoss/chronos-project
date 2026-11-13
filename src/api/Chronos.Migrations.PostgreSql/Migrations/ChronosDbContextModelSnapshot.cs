@@ -488,6 +488,26 @@ namespace Chronos.Migrations.PostgreSql.Migrations
                         .IsUnique();
 
                     b.ToTable("TypesAbsence");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "CP",
+                            Libelle = "Congés payés"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "RTT",
+                            Libelle = "Réduction du temps de travail"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "MAL",
+                            Libelle = "Maladie"
+                        });
                 });
 
             modelBuilder.Entity("Chronos.Infrastructure.Identite.Utilisateur", b =>

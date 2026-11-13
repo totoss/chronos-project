@@ -476,7 +476,7 @@ Créez ensuite l'environnement. Dans les réglages du dépôt, rubrique *Environ
 - **`environment`** : le job attend l'approbation, puis reçoit les secrets et les variables de `production`. L'adresse `url` s'affiche sur la page de l'exécution.
 - **`permissions: {}`** : ce job n'a besoin d'aucun droit du jeton `GITHUB_TOKEN`. `download-artifact` lit un artefact de la même exécution sans lui ; il ne faut `actions: read` que pour un artefact d'une autre exécution.
 - **`concurrency`** : un seul déploiement à la fois vers la production.
-- **`DOTNET_ENVIRONMENT: Production`** : le bundle démarre l'application pour lire sa configuration, et, sans variable, les outils d'EF Core la démarrent en `Development`. Or c'est en `Development` que `Program.cs` branche `UseSeeding` : le bundle insérerait les **données de démonstration** (trois collaborateurs, un client, des projets) dans la base de production (constaté sur une base neuve ; avec la variable, aucune donnée).
+- **`DOTNET_ENVIRONMENT: Production`** : le bundle démarre l'application pour lire sa configuration, et, sans variable, les outils d'EF Core la démarrent en `Development`. À ce stade du cours, c'est en `Development` que `Program.cs` branche `UseSeeding` : le bundle insérerait les **données de démonstration** (trois collaborateurs, un client, des projets) dans la base de production (constaté sur une base neuve ; avec la variable, aucune donnée). Le module 25 fera dépendre ces données d'un réglage explicite, `Chronos:Demo:Donnees`, que seul `appsettings.Development.json` active ; la variable restera alors une défense en profondeur : aucun `appsettings.Development.json` ne sera lu.
 - **Les migrations d'abord, l'application ensuite.** Le module 25 explique pourquoi cet ordre impose des migrations compatibles avec la version précédente.
 - **`Chronos__Fournisseur`** : c'est à l'exécution que le bundle choisit son fournisseur, par la configuration, comme l'API (constaté).
 - **`IMAGE_API`** vaut `ghcr.io/…-api@sha256:…` : l'image exacte que ce workflow vient de construire, et non « la dernière ».
@@ -540,7 +540,7 @@ Documentation : [Déployer avec GitHub Actions](https://docs.github.com/en/actio
 | Déployer depuis le job qui construit | Le droit de publier et les secrets de production se retrouvent ensemble. | Un job par responsabilité. |
 | Secrets de production au niveau du dépôt | Tout workflow, depuis toute branche, peut les lire. | Secrets d'environnement. |
 | `cancel-in-progress: true` sur un déploiement | Un déploiement interrompu à mi-chemin : migrations appliquées, application non mise à jour. | `false`. |
-| Exécuter le bundle sans `DOTNET_ENVIRONMENT` | Il démarre l'application en `Development` et insère les données de démonstration dans la base visée (constaté). | `DOTNET_ENVIRONMENT: Production`. |
+| Exécuter le bundle sans `DOTNET_ENVIRONMENT` | Il démarre l'application en `Development` et insère les données de démonstration dans la base visée (constaté ; le module 25 les place sous un réglage explicite, la variable reste une défense en profondeur). | `DOTNET_ENVIRONMENT: Production`. |
 | Versionner les `packages.lock.json` réécrits par un bundle fabriqué sur le poste | Ils mentionnent `linux-x64` : la restauration verrouillée suivante échoue. | `dotnet restore --force-evaluate`. |
 | Exécuter le bundle sans `Chronos__Fournisseur` sur SQL Server | Le bundle emploie le fournisseur par défaut, PostgreSQL, et échoue sur la chaîne de connexion (constaté). | Toujours fournir la variable. |
 

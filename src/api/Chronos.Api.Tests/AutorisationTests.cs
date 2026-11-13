@@ -31,6 +31,7 @@ public class AutorisationTests(ChronosApiFactory factory) : IClassFixture<Chrono
         ("POST", "/api/absences/1/approbation"),
         ("POST", "/api/absences/1/refus"),
         ("POST", "/api/comptes"),
+        ("PUT", "/api/comptes/1"),
     ];
 
     private static Task<HttpResponseMessage> EnvoyerAsync(HttpClient client, string methode, string route) =>
@@ -57,6 +58,7 @@ public class AutorisationTests(ChronosApiFactory factory) : IClassFixture<Chrono
     [InlineData("POST", "/api/jours-feries")]
     [InlineData("DELETE", "/api/jours-feries/2026-05-08")]
     [InlineData("POST", "/api/comptes")]
+    [InlineData("PUT", "/api/comptes/1")]
     public async Task Un_manager_ne_gere_ni_les_fiches_ni_le_calendrier_ni_les_comptes(string methode, string route)
     {
         using var sophie = await factory.ClientSophieAsync();
