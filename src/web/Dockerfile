@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24 AS build
+FROM node:25 AS build
 WORKDIR /source
 
 COPY --link package.json package-lock.json ./
