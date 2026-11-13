@@ -42,11 +42,13 @@ Chaque module est un fichier `cours/NN-titre.md` construit sur le même plan :
 
 ## Solution de référence
 
-Le code de référence vivra dans ce dépôt et avancera avec les modules. **Il n'est pas encore construit** : aujourd'hui, les modules décrivent la solution, et chacun dit dans son en-tête ce qui a été exécuté pour le rédiger.
+Le code de référence vit dans ce dépôt. Il a été construit module par module, dans l'ordre du cours.
 
 - `src/api/` — la solution .NET.
 - `src/web/` — l'application Angular.
-- À la fin de chaque module, un **tag git** `module-NN` marquera l'état attendu. `git diff module-03 module-04` montrera exactement ce qu'un module ajoute.
+- À la fin de chaque module, un **tag git** `module-NN` marque l'état attendu. `git diff module-03 module-04` montre exactement ce qu'un module ajoute ; `git switch --detach module-08` place le dépôt dans l'état de la fin du module 08.
+
+La solution contient le pas à pas de chaque module et ceux de ses exercices qui ajoutent quelque chose à l'application — les modules suivants les supposent faits. Elle n'est pas un corrigé à recopier : comparez-la à votre travail **après** l'avoir fait.
 
 Ce que les modules font construire :
 
@@ -130,42 +132,41 @@ Ces deux outils ne sont pas relégués à la fin : ils sont introduits dès qu'i
 | **Docker** | Module 01 — les bases et les deux bases de données en conteneur. | Module 11 — Testcontainers. Module 23 — conteneuriser l'API et l'interface. |
 | **GitHub Actions** | Module 05 — dès que les premiers tests existent, ils tournent à chaque *push*. | Module 11 — tests contre une vraie base. Module 20 — l'interface. Module 22 — qualité. Module 24 — publication des images. |
 
-## Avancement de la rédaction
+## Avancement
 
 | Élément | État |
 | --- | --- |
-| Cahier des charges | Rédigé |
-| Référentiels .NET 10, Angular 22, Docker et GitHub Actions | Rédigés et vérifiés le 12 novembre 2026 |
-| Plan de cours | Rédigé |
-| Les 26 modules | Rédigés le 12 novembre 2026 |
-| Solution de référence | À construire, module par module |
+| Cahier des charges | Rédigé ; précisions de RG-23, RG-24 et RG-25 consignées en section 8 |
+| Référentiels .NET 10, Angular 22, Docker et GitHub Actions | Rédigés le 12 novembre 2026, complétés par les constats de la construction |
+| Plan de cours et les 26 modules | Rédigés le 12 novembre 2026, puis corrigés module par module pendant la construction |
+| Solution de référence | **Construite** les 12 et 13 novembre 2026 : tags `module-00` à `module-25` |
 
-### Ce qui a été exécuté pour rédiger chaque module
+### Comment la solution a été construite
 
-Chaque module porte en en-tête son état d'exécution exact. En résumé :
+Chaque module a été rejoué sur un seul et même code, dans l'ordre du cours : le pas à pas, puis les exercices qui ajoutent à la solution. Une relecture indépendante a ensuite recompilé, relancé les tests et rejoué les critères de réussite avant que le tag ne soit posé. Quand le texte d'un module ne correspondait pas à ce qui s'exécutait, **c'est le module qui a été corrigé** : chaque module dit dans son en-tête ce qui a été rejoué, avec quelles versions.
 
-| Modules | Exécuté | Non exécuté |
-| --- | --- | --- |
-| 00 | Commandes de vérification, comportement de `global.json` et de `devEngines`, en conteneur. | Les installations sur le poste (winget, fnm, éditeurs). |
-| 01 | Tout, sous Windows 11 avec Docker Desktop. | — |
-| 02 | Aucun code. Les diagrammes Mermaid passent l'analyseur. | Leur rendu dans GitHub. |
-| 03, 04 | Tout le pas à pas, rejoué de zéro (SDK 10.0.404). | L'envoi depuis un éditeur (fichier `.http`). |
-| 05 | Le workflow et le verrouillage des actions, sur GitHub. | Dependabot, le *ruleset*. |
-| 06, 07 | Tout le pas à pas, sur PostgreSQL 18.6 et SQL Server 2025. | Les étapes de workflow proposées en exercice. |
-| 08 à 10 | Validation, erreurs, concurrence, calcul de charge (58 tests), transitions, transactions, sur les deux SGBD. | Les migrations de ces trois modules (schéma créé directement pour l'essai). |
-| 11, 12 | Tests d'intégration avec Testcontainers, authentification, périmètre, traçabilité (27 tests). | Le workflow sur GitHub ; les extraits réalignés ensuite sur l'organisation des migrations du module 07. |
-| 13 à 15 | Tout le code, compilé et testé (Angular 22.2.6). | — |
-| 16 à 18 | Tout le code, compilé et testé (55 tests) ; écrans parcourus dans un navigateur. | Le branchement sur la véritable API : ses réponses sont simulées d'après les modules 08 à 12. |
-| 19 à 21 | Authentification, tests Vitest et Playwright, accessibilité (contrôle axe), compilés et testés sur des écrans minimaux. | Les extraits réécrits ensuite pour reprendre les composants réels du module 18 ; la véritable API ; le workflow sur GitHub ; Lighthouse ; un lecteur d'écran. |
-| 22 | Analyseurs, `dotnet format`, ESLint, Prettier, sur des projets d'essai. | Les étapes de workflow sur GitHub. |
-| 23 | Les deux images, Compose, relais `/api`, en-têtes transmis, HTTPS. | La connexion réelle (pas d'Identity dans l'essai). |
-| 24 | Rien sur GitHub : YAML relu contre la documentation et passé à `actionlint`. | Publication, attestation, environnements, Dependabot. |
-| 25 | Journaux, contrôles de santé, export OpenTelemetry vers le tableau de bord Aspire, bundles et scripts de migrations. | Le lancement de l'AppHost Aspire (compilé seulement). |
+État final, au tag `module-25` :
 
-Trois limites valent pour l'ensemble :
+| | Mesure |
+| --- | --- |
+| API | 369 tests (225 unitaires, 144 d'intégration), rejoués sur PostgreSQL 18 et SQL Server 2025 ; compilation sans avertissement, avertissements traités en erreurs |
+| Interface | 262 tests unitaires, 33 parcours Playwright dont un contrôle d'accessibilité sans violation sur chaque écran ; `ng build` sans avertissement |
+| Livraison | Deux images construites, pile Compose démarrée ; installation **à partir d'une base neuve** jouée en `Production` à travers nginx, jusqu'à la feuille de temps d'un collaborateur |
 
-- Hors module 01 et module 05, tout a été exécuté dans des **conteneurs Linux** (SDK .NET 10, Node.js 24), pas directement sous Windows.
-- Chaque groupe de modules a été validé sur **son propre squelette d'essai**, pas sur une solution unique construite de bout en bout. Les exercices « À vous » n'ont pas de corrigé exécuté.
-- C'est la **construction de la solution de référence**, module après module, qui fera la validation d'ensemble ; tout écart constaté à ce moment-là corrige le module.
+### Ce que la construction a changé dans le cours
+
+Rédigés par groupes, les modules avaient chacun été validés sur un squelette d'essai. Les enchaîner a fait apparaître ce qu'aucun essai isolé ne pouvait montrer :
+
+- **Des raccords manquants** entre modules : un exercice du module 03 que le module 06 ignorait, des tests que le module 20 faisait réécrire alors qu'ils existaient, des écrans réels que le module 21 ne connaissait pas.
+- **Des défauts réels**, corrigés : le document OpenAPI en erreur depuis le module 08, une règle de gestion mal appliquée sur les demi-journées d'absence (module 10), une suppression de jour férié qui visait la mauvaise date (module 09), une borne de pagination qui faisait répondre 500 (module 08).
+- **Quatre modules font évoluer l'API depuis l'interface ou le déploiement**, et le disent dans un encadré « Compléter le contrat de l'API » : le module 16 (indicateur de sortie d'un collaborateur), le module 17 (conflits distinguables, messages en français), le module 18 (feuilles de temps vides), le module 25 (données de référence, premier administrateur, gestion des comptes). C'est voulu : le premier client d'une API en révèle les manques.
+
+### Ce qui n'est pas couvert
+
+- **Rien n'a été exécuté sur GitHub** depuis le module 05, dont le workflow a tourné lors de sa rédaction sur un code d'essai. Les workflows de la solution (jobs `api` et `web`, publication) sont vérifiés par `actionlint`, par le verrouillage des actions, et par le rejeu local de leurs commandes, dans l'ordre. Le module 24 — publication, attestation, environnements — n'est que relu contre la documentation.
+- **Hors module 01, tout a tourné dans des conteneurs Linux** (SDK .NET 10, Node.js 24), pas directement sous Windows ; les installations du module 00 n'ont pas été jouées.
+- **Pas de lecteur d'écran réel ni de Lighthouse** (module 21) ; l'AppHost Aspire est compilé, non lancé (module 25).
+- **L'interface ne couvre pas tout le cahier des charges** : il n'y a pas d'écran pour les absences (l'API les gère entièrement, l'écran reste un titre), ni pour la gestion des comptes et des jours fériés (par l'API seulement). Un utilisateur ne peut pas changer son mot de passe. Ces limites sont dites dans les modules 21 et 25.
+- **Les exercices d'exploration** (« provoquez », « comparez », « prédisez ») n'ont pas de trace dans la solution : ils sont signalés comme tels dans chaque module.
 
 Avant de modifier un module, on relit la section correspondante du référentiel et on revérifie dans la documentation officielle les points qu'il signale « à surveiller ».

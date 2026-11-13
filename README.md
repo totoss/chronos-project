@@ -30,8 +30,8 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 | [docs/references/angular-22.md](docs/references/angular-22.md) | Pratiques à jour pour Angular 22, avec leurs sources. |
 | [docs/references/docker.md](docs/references/docker.md) | Pratiques à jour pour Docker et Compose, avec leurs sources. |
 | [docs/references/github-actions.md](docs/references/github-actions.md) | Pratiques à jour pour GitHub Actions, avec leurs sources. |
-| [compose.yaml](compose.yaml) | Les deux bases de données en conteneur (module 01). Copier `.env.example` en `.env` avant de démarrer. |
-| `src/` | La solution de référence. Elle sera construite au fil des modules. |
+| [compose.yaml](compose.yaml) | Les deux bases de données en conteneur (module 01) et, sous le profil `app`, l'application complète (modules 23 et 25). Copier `.env.example` en `.env` avant de démarrer. |
+| `src/api/`, `src/web/` | La solution de référence : l'API .NET 10 et l'interface Angular 22. Un tag `module-NN` marque l'état attendu à la fin de chaque module. |
 
 ## Qualité
 
@@ -52,6 +52,8 @@ Les référentiels consignent, à une date donnée, les pratiques retenues, cell
 
 ## État d'avancement
 
-Le cahier des charges, les référentiels techniques, le plan de cours et les **26 modules** sont rédigés. Le code que les modules font écrire a été compilé et exécuté pendant leur rédaction, par groupes de modules, dans des conteneurs (.NET 10, Node.js 24, PostgreSQL 18, SQL Server 2025) ; ce qui ne l'a pas été — tout ce qui se passe sur GitHub après le module 05, notamment — est signalé en tête de chaque module et résumé dans le [suivi](cours/README.md#avancement-de-la-rédaction).
+Le cours est complet : cahier des charges, référentiels techniques, plan de cours, **26 modules**, et la **solution de référence**, construite module par module et marquée par les tags `module-00` à `module-25`.
 
-La **solution de référence reste à construire**. C'est elle qui validera l'enchaînement complet des modules sur un seul et même code.
+Chaque module a été rejoué sur ce code, puis relu indépendamment ; quand le texte et l'exécution ne s'accordaient pas, le module a été corrigé. Au dernier tag : 369 tests côté API (sur PostgreSQL 18 et SQL Server 2025), 262 tests et 33 parcours de bout en bout côté interface, et une installation à partir d'une base neuve jouée de bout en bout dans des conteneurs.
+
+Ce qui n'a pas été vérifié est dit sans détour dans le [suivi](cours/README.md#avancement) : rien n'a été exécuté sur GitHub depuis le module 05, tout a tourné dans des conteneurs Linux et non directement sous Windows, et l'interface ne couvre pas tout le cahier des charges (pas d'écran pour les absences ni pour la gestion des comptes).

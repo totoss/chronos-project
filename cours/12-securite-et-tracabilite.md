@@ -705,7 +705,7 @@ Le mot de passe n'est écrit dans aucun fichier versionné : il vient des secret
 dotnet user-secrets set "Chronos:Demo:MotDePasse" "<votre mot de passe>" --project Chronos.Api
 ```
 
-Il doit respecter les règles par défaut d'Identity : six caractères au moins, avec majuscule, minuscule, chiffre et caractère spécial. Hors développement, ce code ne s'exécute pas : les comptes réels sont créés par un administrateur, et aucun environnement partagé ne doit connaître un mot de passe par défaut.
+Il doit respecter les règles par défaut d'Identity : six caractères au moins, avec majuscule, minuscule, chiffre et caractère spécial. Hors développement, ce code ne s'exécute pas : les comptes réels sont créés par un administrateur — le tout premier l'étant créé au démarrage à partir d'un secret, ce que le [module 25](25-exploiter-l-application.md) met en place —, et aucun environnement partagé ne doit connaître un mot de passe par défaut.
 
 > **Piège constaté : les tests lisent aussi vos secrets.** L'hôte de test tourne en environnement `Development` et charge donc les secrets du poste. Ce code s'exécute alors au démarrage de l'hôte, avant le `MigrateAsync` de la fabrique : la base n'existe pas encore, et tous les tests échouent. Dans `ConfigureWebHost` de `ChronosApiFactory`, neutralisez la clé :
 >

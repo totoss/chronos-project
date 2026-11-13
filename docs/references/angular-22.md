@@ -212,6 +212,27 @@ Relevés en compilant et en testant le code des modules 13 à 21 (Node.js 24.22.
 | `i18n.sourceLocale: "fr"` dans `angular.json` suffit à fixer `LOCALE_ID`, à embarquer les données de la locale et à écrire `lang="fr"`, tests compris, sans `@angular/localize`. | 21 |
 | Angular Aria est stable en v22 ([feuille de route](https://angular.dev/roadmap)). | 21 |
 
+### Constats de la construction de la solution de référence (12 et 13 novembre 2026)
+
+Relevés en enchaînant les modules 13 à 22 sur un seul code, branché sur la véritable API. Ils complètent le tableau précédent.
+
+| Constat | Module |
+| --- | --- |
+| `resource.value()` lève une erreur quand la ressource est en erreur, même avec `defaultValue` : hors du template, écrire `hasValue() ? value() : …`. | 16, 18 |
+| Tests d'un `httpResource` : `TestBed.tick()` avant `expectOne`, puis `flush`, puis `await fixture.whenStable()`. `whenStable()` ne se résout pas tant qu'une requête attend sa réponse ; après une navigation ou une temporisation, `vi.waitFor`. | 16, 20 |
+| Signal Forms : passer une fonction en second argument de `disabled`, `hidden` ou `readonly` est déprécié en 22.2.6 ; écrire `{ when: … }`. | 17 |
+| Signal Forms : une soumission n'est pas suivie par `whenStable()` ; un test attend la fin visible de l'envoi (le bouton redevient actif). Les harnais Material attendent `whenStable`. | 17, 20 |
+| Une garde `canActivate` qui renvoie `false` au premier chargement laisse un écran vide : renvoyer un `UrlTree`, ou préférer `canMatch`. Un `canMatch` devant une route `:id` fait tomber `/nouveau` sur la fiche. | 19 |
+| Une entrée liée à un paramètre de requête reçoit `undefined` quand le paramètre est absent, même avec une valeur par défaut : la transformer. | 15, 19 |
+| Playwright exécute les parcours TypeScript sans vérifier les types : `npx tsc -p e2e/tsconfig.json --noEmit` dans l'intégration continue. `.check()` échoue sur un `mat-button-toggle` : `.click()`. | 20 |
+| `ng add playwright-ng-schematics` et `ng add angular-eslint` modifient `schematicCollections` dans `angular.json` ; le lint ne couvre `e2e/` que si on l'ajoute à `lintFilePatterns`. | 20, 22 |
+| Angular Aria, grille : `[disabled]` sur un élément portant `ngGridCellWidget` est capté par la directive ; un `<select disabled>` ne prend pas le focus, donc une cellule non saisissable affiche du texte ; `softDisabled` est actif et l'enroulement en boucle par défaut. | 21 |
+| Rendre le focus au titre à chaque `NavigationEnd` l'arrache à un champ de recherche qui écrit dans l'adresse : comparer le chemin sans ses paramètres. `disabledInteractive` garde le focus sur un bouton désactivé pendant l'envoi. | 21 |
+| `MatPaginatorIntl` fourni dans `app.config.ts` ajoute 173 kB au chargement initial ; le fournir dans les routes des listes. | 21 |
+| Fontsource ne fournit pas la classe CSS `.material-symbols-outlined` que Google Fonts apportait ; la police pèse 323 kB, hors budget initial. | 21 |
+| Budget initial : 634 kB à la fin du cours (cœur d'Angular 197, Material 190, CDK 116, routeur 99 ; moins de 10 kB pour le code de l'application). Seuils retenus : 700 et 850 kB. | 21 |
+| `i18n.sourceLocale: "fr"` change le format des nombres dans les tests (« 0,75 », « 80 % » avec une espace insécable). Le format d'un `<input type="date">` est décidé par le navigateur. | 21 |
+
 ## 6. Garder ce référentiel à jour
 
 - La CLI fournit un serveur MCP (`npx -y @angular/cli mcp`) dont les outils `get_best_practices` et `search_documentation` interrogent la documentation de la version installée ([MCP](https://angular.dev/ai/mcp)).

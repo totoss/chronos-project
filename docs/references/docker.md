@@ -142,3 +142,15 @@ ENTRYPOINT ["./Chronos.Api"]
 - **Testcontainers lancé depuis un conteneur** (essai du module 11, Docker Desktop) : monter `/var/run/docker.sock` suffit, à condition de définir `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal`. Sur le poste du mentoré et sur un runner GitHub, rien de tout cela n'est nécessaire.
 - **Tags flottants.** `postgres:18` et `2025-latest` suivent les correctifs. Pour une reproductibilité stricte, on épingle une version complète, voire une empreinte (`@sha256:...`).
 - **Ce qui a été exécuté.** Toutes les commandes du module 01 et le fichier `compose.yaml` l'ont été le 12 novembre 2026 (Docker Desktop 4.99, Engine 29.9.3, Compose 5.7.0, PostgreSQL 18.6, SQL Server 17.0.5045.3). Les deux Dockerfile du module 23 (API à cinq projets, interface servie par nginx), le profil Compose `app`, le relais `/api` et les en-têtes transmis ont été construits et exécutés le même jour (Buildx 0.38.1, nginx 1.30.6). Le Dockerfile d'exemple de la section 2, lui, ne l'a été que pour constater son échec en mode verrouillé.
+
+### Constats de la construction de la solution de référence (12 et 13 novembre 2026)
+
+- **Contrôle de santé et autorisation.** Avec une politique d'autorisation de repli, `MapHealthChecks` répond `401` et le contrôle de santé de Compose échoue : `.AllowAnonymous()` (module 23).
+- **Fuseau horaire.** L'image `aspnet:10.0` est en UTC et contient les données de fuseaux : `TZ=Europe/Paris` suffit ; une valeur inconnue retombe sur UTC sans erreur. La variante *chiseled* n'a ces données qu'avec le suffixe `-extra` (module 23).
+- **Clés de protection des données.** Un `docker compose restart` les conserve ; une recréation du conteneur les perd. Un volume nommé prend le propriétaire du dossier de l'image : le créer avant `USER` (module 23).
+- **Contexte nommé.** Sans `--build-context racine=.`, `COPY --from=racine` est pris pour une image : l'erreur parle de « pull access denied », pas de contexte manquant (modules 23 et 24).
+- **Variables obligatoires.** `${VAR:?}` sur un service bloque **toutes** les commandes Compose, `down` compris, même si le service appartient à un profil inactif (module 25).
+- **Script d'initialisation.** Un script de `docker-entrypoint-initdb.d` ne s'exécute qu'à la création du volume ; sur un volume existant, le compte se crée à la main (module 25).
+- **Secrets Compose et .NET.** `AddKeyPerFile` lit `/run/secrets` : `__` dans le nom du fichier vaut `:`, et un saut de ligne final est ignoré (module 25).
+- **En-têtes transmis.** À travers nginx, un `X-Forwarded-Proto` envoyé par le client est sans effet ; envoyé directement à l'API, il est cru : ne jamais publier le port de l'API (module 23).
+- **Ce qui a été exécuté.** Les deux images, la pile Compose avec le profil `app`, le tableau de bord Aspire, et l'installation à partir d'une base neuve en `Production` ont été construits et rejoués sur la solution de référence complète.
