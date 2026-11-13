@@ -1,0 +1,8 @@
+{
+  // TODO [module 04] Déclarer le lanceur de tests Microsoft.Testing.Platform en ajoutant à la main une section "test" (le modèle de projet n'est pas relancé : le projet existe déjà). Supprimez ce commentaire en ajoutant la section ; versionnez le changement, le module 05 en dépend
+  //    — cours/04-modeliser-le-domaine.md, Pas à pas, étape 4 « Créer le projet de tests »
+  "sdk": {
+    "rollForward": "latestFeature",
+    "version": "10.0.400"
+  }
+}

@@ -1,0 +1,13 @@
+/* You can add global styles to this file, and also import other style files */
+
+// TODO [module 14] `ng add @angular/material` écrit le thème en tête de ce fichier : `@use` de
+//    Material, `mat.theme` sur `html` (Azure, Blue, Roboto, densité 0), puis, sur `body`, mode
+//    clair et fond, couleur et police pris dans les variables `--mat-sys-…`.
+//    — cours/14-composer-des-composants.md, Pas à pas, étape 1 « Installer Angular Material »
+// TODO [module 14] Changer la palette, passer le mode à `light dark`, remplacer toute couleur
+//    écrite en dur par une variable du thème.
+//    — cours/14-composer-des-composants.md, À vous, exercice 6 « Le thème. »
+// TODO [module 21] Recopier la classe `.material-symbols-outlined` (propriétés de police des
+//    icônes) : la police auto-hébergée ne la fournit pas, et sans elle les icônes redeviennent des
+//    mots.
+//    — cours/21-accessibilite-et-finitions.md, À vous, exercice 6 « Alléger le démarrage. »

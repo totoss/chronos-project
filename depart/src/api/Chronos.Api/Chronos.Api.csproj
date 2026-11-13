@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Fourni : le SDK Web et les trois références de projets (architecture de l'état final).
+       Les références de paquets ne le sont pas : chaque « dotnet package add » du cours reste à faire, avec la version
+       indiquée par le cours (versions centralisées dans Directory.Packages.props, voir module 03, étape 5). -->
+
+  <!-- TODO [module 06] Créer l'identifiant des secrets utilisateur du projet par « dotnet user-secrets init » ; la commande
+       réécrit le fichier entier (marque d'ordre d'octets, groupe de propriétés collé) : relire le diff et remettre le fichier en forme.
+       — cours/06-persister-avec-ef-core.md, Pas à pas, étape 4 « Enregistrer le contexte et la chaîne de connexion » -->
+
+  <ItemGroup>
+    <!-- TODO [module 03] Ajouter le paquet Microsoft.AspNetCore.OpenApi (génération du document OpenAPI) ; sa version
+         se fixe dans Directory.Packages.props.
+         — cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions » -->
+
+    <!-- TODO [module 03] Ajouter le paquet Scalar.AspNetCore (interface d'exploration de l'API).
+         — cours/03-premiere-api.md, Pas à pas, étape 11 « Explorer l'API avec Scalar » -->
+
+    <!-- TODO [module 06] Ajouter le paquet Microsoft.EntityFrameworkCore.Design en version 10.0.x (jamais 11) : l'outil
+         « dotnet ef » en a besoin dans le projet de démarrage ; ses actifs ne doivent pas se propager aux projets qui
+         référencent l'API.
+         — cours/06-persister-avec-ef-core.md, Pas à pas, étape 1 « Créer le projet d'infrastructure » -->
+
+    <!-- TODO [module 25] Ajouter le paquet Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore (version 10.0.x),
+         qui fournit le contrôle de santé du contexte EF Core.
+         — cours/25-exploiter-l-application.md, Pas à pas, étape 4 « Deux points de contrôle de santé » -->
+
+    <!-- TODO [module 25] Ajouter les paquets OpenTelemetry : Extensions.Hosting, Exporter.OpenTelemetryProtocol,
+         Instrumentation.AspNetCore, Instrumentation.Http, Instrumentation.Runtime (tous à la version du cours), et
+         Npgsql.OpenTelemetry pour les traces de la base.
+         — cours/25-exploiter-l-application.md, Pas à pas, étape 5 « Produire traces et métriques » -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fournies : Chronos.Infrastructure (module 06, étape 1 « Créer le projet d'infrastructure », qui remplace la référence
+         directe au domaine posée au module 04, étape 10 « Brancher l'API sur le domaine ») et les deux projets de
+         migrations (module 07, étape 4 « Un projet par jeu de migrations »). -->
+    <ProjectReference Include="..\Chronos.Infrastructure\Chronos.Infrastructure.csproj" />
+    <ProjectReference Include="..\Chronos.Migrations.PostgreSql\Chronos.Migrations.PostgreSql.csproj" />
+    <ProjectReference Include="..\Chronos.Migrations.SqlServer\Chronos.Migrations.SqlServer.csproj" />
+  </ItemGroup>
+
+</Project>

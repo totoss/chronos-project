@@ -1,0 +1,4 @@
+# TODO [module 22] Les nouveaux avertissements du niveau d'analyse « all » se décident un par un avec la grille de l'étape 5 ; si l'un d'eux est réglé pour tout ce
+#    dossier, le réglage se pose ici (section « [*.cs] », sans « root = true », avec la raison en commentaire). Non détaillé dans le module : lesquels, et pourquoi ;
+#    comparer avec la solution au tag module-25, src/api/Chronos.Domain/.editorconfig
+#    — cours/22-qualite-du-code.md, À vous, exercice 2 « Un cran plus haut pour le domaine. »

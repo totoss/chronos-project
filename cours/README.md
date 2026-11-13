@@ -13,7 +13,7 @@ Le cours n'enseigne donc pas la programmation. Il enseigne **comment on construi
 Chaque module suit le même déroulé :
 
 1. **Le mentoré lit le module** et les pages de documentation officielle qu'il cite.
-2. **Il réalise le travail demandé** dans son propre dépôt, sans regarder la solution.
+2. **Il réalise le travail demandé** dans son propre dépôt, à partir du [projet de départ](#projet-de-départ), sans regarder la solution.
 3. **Il compare** son résultat à la solution de référence du module.
 4. **Séance de mentorat** : revue du code, discussion des questions prévues par le module, puis passage au module suivant.
 
@@ -22,6 +22,14 @@ Trois principes guident l'ensemble :
 - **La documentation officielle d'abord.** Chaque notion renvoie à sa page de référence. Savoir lire la documentation de la bonne version est une compétence que le cours entraîne explicitement.
 - **Le métier avant la technique.** Chaque module met en œuvre des règles de gestion précises du [cahier des charges](../docs/cahier-des-charges.md). On ne code pas une fonctionnalité technique « pour voir ».
 - **Rien d'obsolète.** Les pratiques enseignées sont celles des [référentiels](../docs/references/) vérifiés. Quand un tutoriel trouvé en ligne contredit le cours, on vérifie dans la documentation officielle — et on corrige le cours s'il a tort.
+
+## Projet de départ
+
+Le mentoré ne part pas d'un dossier vide. Le dossier [`depart/`](../depart/README.md) contient le **corps du projet** : la solution .NET et ses projets, l'espace de travail Angular, et un fichier pour chaque fichier de l'application finale, vidé de son implémentation. Il en copie le contenu à la racine de son dépôt au module 00.
+
+Chaque endroit à compléter porte une annotation `TODO [module NN]` qui dit quoi faire et renvoie à l'étape ou à l'exercice du module qui le demande. `git grep "TODO \[module 08\]"` liste le travail du module 08.
+
+Conséquence pour la lecture des modules : ils décrivent la construction à partir de rien. Les commandes qui créent un projet ou un fichier que le squelette fournit déjà (`dotnet new`, `dotnet sln add`, `ng new`, `ng generate`) **ne se relancent pas**. Le [mode d'emploi du squelette](../depart/README.md) donne la liste des étapes déjà faites et ce qu'il reste à faire pour chacune.
 
 ## Structure d'un module
 
@@ -140,6 +148,7 @@ Ces deux outils ne sont pas relégués à la fin : ils sont introduits dès qu'i
 | Référentiels .NET 10, Angular 22, Docker et GitHub Actions | Rédigés le 12 novembre 2026, complétés par les constats de la construction |
 | Plan de cours et les 26 modules | Rédigés le 12 novembre 2026, puis corrigés module par module pendant la construction |
 | Solution de référence | **Construite** les 12 et 13 novembre 2026 : tags `module-00` à `module-25` |
+| Projet de départ | **Construit** le 13 novembre 2026 dans `depart/`, à partir de la solution ; relu indépendamment, compilation rejouée avec le code de dix tags posé dessus. Personne n'a encore suivi le cours de bout en bout à partir de lui |
 
 ### Comment la solution a été construite
 

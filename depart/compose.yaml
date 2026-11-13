@@ -1,0 +1,39 @@
+name: chronos
+
+# TODO [module 01] Décrire sous « services » les deux bases : « postgres » (image postgres en version 18, compte et base « chronos », mot de passe lu dans
+#    POSTGRES_PASSWORD avec message d'erreur si absent, port publié sur 127.0.0.1 seulement, volume nommé, contrôle de santé pg_isready) et
+#    « sqlserver » (image SQL Server 2025, licence acceptée, mot de passe lu dans MSSQL_SA_PASSWORD, port publié sur 127.0.0.1 seulement, volume nommé,
+#    contrôle de santé par sqlcmd). Déclarer à la racine les deux volumes nommés. Pas de ligne « version ».
+#    — cours/01-docker-les-bases.md, Pas à pas, étape 6 « Décrire les deux bases avec Compose »
+# TODO [module 01] Les mots de passe se lisent dans le fichier .env, non versionné ; .env.example en donne déjà les noms (fourni)
+#    — cours/01-docker-les-bases.md, Pas à pas, étape 7 « Sortir les mots de passe du dépôt »
+
+# TODO [module 23] Après « sqlserver », ajouter deux services du profil « app » : « api » (construit depuis src/api avec un contexte nommé « racine »
+#    qui pointe sur la racine du dépôt ; chaîne de connexion et fournisseur PostgreSql par variables d'environnement ; fuseau Europe/Paris ;
+#    démarre quand postgres est sain ; contrôle de santé sur /health ; aucun port publié) et « web » (construit depuis src/web, port 8080 publié
+#    sur 127.0.0.1 seulement, démarre quand api est saine et redémarre avec elle)
+#    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 7 « Ajouter l'application au fichier Compose »
+# TODO [module 23] Donner une adresse fixe au réseau du projet (section « networks », réseau « default », 10.89.0.0/24) et la transmettre à l'API
+#    dans la variable de configuration du réseau du relais, pour que seul nginx soit cru sur les en-têtes X-Forwarded-*
+#    — cours/23-conteneuriser-l-application.md, Pas à pas, étape 9 « Faire confiance au relais »
+# TODO [module 23] Faire survivre les sessions à la recréation du conteneur de l'API : un volume nommé monté dans le dossier des clés de
+#    protection des données (à déclarer à la racine), et la variable de configuration qui désigne ce dossier
+#    — cours/23-conteneuriser-l-application.md, À vous, exercice 6 « Rester connecté. »
+
+# TODO [module 25] Service « api » : transmettre à l'API la configuration de journalisation en JSON (formateur « json », portées incluses, horodatages
+#    UTC au format ISO avec millisecondes)
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 3 « Sortir du JSON en conteneur »
+# TODO [module 25] Service « api » : adresse du collecteur OTLP (le service « tableau-de-bord », port 18889) et nom de service « chronos-api »
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 6 « Lire la télémétrie dans un tableau de bord »
+# TODO [module 25] Ajouter le service « tableau-de-bord » (profil « app », image du tableau de bord Aspire en version 13.6.5, accès anonyme autorisé,
+#    port 18888 publié sur 127.0.0.1 seulement)
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 6 « Lire la télémétrie dans un tableau de bord »
+# TODO [module 25] Séparer le compte de l'application : service « postgres », variable POSTGRES_APP_PASSWORD obligatoire et montage en lecture seule du
+#    script docker/postgres/10-compte-applicatif.sh dans /docker-entrypoint-initdb.d ; service « api », se connecter avec le compte « chronos_app »
+#    et non plus « chronos ». Définir d'abord la variable dans .env : sans elle, toute commande Compose refuse
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 7 « Séparer le compte de l'application »
+# TODO [module 25] Service « api » : délai d'arrêt un peu supérieur aux 30 secondes que laisse ASP.NET Core aux requêtes en cours
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 9 « Arrêter proprement »
+# TODO [module 25] Premier administrateur : service « api », adresse lue dans ADMIN_EMAIL (facultative), dossier des secrets, et mot de passe fourni
+#    par un secret Compose « administrateur-mot-de-passe » dont la source est un fichier du dossier secrets/ ; déclarer ce secret à la racine
+#    — cours/25-exploiter-l-application.md, Pas à pas, étape 12 « Le premier administrateur »

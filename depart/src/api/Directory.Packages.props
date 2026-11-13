@@ -1,0 +1,28 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Les versions s'inscrivent ici, module après module ; chaque projet ne porte ensuite que le nom du paquet. Un paquet « Microsoft.AspNetCore.* » ou
+         « Microsoft.EntityFrameworkCore.* » s'installe toujours avec l'option de version : sans elle, la commande prend une 11.x qui exige .NET 11
+         (cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions »). -->
+    <!-- TODO [module 03] Inscrire la version de Microsoft.AspNetCore.OpenApi (10.0.15), puis celle de Scalar.AspNetCore (2.21.0) ; leurs références sont annotées dans Chronos.Api.csproj
+         — cours/03-premiere-api.md, Pas à pas, étape 5 « Centraliser les réglages et les versions » -->
+    <!-- TODO [module 04] Inscrire xunit.v3.mtp-v2 (4.0.3), la version indiquée par le cours pour le modèle de projet de tests
+         — cours/04-modeliser-le-domaine.md, Pas à pas, étape 4 « Créer le projet de tests » -->
+    <!-- TODO [module 06] Inscrire Npgsql.EntityFrameworkCore.PostgreSQL (10.0.3), Microsoft.EntityFrameworkCore.Relational (10.0.15) et Microsoft.EntityFrameworkCore.Design (10.0.15), par les trois « dotnet package add » avec les options de projet et de version
+         — cours/06-persister-avec-ef-core.md, Pas à pas, étape 1 « Créer le projet d'infrastructure » -->
+    <!-- TODO [module 07] Inscrire Microsoft.EntityFrameworkCore.SqlServer (10.0.15)
+         — cours/07-deux-sgbd-un-seul-code.md, Pas à pas, étape 2 « Ajouter le fournisseur SQL Server » -->
+    <!-- TODO [module 09] Inscrire Microsoft.Extensions.TimeProvider.Testing (10.11.0), pour l'horloge factice des tests
+         — cours/09-affectations-et-calcul-de-charge.md, Pas à pas, étape 7 « « La semaine en cours » » -->
+    <!-- TODO [module 11] Inscrire Microsoft.AspNetCore.Mvc.Testing (10.0.15) et Testcontainers.PostgreSql (4.16.0) ; le module 11 ajoute Testcontainers.MsSql (4.16.0) à l'exercice 5 « Les mêmes tests sur SQL Server. »
+         — cours/11-tests-d-integration.md, Pas à pas, étape 1 « Créer le projet de tests » -->
+    <!-- TODO [module 12] Inscrire Microsoft.AspNetCore.Identity.EntityFrameworkCore (10.0.15)
+         — cours/12-securite-et-tracabilite.md, Pas à pas, étape 1 « Le compte utilisateur et ses tables » -->
+    <!-- TODO [module 25] Inscrire Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore (10.0.15)
+         — cours/25-exploiter-l-application.md, Pas à pas, étape 4 « Deux points de contrôle de santé » -->
+    <!-- TODO [module 25] Inscrire les cinq paquets OpenTelemetry (Extensions.Hosting, Exporter.OpenTelemetryProtocol, Instrumentation.AspNetCore, Instrumentation.Http, Instrumentation.Runtime ; 1.21.0) et Npgsql.OpenTelemetry (10.0.3, même version que le pilote Npgsql)
+         — cours/25-exploiter-l-application.md, Pas à pas, étape 5 « Produire traces et métriques » -->
+  </ItemGroup>
+</Project>

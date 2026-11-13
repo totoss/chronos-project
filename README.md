@@ -17,7 +17,7 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 
 | Vous êtes… | Lisez |
 | --- | --- |
-| **Mentoré** | Le [plan de cours](cours/README.md), puis le [cahier des charges](docs/cahier-des-charges.md). |
+| **Mentoré** | Le [plan de cours](cours/README.md), puis le [cahier des charges](docs/cahier-des-charges.md). Le code se construit à partir du [projet de départ](depart/README.md). |
 | **Mentor** | Le [plan de cours](cours/README.md) pour le déroulé, et les référentiels ci-dessous pour les choix techniques et leurs justifications. |
 
 ## Contenu du dépôt
@@ -31,6 +31,7 @@ Chronos est un **support de mentorat construit comme un cours**. Le mentoré y a
 | [docs/references/docker.md](docs/references/docker.md) | Pratiques à jour pour Docker et Compose, avec leurs sources. |
 | [docs/references/github-actions.md](docs/references/github-actions.md) | Pratiques à jour pour GitHub Actions, avec leurs sources. |
 | [compose.yaml](compose.yaml) | Les deux bases de données en conteneur (module 01) et, sous le profil `app`, l'application complète (modules 23 et 25). Copier `.env.example` en `.env` avant de démarrer. |
+| [depart/](depart/README.md) | Le projet de départ du mentoré : la structure et l'architecture, vidées de leur implémentation, avec une annotation `TODO [module NN]` à chaque endroit à compléter. |
 | `src/api/`, `src/web/` | La solution de référence : l'API .NET 10 et l'interface Angular 22. Un tag `module-NN` marque l'état attendu à la fin de chaque module. |
 
 ## Qualité

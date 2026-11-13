@@ -1,0 +1,4 @@
+# TODO [module 22] Déclarer le code de ce dossier comme généré, pour que le formateur et les analyseurs l'ignorent : une section « [*.cs] » avec la
+#    propriété « generated_code ». Pas de « root = true » : ce fichier complète celui de la racine. À faire AVANT de lancer « dotnet format » (sinon
+#    il réécrit toutes les migrations). Le même fichier existe dans l'autre projet de migrations.
+#    — cours/22-qualite-du-code.md, Pas à pas, étape 1 « Faire l'état des lieux »

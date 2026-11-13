@@ -1,0 +1,4 @@
+# TODO [module 22] Régler pour ce dossier la règle CA1707 (tirets bas dans les noms) : sévérité « none » dans une section « [*.cs] », avec en commentaire la
+#    raison (les noms de tests sont des phrases). Pas de « root = true » : le fichier complète celui de la racine. Le même fichier existe dans
+#    Chronos.Api.Tests.
+#    — cours/22-qualite-du-code.md, Pas à pas, étape 5 « Décider du sort de chaque avertissement »

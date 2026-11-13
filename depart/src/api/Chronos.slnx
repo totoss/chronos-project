@@ -1,0 +1,12 @@
+<Solution>
+  <!-- Fourni : la solution liste déjà les sept projets de l'état final. Les commandes « dotnet sln add » du cours sont donc faites :
+       module 03, étape 2 (Chronos.Api) ; module 04, étapes 1 et 4 (domaine et tests) ; module 06, étape 1 (infrastructure) ;
+       module 07, étape 4 (les deux projets de migrations) ; module 11, étape 1 (tests d'intégration). Ne les relancez pas. -->
+  <Project Path="Chronos.Api.Tests/Chronos.Api.Tests.csproj" />
+  <Project Path="Chronos.Api/Chronos.Api.csproj" />
+  <Project Path="Chronos.Domain.Tests/Chronos.Domain.Tests.csproj" />
+  <Project Path="Chronos.Domain/Chronos.Domain.csproj" />
+  <Project Path="Chronos.Infrastructure/Chronos.Infrastructure.csproj" />
+  <Project Path="Chronos.Migrations.PostgreSql/Chronos.Migrations.PostgreSql.csproj" />
+  <Project Path="Chronos.Migrations.SqlServer/Chronos.Migrations.SqlServer.csproj" />
+</Solution>

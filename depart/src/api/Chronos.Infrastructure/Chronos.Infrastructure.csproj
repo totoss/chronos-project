@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fourni : la référence vers Chronos.Domain. Les dépendances vont dans un seul sens : Chronos.Api -> Chronos.Infrastructure -> Chronos.Domain.
+       Les « dotnet new classlib », « dotnet sln add » et « dotnet reference add » des modules 06 et 07 sont faits (ne les relancez pas : un « dotnet new » sur un projet existant refuse d écraser ses fichiers), ainsi que le retrait des trois
+       réglages que Directory.Build.props fournit déjà. Ne reste que les paquets : -->
+
+  <!-- TODO [module 06] Référencer Npgsql.EntityFrameworkCore.PostgreSQL (le fournisseur PostgreSQL ; 10.0.3) et Microsoft.EntityFrameworkCore.Relational (qui fixe la
+       version d'EF Core ; 10.0.15) par « dotnet package add », avec les options de projet et de version. Sans l'option de version, la commande prend une 11.x.
+       — cours/06-persister-avec-ef-core.md, Pas à pas, étape 1 « Créer le projet d'infrastructure » -->
+  <!-- TODO [module 06] Installer l'outil « dotnet ef » comme outil LOCAL du dépôt (« dotnet new tool-manifest », puis « dotnet tool install dotnet-ef » en version 10.0.15, alignée sur les paquets EF Core) :
+       cela crée dotnet-tools.json dans src/api, à versionner. Le paquet Microsoft.EntityFrameworkCore.Design se référence dans le projet de démarrage, Chronos.Api.
+       — cours/06-persister-avec-ef-core.md, Pas à pas, étape 5 « Installer l'outil `dotnet ef` » -->
+  <!-- TODO [module 07] Référencer Microsoft.EntityFrameworkCore.SqlServer (10.0.15), le fournisseur SQL Server
+       — cours/07-deux-sgbd-un-seul-code.md, Pas à pas, étape 2 « Ajouter le fournisseur SQL Server » -->
+  <!-- TODO [module 12] Référencer Microsoft.AspNetCore.Identity.EntityFrameworkCore (10.0.15), pour le compte utilisateur et les tables d'Identity
+       — cours/12-securite-et-tracabilite.md, Pas à pas, étape 1 « Le compte utilisateur et ses tables » -->
+  <!-- Fichier généré, non créé : packages.lock.json (module 05, étape 7 « Accélérer avec un cache »). Dossier non créé : Migrations/, que « dotnet ef migrations add Initiale »
+       écrit ici au module 06 (étape 6 « Créer la première migration »), puis que le module 07 déplace vers Chronos.Migrations.PostgreSql (étape 4 « Un projet par jeu de migrations ») :
+       il n'existe plus à l'état final. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronos.Domain\Chronos.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
