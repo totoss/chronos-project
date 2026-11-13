@@ -20,7 +20,7 @@ COPY --link Chronos.Api/ Chronos.Api/
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet publish Chronos.Api/Chronos.Api.csproj --no-restore -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends curl
 EXPOSE 8080
