@@ -99,7 +99,7 @@ services:
   # Outil de développement : aucune authentification, données temporaires.
   tableau-de-bord:
     profiles: [app]
-    image: mcr.microsoft.com/aspire/dashboard:13.6.5
+    image: mcr.microsoft.com/aspire/dashboard:17.0.0
     environment:
       ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
     ports:
