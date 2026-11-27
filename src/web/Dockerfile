@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY --link . .
 RUN npx ng build
 
-FROM nginx/nginx-unprivileged:1.30-alpine
+FROM nginx/nginx-unprivileged:1.31-alpine
 COPY --link nginx.conf /etc/nginx/conf.d/default.conf
 COPY --link --from=build /source/dist/chronos-web/browser /usr/share/nginx/html
 EXPOSE 8080
